@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="95">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <df root="." name="0">
+      <df name="cgal">
+        <in>image2mesh.cpp</in>
+        <in>poly2mesh.cpp</in>
+        <in>vtk2inrimage.cpp</in>
+      </df>
+      <df name="imported">
+        <df name="optionparser-1.3">
+          <df name="src">
+            <in>example.cpp</in>
+            <in>example_arg.cc</in>
+            <in>optionparser.h</in>
+            <in>printUsage.h</in>
+            <in>testodr1.cc</in>
+            <in>testodr2.cc</in>
+            <in>testparse.cpp</in>
+            <in>testprintusage.cpp</in>
+          </df>
+        </df>
+        <df name="pgm2itkvol">
+          <in>itkvol2pgm.cxx</in>
+          <in>mccodimage.h</in>
+          <in>mcimage.c</in>
+          <in>mcimage.h</in>
+          <in>mcutil.h</in>
+          <in>pgm2itkvol.cxx</in>
+        </df>
+        <in>LabelBranches3D.cpp</in>
+        <in>itkBinaryThinningImageFilter3D.h</in>
+        <in>itkBinaryThinningImageFilter3D.txx</in>
+        <in>itkImageToVTKImageFilter.h</in>
+        <in>itkImageToVTKImageFilter.txx</in>
+      </df>
+      <df name="layer_Generation_code">
+        <in>CommonTools.cpp</in>
+        <in>CommonTools.h</in>
+        <in>GenerateAtrialLayers.cpp</in>
+        <in>SmoothMeshTrhoughImage.cpp</in>
+      </df>
+      <in>BVCoordinatesTrayanova.cpp</in>
+      <in>Blob.cpp</in>
+      <in>CheckTetraMesh.cpp</in>
+      <in>CloseBVMesh.cpp</in>
+      <in>CommonTools.cpp</in>
+      <in>CommonTools.h</in>
+      <in>ComputeLocalMeshDensity.cpp</in>
+      <in>CreateImageMask.cpp</in>
+      <in>ExtractShapeRegion.cpp</in>
+      <in>GeneralizedRicciFlow.cpp</in>
+      <in>GenerateAtrialLayers.cpp</in>
+      <in>GenerateVolumetricLVMesh.cpp</in>
+      <in>LabelBiventricularMesh.cpp</in>
+      <in>MRIRemesh.cpp</in>
+      <in>MakeBiventricularMesh.cpp</in>
+      <in>MarchingCubes.cpp</in>
+      <in>MeshHeart.cpp</in>
+      <in>MeshSegmentationLaplace.cpp</in>
+      <in>Morphology3D.cpp</in>
+      <in>PassLabels2TetMesh.cpp</in>
+      <in>PassScalars.cpp</in>
+      <in>PassScalarsInterp.cpp</in>
+      <in>PassScalarsReverse.cpp</in>
+      <in>ProjectImage2Mesh.cpp</in>
+      <in>ResampleImage.cpp</in>
+      <in>S2SError.cpp</in>
+      <in>SetScalars.cpp</in>
+      <in>SmoothMeshTrhoughImage.cpp</in>
+      <in>TransformPhilipsHeart.cpp</in>
+      <in>UniformRemesh.cpp</in>
+      <in>VTKConvert.cpp</in>
+      <in>chaste2vtk.cpp</in>
+      <in>ls_conformal.cpp</in>
+      <in>nrrd2vtk.cpp</in>
+      <in>tetmesh_uniform.cpp</in>
+      <in>zernike.cpp</in>
+    </df>
+  </logicalFolder>
+  <projectmakefile>../bin/tools/Makefile</projectmakefile>
+  <confs>
+    <conf name="Default" type="0">
+      <toolsSet>
+        <developmentServer>localhost</developmentServer>
+        <platform>2</platform>
+      </toolsSet>
+      <compile>
+        <compiledirpicklist>
+          <compiledirpicklistitem>.</compiledirpicklistitem>
+          <compiledirpicklistitem>${AUTO_FOLDER}</compiledirpicklistitem>
+        </compiledirpicklist>
+        <compiledir>${AUTO_FOLDER}</compiledir>
+        <compilecommandpicklist>
+          <compilecommandpicklistitem>${MAKE} ${ITEM_NAME}.o</compilecommandpicklistitem>
+          <compilecommandpicklistitem>${AUTO_COMPILE}</compilecommandpicklistitem>
+        </compilecommandpicklist>
+        <compilecommand>${AUTO_COMPILE}</compilecommand>
+      </compile>
+      <dbx_gdbdebugger version="1">
+        <gdb_pathmaps>
+        </gdb_pathmaps>
+        <gdb_interceptlist>
+          <gdbinterceptoptions gdb_all="false" gdb_unhandled="true" gdb_unexpected="true"/>
+        </gdb_interceptlist>
+        <gdb_options>
+          <DebugOptions>
+            <option name="debug_command" value="&quot;${OUTPUT_PATH}&quot; test.vtk 1"/>
+            <option name="debug_dir" value="/home/costa/Dropbox/zernike_test"/>
+          </DebugOptions>
+        </gdb_options>
+        <gdb_buildfirst gdb_buildfirst_overriden="false" gdb_buildfirst_old="false"/>
+      </dbx_gdbdebugger>
+      <nativedebugger version="1">
+        <engine>gdb</engine>
+      </nativedebugger>
+      <runprofile version="9">
+        <runcommandpicklist>
+          <runcommandpicklistitem>"${OUTPUT_PATH}"</runcommandpicklistitem>
+        </runcommandpicklist>
+        <runcommand>"${OUTPUT_PATH}"</runcommand>
+        <rundir>../bin/tools</rundir>
+        <buildfirst>false</buildfirst>
+        <terminal-type>0</terminal-type>
+        <remove-instrumentation>0</remove-instrumentation>
+        <environment>
+        </environment>
+      </runprofile>
+    </conf>
+  </confs>
+</configurationDescriptor>
