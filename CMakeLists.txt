@@ -185,3 +185,7 @@ TARGET_LINK_LIBRARIES(tetmesh_uniform  ${ITK_LIBRARIES} ${VTK_LIBRARIES})
 ADD_EXECUTABLE(ProjectImage2Mesh ProjectImage2Mesh.cpp)
 TARGET_LINK_LIBRARIES(ProjectImage2Mesh  ${VTK_LIBRARIES})
 
+ADD_EXECUTABLE(GenerateMeshHoleCovers CommonTools.cpp CommonTools.h GenerateMeshHoleCovers.cpp)
+TARGET_LINK_LIBRARIES(GenerateMeshHoleCovers ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
+
+
