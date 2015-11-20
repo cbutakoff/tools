@@ -22,7 +22,7 @@ if ( CGAL_FOUND )
     message( STATUS "NOTICE: The example mesh_3D_image.cpp needs CGAL_ImageIO to be configured with ZLIB support, and will not be compiled." )
   endif()
   create_single_source_cgal_program( "poly2mesh.cpp" )
-#  create_single_source_cgal_program( "as.cpp" )
+  create_single_source_cgal_program( "segment_mesh_sdf.cpp" )
 
 else()
   
@@ -32,4 +32,5 @@ endif()
 
 ADD_EXECUTABLE(vtk2inrimage  vtk2inrimage.cpp)
 TARGET_LINK_LIBRARIES(vtk2inrimage  ${VTK_LIBRARIES} )
+
 
