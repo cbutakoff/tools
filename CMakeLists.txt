@@ -189,3 +189,6 @@ ADD_EXECUTABLE(GenerateMeshHoleCovers CommonTools.cpp CommonTools.h GenerateMesh
 TARGET_LINK_LIBRARIES(GenerateMeshHoleCovers ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
 
 
+ADD_EXECUTABLE(heap_test MinHeap.h MinHeap.txx heap_test.cpp)
+TARGET_LINK_LIBRARIES(heap_test )
+
