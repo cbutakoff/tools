@@ -192,7 +192,7 @@ TARGET_LINK_LIBRARIES(GenerateMeshHoleCovers ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
 ADD_EXECUTABLE(heap_test MinHeap/MinHeap.h MinHeap/MinHeap.txx MinHeap/heap_test.cpp)
 TARGET_LINK_LIBRARIES(heap_test )
 
-ADD_EXECUTABLE(MeshWatershed  MinHeap/MinHeap.h MinHeap/MinHeap.txx MeshWatershed.cpp)
-TARGET_LINK_LIBRARIES(MeshWatershed ${VTK_LIBRARIES} )
+ADD_EXECUTABLE(AtriumSegment  MinHeap/MinHeap.h MinHeap/MinHeap.txx AtriumSegment.cpp)
+TARGET_LINK_LIBRARIES(AtriumSegment ${VTK_LIBRARIES} )
 
 
