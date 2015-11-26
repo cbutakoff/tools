@@ -17,6 +17,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <set>
 #include <limits>
 #include <string>
+#include <stack>
 
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
@@ -32,6 +33,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkCellLocator.h>
 #include <vtkCell.h>
 #include <vtkLongArray.h>
+#include <vtkDoubleArray.h>
 
 #include "MinHeap/MinHeap.h"
 
@@ -41,9 +43,11 @@ PURPOSE.  See the above copyright notice for more information.
 //the markers are stored in cell array in the mesh "MarkerSet"
 void GenerateMarkerSetAsLocalMin(vtkPolyData* mesh, const char* arrayname);
 int GenerateMarkerSetByIterativeThresholding(vtkPolyData* mesh, const char* arrayname, const int nregions);
+int GenerateMarkerSetByIterativeThresholdingSteps(vtkPolyData* mesh, const char* arrayname, const int nregions);
 void GetCellNeighbors(vtkPolyData* mesh, vtkIdType cellId, std::set<vtkIdType>& neighbors);
 
 void FastMarchingGrowingFromBiggestTriangle(vtkPolyData* mesh, const char* arrayname);
+void FastMarchingCumulativeFunction(vtkPolyData* mesh, const char* arrayname);
 
 int main(int argc, char *argv[]) {
 
@@ -100,7 +104,10 @@ int main(int argc, char *argv[]) {
     vtkPolyData* mesh = rd->GetOutput();
     
     //GenerateMarkerSetByIterativeThresholding(mesh, array_name.c_str(), nregions);
-    FastMarchingGrowingFromBiggestTriangle(mesh, array_name.c_str());
+    FastMarchingCumulativeFunction(mesh, array_name.c_str());
+    
+    GenerateMarkerSetByIterativeThresholdingSteps(mesh, "GrowingOrder", nregions);
+    
     
     vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
     wr->SetFileName(output_filename);
@@ -383,4 +390,195 @@ void FastMarchingGrowingFromBiggestTriangle(vtkPolyData* mesh, const char* array
     mesh->GetCellData()->AddArray(labels);
     
     std::cout<<std::endl;
+}
+
+
+
+
+
+void FastMarchingCumulativeFunction(vtkPolyData* mesh, const char* arrayname)
+{
+    vtkDataArray* f = mesh->GetCellData()->GetScalars(arrayname);
+    
+    //find the triangle with max f
+    unsigned long max_f_ind = 0;
+    double f_max = f->GetTuple1(0);
+    for(int i=1; i<f->GetNumberOfTuples(); i++)
+    {
+        if(f->GetTuple1(i)>f_max)
+        {
+            f_max = f->GetTuple1(i);
+            max_f_ind = i;
+        }           
+    }
+    
+    
+    //start growing the region from the found triangle
+    std::stack<unsigned long> cell_stack;
+    cell_stack.push(max_f_ind); //put the initial cell
+
+
+    
+    vtkSmartPointer<vtkDoubleArray> labels = vtkSmartPointer<vtkDoubleArray>::New();
+    labels->SetNumberOfComponents(1);
+    labels->SetNumberOfTuples(mesh->GetNumberOfCells());
+    labels->SetName("GrowingOrder");
+
+    labels->SetTuple1(max_f_ind, f_max); 
+
+    
+    //initialize
+    for(int i=0; i<labels->GetNumberOfTuples(); i++) labels->SetTuple1(i,1);
+    
+    unsigned long c=0;
+    while (!cell_stack.empty())
+    {
+        //get the cell
+        unsigned long cell_id = cell_stack.top();
+        cell_stack.pop();
+        
+        
+        //get cell neighbors
+        std::set<vtkIdType> neighbors;
+        GetCellNeighbors(mesh, cell_id, neighbors);
+    
+        //add cells without label to the heap
+        for(std::set<vtkIdType>::iterator it1 = neighbors.begin(); it1 != neighbors.end(); it1++)
+        {
+            //std::cout<<"Neighbor "<<*it1<<std::endl;
+            if(labels->GetTuple1(*it1)>0)
+            {
+                unsigned long neighbor_id = *it1;
+                const double fval = f->GetTuple1(neighbor_id)+f->GetTuple1(cell_id);
+                cell_stack.push(neighbor_id);
+                labels->SetTuple1(*it1, fval);
+            }
+        }
+        
+        c++;
+        if(c%1000==0)
+        {
+            std::cout<<"Cell: "<<c<<"/"<<mesh->GetNumberOfCells()<<"\n";
+        }      
+    }
+    
+    mesh->GetCellData()->AddArray(labels);
+    
+    std::cout<<std::endl;
+}
+
+
+
+
+
+
+int GenerateMarkerSetByIterativeThresholdingSteps(vtkPolyData* mesh, const char* arrayname, const int nregions)
+{
+    vtkDataArray* f = mesh->GetCellData()->GetArray(arrayname);
+    
+    if(f==NULL)
+    {
+        std::cout<<"Cell array "<<arrayname<<" was not found"<<std::endl;
+        throw;
+    }
+
+    vtkSmartPointer<vtkShortArray> labels = vtkSmartPointer<vtkShortArray>::New();
+    labels->SetName(MARKER_SET);
+    labels->SetNumberOfComponents(1);
+    labels->SetNumberOfTuples(f->GetNumberOfTuples());
+
+    //for each cell, compare f with the neighborhood, and mark the cell if the value is 
+    //strictly smaller
+    
+    const unsigned long ncells = mesh->GetNumberOfCells();
+    
+    //find min and max of the f
+    double* range = f->GetRange(0);
+    const double f_min = range[0];
+    const double f_max = range[1];
+    
+    std::cout<<"The values in the function are in the range: ["<<f_min<<";"<<f_max<<"]"<<std::endl;
+
+
+    mesh->GetCellData()->SetActiveScalars(arrayname);
+    
+    vtkSmartPointer<vtkThreshold> th = vtkSmartPointer<vtkThreshold>::New();
+    th->SetInputData(mesh);
+    //th->SetAttributeModeToUseCellData();
+    th->SetInputArrayToProcess(0, 0, 0, vtkDataObject::FIELD_ASSOCIATION_CELLS, arrayname);
+    
+    vtkSmartPointer<vtkConnectivityFilter> conn = vtkSmartPointer<vtkConnectivityFilter>::New();
+    conn->SetExtractionModeToAllRegions();
+    conn->ColorRegionsOn();    
+    
+    double step = -0.1;
+    double T = f_max+step; //thresholds
+    
+    bool regions_found = false;
+    
+    while( !regions_found && fabs(T-f_min)>1e-5 )
+    {
+        th->ThresholdByLower(T);
+        th->Update();
+        
+        conn->SetInputData(th->GetOutput());
+        conn->Update();    
+        
+        const unsigned long n_extr_regions = conn->GetNumberOfExtractedRegions();
+        std::cout<<"T="<<T<<"; components="<<n_extr_regions<<std::endl;
+        
+        if(n_extr_regions >= nregions) 
+        {   
+            regions_found = true;
+        }
+        else 
+        {
+            T += step;
+        }
+    }
+
+    if(regions_found)
+    {
+        //mark the cells based on the threshold filter (using locator)
+        for (int i = 0; i < ncells; i++) labels->SetTuple1(i,0);
+
+        vtkSmartPointer<vtkCellLocator> in_target_locator = vtkSmartPointer<vtkCellLocator>::New();
+        in_target_locator->SetDataSet(mesh);
+        in_target_locator->BuildLocator();
+
+        for( int region=0; region<conn->GetNumberOfExtractedRegions(); region++)
+        {
+            const int label = region+1;
+
+
+            vtkSmartPointer<vtkThreshold> th1 = vtkSmartPointer<vtkThreshold>::New();
+            th1->SetInputData(conn->GetOutput());
+            th1->ThresholdBetween(region,region);
+            th1->Update();
+            vtkUnstructuredGrid* submesh = th1->GetOutput();
+
+            for( int i=0; i<submesh->GetNumberOfCells(); i++)
+            {
+                double cell_center_p[3];
+                double pt[3];
+                double weights[3];
+                int not_used;
+                submesh->GetCell(i)->GetParametricCenter(cell_center_p);
+                submesh->GetCell(i)->EvaluateLocation(not_used,cell_center_p,pt,weights);
+
+                double closestpoint[3];
+                vtkIdType cellid;
+                int subid;
+                double dist2;
+                in_target_locator->FindClosestPoint(pt,closestpoint,cellid,subid, dist2);
+
+                labels->SetValue(cellid, label);
+            }    
+        }
+    
+    
+        mesh->GetCellData()->AddArray(labels);
+    }
+    
+    return regions_found?0:-1;
 }
