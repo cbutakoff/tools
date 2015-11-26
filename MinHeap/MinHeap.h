@@ -31,6 +31,8 @@ public:
     StorageDataType GetMin();
     void DeleteMin();
     
+    unsigned long Size() { return _vector.size(); };
+    
 private:
     std::vector<HeapNodeType> _vector;
     void BubbleDown(int index);

@@ -31,6 +31,9 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkUnstructuredGrid.h>
 #include <vtkCellLocator.h>
 #include <vtkCell.h>
+#include <vtkLongArray.h>
+
+#include "MinHeap/MinHeap.h"
 
 #define MARKER_SET "MarkerSet"
 
@@ -40,7 +43,7 @@ void GenerateMarkerSetAsLocalMin(vtkPolyData* mesh, const char* arrayname);
 int GenerateMarkerSetByIterativeThresholding(vtkPolyData* mesh, const char* arrayname, const int nregions);
 void GetCellNeighbors(vtkPolyData* mesh, vtkIdType cellId, std::set<vtkIdType>& neighbors);
 
-
+void FastMarchingGrowingFromBiggestTriangle(vtkPolyData* mesh, const char* arrayname);
 
 int main(int argc, char *argv[]) {
 
@@ -96,7 +99,8 @@ int main(int argc, char *argv[]) {
     rd->Update();
     vtkPolyData* mesh = rd->GetOutput();
     
-    GenerateMarkerSetByIterativeThresholding(mesh, array_name.c_str(), nregions);
+    //GenerateMarkerSetByIterativeThresholding(mesh, array_name.c_str(), nregions);
+    FastMarchingGrowingFromBiggestTriangle(mesh, array_name.c_str());
     
     vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
     wr->SetFileName(output_filename);
@@ -309,4 +313,74 @@ int GenerateMarkerSetByIterativeThresholding(vtkPolyData* mesh, const char* arra
     }
     
     return regions_found?0:-1;
+}
+
+
+
+void FastMarchingGrowingFromBiggestTriangle(vtkPolyData* mesh, const char* arrayname)
+{
+    vtkDataArray* f = mesh->GetCellData()->GetScalars(arrayname);
+    
+    //find the triangle with max f
+    unsigned long max_f_ind = 0;
+    double f_max = f->GetTuple1(0);
+    for(int i=1; i<f->GetNumberOfTuples(); i++)
+    {
+        if(f->GetTuple1(i)>f_max)
+        {
+            f_max = f->GetTuple1(i);
+            max_f_ind = i;
+        }           
+    }
+    
+    
+    //start growing the region from the found triangle
+    MinHeap<unsigned long, double> heap;
+    heap.Insert(0, max_f_ind); //put initial thing
+
+
+    
+    vtkSmartPointer<vtkLongArray> labels = vtkSmartPointer<vtkLongArray>::New();
+    labels->SetNumberOfComponents(1);
+    labels->SetNumberOfTuples(mesh->GetNumberOfCells());
+    labels->SetName("GrowingOrder");
+    
+    //initialize
+    for(int i=0; i<labels->GetNumberOfTuples(); i++) labels->SetTuple1(i,-1);
+    
+    unsigned long c=0;
+    while (heap.Size()>0)
+    {
+        //get the cell
+        unsigned long cell_id = heap.GetMin();
+        heap.DeleteMin();
+        
+        labels->SetTuple1(cell_id, c++); 
+        
+        //get cell neighbors
+        std::set<vtkIdType> neighbors;
+        GetCellNeighbors(mesh, cell_id, neighbors);
+    
+        //add cells without label to the heap
+        for(std::set<vtkIdType>::iterator it1 = neighbors.begin(); it1 != neighbors.end(); it1++)
+        {
+            //std::cout<<"Neighbor "<<*it1<<std::endl;
+            if(labels->GetTuple1(*it1)<0)
+            {
+                unsigned long neighbor_id = *it1;
+                const double fdiff = fabs(f->GetTuple1(neighbor_id)-f->GetTuple1(cell_id));
+                heap.Insert(fdiff, neighbor_id);
+                labels->SetTuple1(*it1, 0);
+            }
+        }
+        
+        if(c%100==0)
+        {
+            std::cout<<"Cell: "<<c<<"/"<<mesh->GetNumberOfCells()<<". Heap: "<<heap.Size()<<"\n";
+        }      
+    }
+    
+    mesh->GetCellData()->AddArray(labels);
+    
+    std::cout<<std::endl;
 }

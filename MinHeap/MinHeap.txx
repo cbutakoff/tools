@@ -10,7 +10,7 @@ PURPOSE.  See the above copyright notice for more information.
 #define MinHeap_txx
 
 #include "MinHeap.h"
-
+#include <iostream>
 
 template<class StorageDataType, class KeyType>
 MinHeap<StorageDataType,KeyType>::MinHeap(const std::vector<HeapNodeType>& vector) : _vector(vector)
@@ -88,10 +88,12 @@ void MinHeap<StorageDataType,KeyType>::Insert(KeyType key, StorageDataType& data
     HeapNodeType node;
     node.key = key;
     node.data = data;
+
     
     int length = _vector.size();
-    _vector[length] =  node;
-
+    //_vector[length] =  node;
+    _vector.push_back(node);
+    
     BubbleUp(length);
 }
 
