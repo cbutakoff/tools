@@ -39,6 +39,17 @@ PURPOSE.  See the above copyright notice for more information.
 
 #define MARKER_SET "MarkerSet"
 
+
+
+typedef struct __CellDescriptor
+{
+    unsigned long label;
+    unsigned long cell_id;
+} CellDescriptor;
+
+
+
+
 //return all faces that are local minima. Arrayname is the array containing the height function
 //the markers are stored in cell array in the mesh "MarkerSet"
 void GenerateMarkerSetAsLocalMin(vtkPolyData* mesh, const char* arrayname);
@@ -48,6 +59,13 @@ void GetCellNeighbors(vtkPolyData* mesh, vtkIdType cellId, std::set<vtkIdType>& 
 
 void FastMarchingGrowingFromBiggestTriangle(vtkPolyData* mesh, const char* arrayname);
 void FastMarchingCumulativeFunction(vtkPolyData* mesh, const char* arrayname);
+
+void FastMarchingWatershed(vtkPolyData* mesh, const char* arrayname);
+
+void GrowHeap(vtkPolyData* mesh, unsigned long cellid, MinHeap<CellDescriptor, double>& heap);
+
+
+
 
 int main(int argc, char *argv[]) {
 
@@ -105,9 +123,9 @@ int main(int argc, char *argv[]) {
     
     //GenerateMarkerSetByIterativeThresholding(mesh, array_name.c_str(), nregions);
     FastMarchingCumulativeFunction(mesh, array_name.c_str());
-    
-    GenerateMarkerSetByIterativeThresholdingSteps(mesh, "GrowingOrder", nregions);
-    
+    //GenerateMarkerSetByIterativeThresholdingSteps(mesh, "GrowingOrder", nregions);
+    //GenerateMarkerSetAsLocalMin(mesh, array_name.c_str());
+    //FastMarchingWatershed(mesh, array_name.c_str());
     
     vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
     wr->SetFileName(output_filename);
@@ -138,6 +156,7 @@ void GenerateMarkerSetAsLocalMin(vtkPolyData* mesh, const char* arrayname) {
     const unsigned long ncells = mesh->GetNumberOfCells();
     
     std::cout<<"Building marker set: "<<std::endl;
+    unsigned long label_id = 1;
     for (int i = 0; i < ncells; i++) {
         std::set<vtkIdType> neighbors;
         GetCellNeighbors(mesh, i, neighbors);
@@ -156,7 +175,7 @@ void GenerateMarkerSetAsLocalMin(vtkPolyData* mesh, const char* arrayname) {
         f_mean /= neighbors.size();
         //std::cout << std::endl;
 
-        if(f->GetTuple1(i)<f_mean) labels->SetTuple1(i,1);
+        if(f->GetTuple1(i)<f_mean) labels->SetTuple1(i,label_id++);
         else labels->SetTuple1(i,0);       
     }
     std::cout<<std::endl;
@@ -581,4 +600,65 @@ int GenerateMarkerSetByIterativeThresholdingSteps(vtkPolyData* mesh, const char*
     }
     
     return regions_found?0:-1;
+}
+
+
+
+
+void FastMarchingWatershed(vtkPolyData* mesh, const char* arrayname)
+{
+    vtkDataArray* label = mesh->GetCellData()->GetArray(MARKER_SET);
+    vtkDataArray* f = mesh->GetCellData()->GetArray("area_change");
+      
+    MinHeap<CellDescriptor, double> heap;
+    
+    for(int i=0; i<mesh->GetNumberOfCells(); i++)
+    {
+        if(label->GetTuple1(i)==1)
+            GrowHeap(mesh, i, heap);
+    }
+    
+    unsigned long cc = 0;
+    while (heap.Size()>0)
+    {
+        CellDescriptor data = heap.GetMin();
+        heap.DeleteMin();
+        
+        const unsigned long vi = data.cell_id;
+        if(label->GetTuple1(vi)==0)
+        {
+            label->SetTuple1(vi, data.label);
+            GrowHeap(mesh, vi, heap);
+        }
+     
+        if(cc++%100)
+        {
+            std::cout<<"Heap: "<<heap.Size()<<"\n";
+        }
+    }
+    std::cout<<std::endl;
+}
+
+
+void GrowHeap(vtkPolyData* mesh, unsigned long cellid, MinHeap<CellDescriptor, double> & heap)
+{
+    CellDescriptor data;
+    vtkDataArray* label = mesh->GetCellData()->GetArray(MARKER_SET);
+    vtkDataArray* f = mesh->GetCellData()->GetArray("area_change");
+    
+    //get cell neighbors
+    std::set<vtkIdType> neighbors;
+    GetCellNeighbors(mesh, cellid, neighbors);
+
+    //add cells without label to the heap
+    for(std::set<vtkIdType>::iterator it1 = neighbors.begin(); it1 != neighbors.end(); it1++)
+    {
+        if(label->GetTuple1(*it1)==0)
+        {
+            data.cell_id = *it1;
+            data.label = label->GetTuple1(cellid);
+            const double fdiff = fabs(f->GetTuple1(*it1)-f->GetTuple1(cellid));
+            heap.Insert(fdiff, data);
+        }
+    }    
 }
