@@ -621,6 +621,7 @@ int main(int argc, char** argv)
     const char* meshname = argv[1];
     const int order = atoi(argv[2]);
     
+    std::cout<<"Version 0.99"<<std::endl;
     std::cout<<"Filename: "<<meshname<<std::endl;
     std::cout<<"Order: "<<order<<std::endl;
     
@@ -649,14 +650,17 @@ int main(int argc, char** argv)
     cntr[1] /= rdr->GetOutput()->GetNumberOfPoints();
     cntr[2] /= rdr->GetOutput()->GetNumberOfPoints();
 
+    //get the bounding box
+    double *bounds = rdr->GetOutput()->GetBounds();
+    double max_size = 2*std::max(bounds[5]-bounds[4], std::max(bounds[1]-bounds[0],bounds[3]-bounds[2]));
     
     for(int i=0; i<rdr->GetOutput()->GetNumberOfPoints(); i++)
     {
         double pt[3];
         rdr->GetOutput()->GetPoints()->GetPoint(i,pt);
-        pt[0] -= cntr[0];
-        pt[1] -= cntr[1];
-        pt[2] -= cntr[2];
+        pt[0] = (pt[0]-cntr[0])/max_size;
+        pt[1] = (pt[1]-cntr[1])/max_size;
+        pt[2] = (pt[2]-cntr[2])/max_size;
         rdr->GetOutput()->GetPoints()->SetPoint(i,pt);
     }
 
@@ -675,7 +679,7 @@ int main(int argc, char** argv)
     z.CalculateZernikeMoments();
     z.SaveZernikeMoments("zern.dat",false);
     
-    vtkSmartPointer<vtkPolyData> pd = vtkSmartPointer<vtkPolyData>::Take( z.Reconstruct(-2,2,-2,2,-2,2,0.2) );
+    vtkSmartPointer<vtkPolyData> pd = vtkSmartPointer<vtkPolyData>::Take( z.Reconstruct(-1,1,-1,1,-1,1,0.1) );
     
     vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
     wr->SetInputData( pd );
