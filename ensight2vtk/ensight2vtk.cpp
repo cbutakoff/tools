@@ -22,6 +22,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <stdio.h>
 #include <iostream>
 #include <string>
+#include <fstream>
 
 int main(int argc, char** argv)
 {
@@ -72,7 +73,7 @@ int main(int argc, char** argv)
     std::cout<<"Time values for timeset 0: ";
     
     const int n_timesteps = rdr->GetTimeSets()->GetItem(0)->GetNumberOfTuples();
-    for(int i=0; i<rdr->GetTimeSets()->GetItem(0)->GetNumberOfTuples(); i++)
+    for(int i=0; i<n_timesteps; i++)
     {
         std::cout<<rdr->GetTimeSets()->GetItem(0)->GetTuple1(i)<<" ";
     }
@@ -109,6 +110,16 @@ int main(int argc, char** argv)
         wr->SetInputData(rdr->GetOutput()->GetBlock(0));
         wr->Write();
     }
+    
+    //write the times of the files into a text file
+    std::string name = prefix+"times.txt";
+    
+    std::ofstream file(name.c_str());
+    for(int i=0; i<n_timesteps; i++)
+    {
+        file<<rdr->GetTimeSets()->GetItem(0)->GetTuple1(i)<<" ";
+    }
+
     
     return 0;
 }
