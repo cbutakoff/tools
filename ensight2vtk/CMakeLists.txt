@@ -1,0 +1,14 @@
+project( ensight2vtk )
+
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6.2)
+
+
+
+FIND_PACKAGE(VTK REQUIRED)
+INCLUDE(${VTK_USE_FILE})
+
+
+ADD_EXECUTABLE(ensight2vtk  ensight2vtk.cpp)
+TARGET_LINK_LIBRARIES(ensight2vtk  ${VTK_LIBRARIES} )
+
+
