@@ -6,6 +6,10 @@ FIND_PACKAGE(ITK REQUIRED)
 
 FIND_PACKAGE(VTK REQUIRED)
 
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+       "Choose the type of build, options are: Debug Release
+ RelWithDebInfo MinSizeRel."
+       FORCE)
 
 FIND_PACKAGE(Armadillo)
 if(ARMADILLO_FOUND)
@@ -16,25 +20,11 @@ endif(ARMADILLO_FOUND)
 INCLUDE(${VTK_USE_FILE})
 INCLUDE(${ITK_USE_FILE})
 
-set(VMTK_INCLUDES "/usr/include/vmtk" CACHE FILEPATH "VMTK Includes")
-include_directories(${VMTK_INCLUDES})
-
-
-set(VMTK_LIBRARIES 
-vtkvmtkCommon
-vtkvmtkIO
-vtkvmtkITK
-vtkvmtkComputationalGeometry
-vtkvmtkDifferentialGeometry
-vtkvmtkSegmentation
-vtkvmtkRendering
-vtkvmtkContrib
-vtkvmtkMisc
-)
 
 
 #include_directories(imported) 
 #include_directories(imported/pgm2itkvol) 
+
 
 
 # add a target to generate API documentation with Doxygen
@@ -56,8 +46,6 @@ TARGET_LINK_LIBRARIES(CreateImageMask ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
 ADD_EXECUTABLE(MeshHeart ${MYCOMMON_FILES} MeshHeart.cpp)
 TARGET_LINK_LIBRARIES(MeshHeart ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
 
-ADD_EXECUTABLE(SmoothMeshThroughImage ${MYCOMMON_FILES} SmoothMeshTrhoughImage.cpp)
-TARGET_LINK_LIBRARIES(SmoothMeshThroughImage ${ITK_LIBRARIES} ${VTK_LIBRARIES}  ${VMTK_LIBRARIES})
 
 ADD_EXECUTABLE(ExtractShapeRegion ${MYCOMMON_FILES} ExtractShapeRegion.cpp)
 TARGET_LINK_LIBRARIES(ExtractShapeRegion ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
@@ -133,8 +121,6 @@ TARGET_LINK_LIBRARIES(chaste2vtk  ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
 ADD_EXECUTABLE(Morphology3D ${MYCOMMON_FILES} Morphology3D.cpp)
 TARGET_LINK_LIBRARIES(Morphology3D  ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
 
-ADD_EXECUTABLE(GenerateAtrialLayers ${MYCOMMON_FILES} GenerateAtrialLayers.cpp)
-TARGET_LINK_LIBRARIES(GenerateAtrialLayers  ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${VMTK_LIBRARIES})
 
 
 ADD_EXECUTABLE(nrrd2vtk ${MYCOMMON_FILES} nrrd2vtk.cpp)
@@ -143,12 +129,7 @@ TARGET_LINK_LIBRARIES(nrrd2vtk  ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
 ADD_EXECUTABLE(ComputeLocalMeshDensity ${MYCOMMON_FILES} ComputeLocalMeshDensity.cpp)
 TARGET_LINK_LIBRARIES(ComputeLocalMeshDensity  ${ITK_LIBRARIES} ${VTK_LIBRARIES} )
 
-ADD_EXECUTABLE(UniformRemesh ${MYCOMMON_FILES} UniformRemesh.cpp)
-TARGET_LINK_LIBRARIES(UniformRemesh  ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${VMTK_LIBRARIES})
 
-
-ADD_EXECUTABLE(BVCoordinatesTrayanova ${MYCOMMON_FILES} BVCoordinatesTrayanova.cpp)
-TARGET_LINK_LIBRARIES(BVCoordinatesTrayanova  ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${VMTK_LIBRARIES})
 
 
 
@@ -194,5 +175,39 @@ TARGET_LINK_LIBRARIES(heap_test )
 
 ADD_EXECUTABLE(AtriumSegment  MinHeap/MinHeap.h MinHeap/MinHeap.txx AtriumSegment.cpp)
 TARGET_LINK_LIBRARIES(AtriumSegment ${VTK_LIBRARIES} )
+
+
+
+option(USE_VMTK "Vmtk dependent programs will be compiled" ON)
+
+if(USE_VMTK)
+	set(VMTK_INCLUDES "/usr/include/vmtk" CACHE FILEPATH "VMTK Includes")
+	include_directories(${VMTK_INCLUDES})
+
+
+	set(VMTK_LIBRARIES 
+	vtkvmtkCommon
+	vtkvmtkIO
+	vtkvmtkITK
+	vtkvmtkComputationalGeometry
+	vtkvmtkDifferentialGeometry
+	vtkvmtkSegmentation
+	vtkvmtkRendering
+	vtkvmtkContrib
+	vtkvmtkMisc
+	)
+
+	#for older vmtk
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+
+	ADD_EXECUTABLE(UniformRemesh ${MYCOMMON_FILES} UniformRemesh.cpp)
+	TARGET_LINK_LIBRARIES(UniformRemesh  ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${VMTK_LIBRARIES})
+
+	ADD_EXECUTABLE(GenerateAtrialLayers ${MYCOMMON_FILES} GenerateAtrialLayers.cpp)
+	TARGET_LINK_LIBRARIES(GenerateAtrialLayers  ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${VMTK_LIBRARIES})
+
+	ADD_EXECUTABLE(SmoothMeshThroughImage ${MYCOMMON_FILES} SmoothMeshTrhoughImage.cpp)
+	TARGET_LINK_LIBRARIES(SmoothMeshThroughImage ${ITK_LIBRARIES} ${VTK_LIBRARIES}  ${VMTK_LIBRARIES})
+endif(USE_VMTK)
 
 
