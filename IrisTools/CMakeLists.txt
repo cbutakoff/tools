@@ -8,3 +8,6 @@ include(${VTK_USE_FILE})
 add_executable(ExtractUGRegions ExtractUGRegions)
 target_link_libraries(ExtractUGRegions ${VTK_LIBRARIES})
 
+add_executable(Reclassify Reclassify)
+target_link_libraries(Reclassify ${VTK_LIBRARIES})
+
