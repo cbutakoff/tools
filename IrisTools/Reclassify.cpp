@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
         if(material_ids->GetTuple1(i)==material_id2replace) //find cell matching material id
         {
             //reset material array
-            for(int i=0; i<materials.size(); i++) materials[i]=0;
+            for(int k=0; k<materials.size(); k++) materials[k]=0;
             
             GetCellNeighbors(mesh, i, neighbors);
             for(CellNeighborsType::iterator it=neighbors.begin(); it!=neighbors.end(); it++)
