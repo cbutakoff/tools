@@ -19,7 +19,7 @@ typedef std::set<vtkIdType> CellNeighborsType;
 void GetCellNeighbors(vtkDataSet* mesh, vtkIdType cellId, CellNeighborsType &neighbors);
 
 int main(int argc, char** argv) {
-    std::cout << "Usage: Reclassify inUGmesh.vtk outUGmesh.vtk <material_id>" << std::cout;
+    std::cout << "Usage: Reclassify inUGmesh.vtk outUGmesh.vtk <material_id>" << std::endl;
     if (argc < 4) return -1;
 
     int c = 1;

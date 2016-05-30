@@ -19,7 +19,7 @@ typedef std::set<vtkIdType> CellNeighborsType;
 void GetCellNeighbors(vtkDataSet* mesh, vtkIdType cellId, CellNeighborsType &neighbors);
 
 int main(int argc, char** argv) {
-    std::cout << "Usage: ReplaceLabel inUGmesh.vtk outUGmesh.vtk <label2find> <label2substitute>" << std::cout;
+    std::cout << "Usage: ReplaceLabel inUGmesh.vtk outUGmesh.vtk <label2find> <label2substitute>" << std::endl;
     if (argc < 5) return -1;
 
     int c = 1;
