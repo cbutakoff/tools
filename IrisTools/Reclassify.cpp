@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
                 }
                 
                 material_ids->SetTuple1(i, voted_material);
-                std::cout<<"Correcting element "<<i<<" to "<<voted_material<<std::endl;
+                //std::cout<<"Correcting element "<<i<<" to "<<voted_material<<std::endl;
             }
         }
     }
