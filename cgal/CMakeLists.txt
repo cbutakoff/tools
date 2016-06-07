@@ -12,7 +12,7 @@ find_package(CGAL COMPONENTS ImageIO)
 if ( CGAL_FOUND )
   include( ${CGAL_USE_FILE} )
 
-
+  include_directories(/usr/include/eigen3/) 
   include( CGAL_CreateSingleSourceCGALProgram )
 
 # Compilable examples
@@ -23,6 +23,7 @@ if ( CGAL_FOUND )
   endif()
   create_single_source_cgal_program( "poly2mesh.cpp" )
   create_single_source_cgal_program( "segment_mesh_sdf.cpp" )
+  create_single_source_cgal_program( "ls_conformal.cpp" )
 
 else()
   
