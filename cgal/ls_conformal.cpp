@@ -148,7 +148,7 @@ int main(int argc, char * argv[])
 {
     std::cerr << "PARAMETERIZATION" << std::endl;
     std::cerr << "  Discrete Authalic Parameterization" << std::endl;
-    std::cerr << "  Square border" << std::endl;
+    std::cerr << "  Circular arclength border" << std::endl;
     std::cerr << "  Eigen solver" << std::endl;
     std::cerr << "  Very simple cut if model is not a topological disk" << std::endl;
     std::cerr << "  Output: EPS" << std::endl;
@@ -205,7 +205,7 @@ int main(int argc, char * argv[])
     // with Eigen solver
     //***************************************
     // Border parameterizer
-    typedef CGAL::Square_border_arc_length_parameterizer_3<Mesh_patch_polyhedron>
+    typedef CGAL::Circular_border_arc_length_parameterizer_3<Mesh_patch_polyhedron>
                                                             Border_parameterizer;
     // Discrete Authalic Parameterization (square border)
     // with Eigen solver
