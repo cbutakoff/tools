@@ -176,7 +176,8 @@ TARGET_LINK_LIBRARIES(heap_test )
 ADD_EXECUTABLE(AtriumSegment  MinHeap/MinHeap.h MinHeap/MinHeap.txx AtriumSegment.cpp)
 TARGET_LINK_LIBRARIES(AtriumSegment ${VTK_LIBRARIES} )
 
-
+ADD_EXECUTABLE(AdvFrontHoleFilling  AdvFrontHoleFilling.cpp)
+TARGET_LINK_LIBRARIES(AdvFrontHoleFilling ${VTK_LIBRARIES} )
 
 option(USE_VMTK "Vmtk dependent programs will be compiled" ON)
 
