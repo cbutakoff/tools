@@ -1,3 +1,5 @@
+//extract all the regions from UnstructuredGrid
+//uses threshold on Material vtkShortArray
 #include "vtkCylinderSource.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkActor.h"

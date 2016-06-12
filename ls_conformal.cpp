@@ -80,7 +80,7 @@ vtkIdType FindTriangle3rdPoint(vtkPolyData* mesh, vtkIdType cellId, vtkIdType p1
 
 int main(int argc, char **argv) {
     
-    const char *filename = "/home/costa/Copy/Ideas/LSConformal/endo.vtk";
+    const char *filename = argv[1];
 
 
     //---------------------------------------
@@ -349,7 +349,7 @@ int main(int argc, char **argv) {
 
     pd->SetPoints(pts);
 
-    CommonTools::SavePolydata(pd, "/home/costa/Copy/Ideas/LSConformal/flat.vtk");
+    CommonTools::SavePolydata(pd, argv[2]);
 
 
     return 0;
