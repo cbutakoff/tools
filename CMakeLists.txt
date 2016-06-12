@@ -6,6 +6,7 @@ FIND_PACKAGE(ITK REQUIRED)
 
 FIND_PACKAGE(VTK REQUIRED)
 
+
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING
        "Choose the type of build, options are: Debug Release
  RelWithDebInfo MinSizeRel."
@@ -176,10 +177,21 @@ TARGET_LINK_LIBRARIES(heap_test )
 ADD_EXECUTABLE(AtriumSegment  MinHeap/MinHeap.h MinHeap/MinHeap.txx AtriumSegment.cpp)
 TARGET_LINK_LIBRARIES(AtriumSegment ${VTK_LIBRARIES} )
 
-ADD_EXECUTABLE(AdvFrontHoleFilling  AdvFrontHoleFilling.cpp)
-TARGET_LINK_LIBRARIES(AdvFrontHoleFilling ${VTK_LIBRARIES} )
+
+option(USE_BOOST "Boost dependent programs will be compiled" ON)
+
+IF(USE_BOOST)
+	FIND_PACKAGE(Boost COMPONENTS serialization REQUIRED)
+
+	include_directories(${Boost_INCLUDE_DIRS})
+
+	ADD_EXECUTABLE(AdvFrontHoleFilling  AdvFrontHoleFilling.cpp)
+	TARGET_LINK_LIBRARIES(AdvFrontHoleFilling ${VTK_LIBRARIES} ${Boost_LIBRARIES})
+ENDIF(USE_BOOST)
+
 
 option(USE_VMTK "Vmtk dependent programs will be compiled" ON)
+
 
 if(USE_VMTK)
 	set(VMTK_INCLUDES "/usr/include/vmtk" CACHE FILEPATH "VMTK Includes")

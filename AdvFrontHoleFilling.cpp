@@ -1,6 +1,9 @@
 //The advancing‐front mesh generation method revisited - ReadCube
 #include <vtkSmartPointer.h>
 #include <vtkPolyDataReader.h>
+#include <vtkPolyData.h>
+
+#include <boost/numeric/ublas/matrix_sparse.hpp>
 
 #include <vector>
 
@@ -37,6 +40,11 @@ int main(int argc, char **argv)
 
 void FindHoles(vtkPolyData *mesh, HoleBoundaryType& boundary)
 {
+    using namespace boost::numeric::ublas;    
+    
+    const vtkIdType nPts = mesh->GetNumberOfPoints();
+    coordinate_matrix<short> connectivity(nPts, nPts);
+    
     boundary.clear();
     
     //iterate over every triangle and edge
