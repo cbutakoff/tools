@@ -25,7 +25,7 @@
 #include <vtkAlgorithm.h>
 
 
-#define USE_TRIANGLEAREA_WEIGHT
+//#define USE_TRIANGLEAREA_WEIGHT
 
 
 typedef Eigen::Vector3d VectorType;
@@ -55,11 +55,16 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
 //for explanation of O, see the paper. This is recursive function Trace
 void PopulateCover(vtkCellArray* cover, vtkIdType i, vtkIdType k, const TriangularIDMatrixType& O, const VertexArrayType& vertices);
 
-inline double TriangleWeightFunction(const VectorType& u, const VectorType& v, const VectorType& w);
+inline double TriangleWeightFunctionArea(const VectorType& u, const VectorType& v, const VectorType& w);
 
 //b1 x b2 - should give normal to the first triangle
 //b2 x b3 - should give normal to the second triangle
 inline double CalculateDihedralAngle(const VectorType& b1, const VectorType& b2, const VectorType& b3);
+
+
+
+inline vtkIdType FindThirdVertexId(vtkPolyData* mesh, vtkIdType p1, vtkIdType p2);
+
 
 //======================================================================
 //
@@ -292,11 +297,9 @@ void EdgesToVertexArray(const HoleBoundaryType& ordered_boundary, VertexArrayTyp
     vertices.push_back(ordered_boundary[0].v0);
 }
 
-inline double TriangleWeightFunction(const VectorType& u, const VectorType& v, const VectorType& w) {
-#ifdef USE_TRIANGLEAREA_WEIGHT
+inline double TriangleWeightFunctionArea(const VectorType& u, const VectorType& v, const VectorType& w) {
     //triangle area   
     return 0.5 * ((v - u).cross(w - u)).norm();
-#endif
 }
 
 void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary) {
@@ -311,8 +314,13 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
 
     //1. Create upper triangular weight matrix W
     using namespace boost::numeric::ublas;
+    
+#ifdef USE_TRIANGLEAREA_WEIGHT    
     triangular_matrix<double, upper> W(n, n);
-
+#else //otherwise use angle/area pair. Use complex just for convenience, 
+    //but the operations will have to be redefined
+    triangular_matrix<std::complex<double>, upper> W(n, n);
+#endif
 
 
     //initialize weight matrix
@@ -328,7 +336,33 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
         mesh->GetPoint(vertices[i], vi.data());
         mesh->GetPoint(vertices[i + 1], vi1.data());
         mesh->GetPoint(vertices[i + 2], vi2.data());
-        W(i, i + 3) = TriangleWeightFunction(vi, vi1, vi2);
+
+#ifdef USE_TRIANGLEAREA_WEIGHT    
+        W(i, i + 3) = TriangleWeightFunctionArea(vi, vi1, vi2);
+#elif
+        //find the adjacent triangles on the original mesh
+        const vtkIdType va1id = FindThirdVertexId(mesh, vi, vi1);
+        const vtkIdType va2id = FindThirdVertexId(mesh, vi1, vi2);
+
+        VectorType va1(3);
+        VectorType va2(3);
+        mesh->GetPoint(va1id, va1.data());
+        mesh->GetPoint(va2id, va2.data());
+
+        //triangle1: vi, vi1, vi2
+        //triangle2: vi, vi1, va1
+        //triangle3: vi1, vi2, va2
+        //
+        //triangle 1: normal =  vi1-vi2 x (vi-vi1)
+        //triangle 2: normal = (vi-vi1) x -(va2-vi1)
+        //triangle 1: normal = -(vi-vi1) x vi1-vi2
+        //triangle 3: normal = vi1-vi2 x -(va2-vi2)
+        const double dih_angle1 = CalculateDihedralAngle(vi1-vi2, vi-vi1, -va2+vi1);
+        const double dih_angle2 = CalculateDihedralAngle(-vi+vi1, vi1-vi2, -va2+vi2);
+        
+        W(i, i + 3) = std::complex( dih_angle1>dih_angle2 ? dih_angle1:dih_angle2,
+                TriangleWeightFunctionArea(vi, vi1, vi2) );
+#endif
     }
 
     //2. Look for minimal triangulation
@@ -345,18 +379,31 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
 
             //find smallest W(i,m)+W(m,k)+F(vi,vm,vk) for i<m<k
             vtkIdType m_min = 0;
+
+#ifdef USE_TRIANGLEAREA_WEIGHT    
             double W_min = DBL_MAX;
+#elif
+            std::complex<double> W_min = DBL_MAX;
+#endif
+
             for (vtkIdType m = i + 1; m < k; m++) {
                 mesh->GetPoint(vertices[i], vi.data());
                 mesh->GetPoint(vertices[m], vm.data());
                 mesh->GetPoint(vertices[k], vk.data());
-                double Wik = W(i, m) + W(m, k) + TriangleWeightFunction(vi, vm, vk);
 
+#ifdef USE_TRIANGLEAREA_WEIGHT    
+                double Wik = W(i, m) + W(m, k) + TriangleWeightFunctionArea(vi, vm, vk);               
+#endif
+                
+#ifdef USE_TRIANGLEAREA_WEIGHT    
                 if (Wik < W_min) {
+#endif
                     W_min = Wik;
                     m_min = m;
                 }
+
             }
+
             W(i, k) = W_min;
             O(i, k) = m_min;
         }
@@ -411,3 +458,46 @@ inline double CalculateDihedralAngle(const VectorType& b1, const VectorType& b2,
 
     return std::atan2( b1xb2xb2xb3.dot(b2)/b2.norm(), b1xb2.dot(b2xb3) ); 
 }
+
+
+//this will be exected only for boundaries, so there is only 1 triangle with the edge (p1,p2)
+inline vtkIdType FindThirdVertexId(vtkPolyData* mesh, vtkIdType p1, vtkIdType p2)
+{
+    vtkSmartPointer<vtkIdList> n = vtkSmartPointer<vtkIdList>::New();
+    mesh->GetPointCells(p1, n);
+    
+    vtkIdType cell_id;
+    vtkIdList* ptids;
+    
+    for(vtkIdType i=0; i<n->GetNumberOfIds(); i++)
+    {
+        cell_id = n->GetId(i);
+        ptids = mesh->GetCell( cell_id )->GetPointIds();
+        
+        for( vtkIdType j=0; j<ptids->GetNumberOfIds(); j++)
+        {
+            if(p2 == ptids->GetId(j)) //found the cell sharing 2 points
+            {
+                j=ptids->GetNumberOfIds();
+                i=n->GetNumberOfIds();
+            }
+        }
+        
+    }
+    
+    //cell_id has the identified cell id;
+    //ptids - has ids of all the cell points
+    vtkIdType thirdid = VTK_ID_MAX;
+    for(vtkIdType i=0; i<ptids->GetNumberOfIds(); i++)
+    {
+        thirdid = ptids->GetId(i);
+        if(thirdid!=p1 && thirdid!=p2)
+            break;
+    }
+    
+    return thirdid;
+}
+
+
+
+
