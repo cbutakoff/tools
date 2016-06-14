@@ -180,14 +180,6 @@ TARGET_LINK_LIBRARIES(AtriumSegment ${VTK_LIBRARIES} )
 
 option(USE_BOOST "Boost dependent programs will be compiled" ON)
 
-IF(USE_BOOST)
-	FIND_PACKAGE(Boost COMPONENTS serialization REQUIRED)
-
-	include_directories(${Boost_INCLUDE_DIRS})
-
-	ADD_EXECUTABLE(AdvFrontHoleFilling  AdvFrontHoleFilling.cpp)
-	TARGET_LINK_LIBRARIES(AdvFrontHoleFilling ${VTK_LIBRARIES} ${Boost_LIBRARIES})
-ENDIF(USE_BOOST)
 
 
 option(USE_VMTK "Vmtk dependent programs will be compiled" ON)
