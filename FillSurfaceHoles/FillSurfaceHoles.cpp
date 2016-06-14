@@ -57,6 +57,9 @@ void PopulateCover(vtkCellArray* cover, vtkIdType i, vtkIdType k, const Triangul
 
 inline double TriangleWeightFunction(const VectorType& u, const VectorType& v, const VectorType& w);
 
+//b1 x b2 - should give normal to the first triangle
+//b2 x b3 - should give normal to the second triangle
+inline double CalculateDihedralAngle(const VectorType& b1, const VectorType& b2, const VectorType& b3);
 
 //======================================================================
 //
@@ -398,3 +401,13 @@ void PopulateCover(vtkCellArray* cover, vtkIdType i, vtkIdType k, const Triangul
 
 
 
+//make sure the vertices have correct order\
+//https://en.wikipedia.org/wiki/Dihedral_angle
+inline double CalculateDihedralAngle(const VectorType& b1, const VectorType& b2, const VectorType& b3)
+{
+    const VectorType b1xb2 = b1.cross(b2);
+    const VectorType b2xb3 = b2.cross(b3);
+    const VectorType b1xb2xb2xb3 = b1xb2.cross(b2xb3);
+
+    return std::atan2( b1xb2xb2xb3.dot(b2)/b2.norm(), b1xb2.dot(b2xb3) ); 
+}
