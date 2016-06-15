@@ -26,7 +26,7 @@
 
 
 //#define USE_TRIANGLEAREA_WEIGHT
-
+typedef std::complex<double> AreaAngleMeasureType;
 
 typedef Eigen::Vector3d VectorType;
 typedef boost::numeric::ublas::triangular_matrix<vtkIdType, boost::numeric::ublas::upper> TriangularIDMatrixType;
@@ -57,14 +57,27 @@ void PopulateCover(vtkCellArray* cover, vtkIdType i, vtkIdType k, const Triangul
 
 inline double TriangleWeightFunctionArea(const VectorType& u, const VectorType& v, const VectorType& w);
 
-//b1 x b2 - should give normal to the first triangle
-//b2 x b3 - should give normal to the second triangle
-inline double CalculateDihedralAngle(const VectorType& b1, const VectorType& b2, const VectorType& b3);
+
+//calculates cosine of the dihedral angle. Vertices must have correct orientation
+//v1, v2, v3 - triangle 1
+//u1, u2, u3 - triangle 2
+inline double CalculateDihedralAngleCos(const VectorType& v1, const VectorType& v2, const VectorType& v3,
+                                        const VectorType& u1, const VectorType& u2, const VectorType& u3);
 
 
 
 inline vtkIdType FindThirdVertexId(vtkPolyData* mesh, vtkIdType p1, vtkIdType p2);
 
+
+//does m1+m2, as described in the paper
+//(a,b)+(c,d) = (max(a,c),b+d)
+inline AreaAngleMeasureType SumAreaTriangleMeasures(const AreaAngleMeasureType& m1, 
+        const AreaAngleMeasureType& m2);
+
+//checks if m1 < m2, lexicographically
+//(a,b)<(c,d) iff (a<c or (a==c and b<d))
+inline bool AreaTriangleMeasureLess(const AreaAngleMeasureType& m1, 
+        const AreaAngleMeasureType& m2);
 
 //======================================================================
 //
@@ -144,11 +157,12 @@ int main(int argc, char **argv) {
     //fill the holes
     for (int i = 0; i < hole_boundaries.size(); i++) {
         std::cout << "Filling hole " << i << "/" << hole_boundaries.size() << std::endl;
-        //        std::cout<<"Boundary "<<i<<std::endl;
-        //        for(int j=0; j<hole_boundaries[i].size(); j++)
-        //        {
-        //            std::cout<<hole_boundaries[i][j].v0<<" "<<hole_boundaries[i][j].v1<<std::endl;
-        //        }
+
+        std::cout<<"Boundary "<<i<<std::endl;
+        for(int j=0; j<hole_boundaries[i].size(); j++)
+        {
+            std::cout<<hole_boundaries[i][j].v0<<" "<<hole_boundaries[i][j].v1<<std::endl;
+        }
 
         InitialTriangulation(mesh, hole_boundaries[i]);
         
@@ -287,14 +301,24 @@ void EdgesToVertexArray(const HoleBoundaryType& ordered_boundary, VertexArrayTyp
         return; //nothing to do
     }
 
-    vertices.push_back(ordered_boundary[0].v0);
-    vertices.push_back(ordered_boundary[0].v1);
+//    vertices.push_back(ordered_boundary[0].v0);
+//    vertices.push_back(ordered_boundary[0].v1);
+//
+//    for (vtkIdType i = 1; i < ordered_boundary.size()-1; i++) {
+//        vertices.push_back(ordered_boundary[i].v1);
+//    }
 
-    for (vtkIdType i = 1; i < ordered_boundary.size(); i++) {
-        vertices.push_back(ordered_boundary[i].v1);
+    //save in reversed order, for correct triangle orientation
+    vertices.push_back(ordered_boundary[ordered_boundary.size()-2].v1);
+    vertices.push_back(ordered_boundary[ordered_boundary.size()-2].v0);
+
+    for (vtkIdType i = ordered_boundary.size()-3; i>=0; i--) {
+        vertices.push_back(ordered_boundary[i].v0);
     }
 
-    vertices.push_back(ordered_boundary[0].v0);
+
+    
+    //vertices.push_back(ordered_boundary[0].v0);
 }
 
 inline double TriangleWeightFunctionArea(const VectorType& u, const VectorType& v, const VectorType& w) {
@@ -303,10 +327,18 @@ inline double TriangleWeightFunctionArea(const VectorType& u, const VectorType& 
 }
 
 void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary) {
-    //create an arra of vertices
+    //create an array of vertices, this will create an array ending with vertex 0
     VertexArrayType vertices;
     EdgesToVertexArray(ordered_boundary, vertices);
 
+    //print vertices
+    std::cout<<"Vertices: ";
+    for(int i=0; i<vertices.size(); i++)
+    {   
+        std::cout<<vertices[i]<<" ";
+    }
+    std::cout<<std::endl;
+    
     //initialize some variables, consistently with th paper
     //n - number of vertices+1 (vn = v0)
     //number of unique vertices = number of edges
@@ -319,7 +351,7 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
     triangular_matrix<double, upper> W(n, n);
 #else //otherwise use angle/area pair. Use complex just for convenience, 
     //but the operations will have to be redefined
-    triangular_matrix<std::complex<double>, upper> W(n, n);
+    triangular_matrix<AreaAngleMeasureType, upper> W(n, n);
 #endif
 
 
@@ -332,45 +364,68 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
     VectorType vm(3);
     VectorType vk(3);
 
+    //create storage for the minimum ms
+    TriangularIDMatrixType O(n, n);
+    
+    //fill O with -1 for debugging
+    for(int i=1; i<n; i++)
+        for(int j=i+1; j<n; j++)
+            O(i,j) = -1;
+    
+    
     for (int i = 0; i < n - 2; i++) {
         mesh->GetPoint(vertices[i], vi.data());
         mesh->GetPoint(vertices[i + 1], vi1.data());
         mesh->GetPoint(vertices[i + 2], vi2.data());
 
 #ifdef USE_TRIANGLEAREA_WEIGHT    
-        W(i, i + 3) = TriangleWeightFunctionArea(vi, vi1, vi2);
-#elif
+        W(i, i + 2) = TriangleWeightFunctionArea(vi, vi1, vi2);
+#else
         //find the adjacent triangles on the original mesh
-        const vtkIdType va1id = FindThirdVertexId(mesh, vi, vi1);
-        const vtkIdType va2id = FindThirdVertexId(mesh, vi1, vi2);
+        const vtkIdType va1id = FindThirdVertexId(mesh, vertices[i], vertices[i + 1]);
+        const vtkIdType va2id = FindThirdVertexId(mesh, vertices[i + 1], vertices[i + 2]);
 
         VectorType va1(3);
         VectorType va2(3);
         mesh->GetPoint(va1id, va1.data());
         mesh->GetPoint(va2id, va2.data());
 
-        //triangle1: vi, vi1, vi2
-        //triangle2: vi, vi1, va1
-        //triangle3: vi1, vi2, va2
-        //
-        //triangle 1: normal =  vi1-vi2 x (vi-vi1)
-        //triangle 2: normal = (vi-vi1) x -(va2-vi1)
-        //triangle 1: normal = -(vi-vi1) x vi1-vi2
-        //triangle 3: normal = vi1-vi2 x -(va2-vi2)
-        const double dih_angle1 = CalculateDihedralAngle(vi1-vi2, vi-vi1, -va2+vi1);
-        const double dih_angle2 = CalculateDihedralAngle(-vi+vi1, vi1-vi2, -va2+vi2);
         
-        W(i, i + 3) = std::complex( dih_angle1>dih_angle2 ? dih_angle1:dih_angle2,
+        //initialize matrix 0 with the neighbors of the boundary elements
+        O(i, i+1) = va1id;
+        O(i+1, i+2) = va2id;
+
+        //triangle1: vi, vi1, vi2 -> correct orientation -> vi2, vi1, vi (the boundary orientation corresponds to triangles outside of the hole)
+        //triangle2: vi, vi1, va1 - this is in the original mesh, so it has correct orientation
+        //triangle3: vi1, vi2, va2 - this is in the original mesh, so it has correct orientation
+        //
+        //transform the dihedral angle cosines so that it is larger for larger angles (by multiplying by -1)
+        //
+        //dihedral angle with the triangle adjacent to edge (i, i+1)
+        const double dih_angle1 = -CalculateDihedralAngleCos(vi, vi1, vi2, va1, vi1, vi);
+        //dihedral angle with the triangle adjacent to edge (i+1, i+2)
+        const double dih_angle2 = -CalculateDihedralAngleCos(vi, vi1, vi2, va2, vi2, vi1);
+        std::cout<<"Angle 1 :"<<vertices[i]<<" "<<vertices[i+1]<<" "<<vertices[i+2]<<" vs "<<
+                va1id<<" "<<vertices[i+1]<<" "<<vertices[i]<<std::endl;
+        std::cout<<"Angle 2 :"<<vertices[i]<<" "<<vertices[i+1]<<" "<<vertices[i+2]<<" vs "<<
+                va2id<<" "<<vertices[i+2]<<" "<<vertices[i+1]<<std::endl;
+        std::cout<<"Angles: "<<dih_angle1<<" "<<dih_angle2<<std::endl;
+        
+        
+        W(i, i + 2) = AreaAngleMeasureType( std::max(dih_angle1, dih_angle2),
                 TriangleWeightFunctionArea(vi, vi1, vi2) );
+        
+        O(i, i+2) = i+1;
+
 #endif
     }
+    
+    //one more special case edge between first and last point
+    O(0, n-1) = FindThirdVertexId(mesh, vertices[0], vertices[n-1]);
 
     //2. Look for minimal triangulation
     vtkIdType j = 2;
 
-
-    //create storage for the minimum ms
-    TriangularIDMatrixType O(n, n);
 
     while (j < n - 1) {
         j = j + 1;
@@ -382,8 +437,8 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
 
 #ifdef USE_TRIANGLEAREA_WEIGHT    
             double W_min = DBL_MAX;
-#elif
-            std::complex<double> W_min = DBL_MAX;
+#else
+            AreaAngleMeasureType W_min = DBL_MAX;
 #endif
 
             for (vtkIdType m = i + 1; m < k; m++) {
@@ -393,11 +448,64 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
 
 #ifdef USE_TRIANGLEAREA_WEIGHT    
                 double Wik = W(i, m) + W(m, k) + TriangleWeightFunctionArea(vi, vm, vk);               
+#else
+                
+                //calculate dihedral angles of triangles 
+                //(imk) vs (i,Oim,m)
+                //(imk) vs (m,Omk,k)
+                VectorType vOim(3);
+                VectorType vOmk(3);
+                std::cout<<"Triangle "<<vertices[i]<<" "<<vertices[m]<<" "<<vertices[k]<<std::endl;
+
+                
+                if(abs(i-m)!=1)
+                {
+                    std::cout<<"Oim:"<<vertices[i]<<" "<<vertices[O(i,m)]<<" "<<vertices[m]<<std::endl;
+                    mesh->GetPoint(vertices[O(i,m)], vOim.data());
+                }
+                else
+                {
+                    std::cout<<"Oim:"<<vertices[i]<<" "<<O(i,m)<<" "<<vertices[m]<<std::endl;
+                    mesh->GetPoint(O(i,m), vOim.data()); //this vertex is not on the boundary, can't find elegant solution
+                }
+
+                if(abs(m-k)!=1)
+                {
+                    mesh->GetPoint(vertices[O(m,k)], vOmk.data());
+                    std::cout<<"Omk:"<<vertices[m]<<" "<<vertices[O(m,k)]<<" "<<vertices[k]<<std::endl<<std::flush;
+                }
+                else
+                {
+                    mesh->GetPoint(O(m,k), vOmk.data()); //this vertex is not on the boundary, can't find elegant solution
+                    std::cout<<"Omk:"<<vertices[m]<<" "<<O(m,k)<<" "<<vertices[k]<<std::endl<<std::flush;
+                }
+                
+                const double dih_angle1 = -CalculateDihedralAngleCos(vi, vm, vk, vi, vOim, vm);
+                double dih_angle2 = -CalculateDihedralAngleCos(vi, vm, vk, vm, vOmk, vk);
+                std::cout<<"Angles: "<<dih_angle1<<" "<<dih_angle2<<std::endl;
+
+                if(i==0 && k==n-1)
+                {
+                    VectorType vOik(3);
+                    std::cout<<"Oik:"<<O(i,k)<<std::endl<<std::flush;
+                    mesh->GetPoint(O(i,k), vOik.data());
+                    const double dih_angle3 = -CalculateDihedralAngleCos(vi, vm, vk, vi, vOik, vk);
+                    std::cout<<"Last triangle:"<<vertices[i]<<" "<<O(i,k)<<" "<<vertices[k]<<std::endl<<std::flush;
+                    dih_angle2 = std::max( dih_angle2, dih_angle3 );
+                }
+                
+                AreaAngleMeasureType Aimk(std::max(dih_angle1, dih_angle2), TriangleWeightFunctionArea(vi, vm, vk));
+                
+                AreaAngleMeasureType Wik = SumAreaTriangleMeasures( 
+                        SumAreaTriangleMeasures(W(i, m), W(m, k)), Aimk);
 #endif
                 
 #ifdef USE_TRIANGLEAREA_WEIGHT    
-                if (Wik < W_min) {
+                if (Wik < W_min) 
+#else
+                if (AreaTriangleMeasureLess(Wik, W_min))                     
 #endif
+                {
                     W_min = Wik;
                     m_min = m;
                 }
@@ -406,6 +514,7 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
 
             W(i, k) = W_min;
             O(i, k) = m_min;
+            std::cout<<"("<<i<<","<<k<<") Best: "<<vertices[i]<<" "<<vertices[m_min]<<" "<<vertices[k]<<std::endl;
         }
     }
 
@@ -427,18 +536,18 @@ void InitialTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary)
 void PopulateCover(vtkCellArray* cover, vtkIdType i, vtkIdType k, const TriangularIDMatrixType& O, const VertexArrayType& vertices) {
     if (i + 2 == k) {
         cover->InsertNextCell(3);
-        cover->InsertCellPoint(vertices[k]); //readjusted the orientation wrt the paper
+        cover->InsertCellPoint(vertices[i]); //readjusted the orientation wrt the paper
         cover->InsertCellPoint(vertices[i + 1]);
-        cover->InsertCellPoint(vertices[i]);
+        cover->InsertCellPoint(vertices[k]);
     } else {
         const vtkIdType o = O(i, k);
         if (o != i + 1)
             PopulateCover(cover, i, o, O, vertices);
 
         cover->InsertNextCell(3);
-        cover->InsertCellPoint(vertices[k]); //readjusted the orientation wrt the paper
+        cover->InsertCellPoint(vertices[i]); //readjusted the orientation wrt the paper
         cover->InsertCellPoint(vertices[o]);
-        cover->InsertCellPoint(vertices[i]);
+        cover->InsertCellPoint(vertices[k]);
 
         if (o != k - 1)
             PopulateCover(cover, o, k, O, vertices);
@@ -450,13 +559,22 @@ void PopulateCover(vtkCellArray* cover, vtkIdType i, vtkIdType k, const Triangul
 
 //make sure the vertices have correct order\
 //https://en.wikipedia.org/wiki/Dihedral_angle
-inline double CalculateDihedralAngle(const VectorType& b1, const VectorType& b2, const VectorType& b3)
+inline double CalculateDihedralAngleCos(const VectorType& v1, const VectorType& v2, const VectorType& v3,
+                                        const VectorType& u1, const VectorType& u2, const VectorType& u3)
 {
-    const VectorType b1xb2 = b1.cross(b2);
-    const VectorType b2xb3 = b2.cross(b3);
-    const VectorType b1xb2xb2xb3 = b1xb2.cross(b2xb3);
+    const VectorType n1 = ((v3-v2).cross(v1-v2)).normalized();
+    const VectorType n2 = ((u3-u2).cross(u1-u2)).normalized();
+    
+//    std::cout<<"V1: "<<v1(0)<<" "<<v1(1)<<" "<<v1(2)<<" "<<std::endl;
+//    std::cout<<"V2: "<<v2(0)<<" "<<v2(1)<<" "<<v2(2)<<" "<<std::endl;
+//    std::cout<<"V3: "<<v3(0)<<" "<<v3(1)<<" "<<v3(2)<<" "<<std::endl;
+//    std::cout<<"U1: "<<u1(0)<<" "<<u1(1)<<" "<<u1(2)<<" "<<std::endl;
+//    std::cout<<"U2: "<<u2(0)<<" "<<u2(1)<<" "<<u2(2)<<" "<<std::endl;
+//    std::cout<<"U3: "<<u3(0)<<" "<<u3(1)<<" "<<u3(2)<<" "<<std::endl;
+//    std::cout<<"n1: "<<n1(0)<<" "<<n1(1)<<" "<<n1(2)<<" "<<std::endl;
+//    std::cout<<"n2: "<<n2(0)<<" "<<n2(1)<<" "<<n2(2)<<" "<<std::endl;
 
-    return std::atan2( b1xb2xb2xb3.dot(b2)/b2.norm(), b1xb2.dot(b2xb3) ); 
+    return n1.dot(n2); 
 }
 
 
@@ -501,3 +619,26 @@ inline vtkIdType FindThirdVertexId(vtkPolyData* mesh, vtkIdType p1, vtkIdType p2
 
 
 
+
+//does m1+m2, as described in the paper
+//(a,b)+(c,d) = (max(a,c),b+d)
+inline AreaAngleMeasureType SumAreaTriangleMeasures(const AreaAngleMeasureType& m1, 
+        const AreaAngleMeasureType& m2)
+{
+    return AreaAngleMeasureType( std::max( std::real(m1), std::real(m2) ), 
+            std::imag(m1) + std::imag(m2) );
+}
+
+//checks if m1 < m2, lexicographically
+//(a,b)<(c,d) iff (a<c or (a==c and b<d))
+inline bool AreaTriangleMeasureLess(const AreaAngleMeasureType& m1, 
+        const AreaAngleMeasureType& m2)
+{
+    bool less = false;
+    if( std::real(m1) < std::real(m2) )
+        less = true;
+    else if( std::imag(m1) < std::imag(m2) )
+        less = true;
+    
+    return less;
+}

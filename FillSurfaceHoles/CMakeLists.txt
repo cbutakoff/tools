@@ -8,8 +8,7 @@ FIND_PACKAGE(VTK REQUIRED)
 
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING
        "Choose the type of build, options are: Debug Release
- RelWithDebInfo MinSizeRel."
-       FORCE)
+ RelWithDebInfo MinSizeRel.")
 
 INCLUDE(${VTK_USE_FILE})
 
