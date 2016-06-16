@@ -42,7 +42,7 @@ The input shape are the landmarks in 3D. One of them is the reference point (whi
 Also it is possible that the IDs are used to differentiate between endocardiumn and epicardium. Check the code.
 Example reconstrautcion:
 
-![Remesh Image]https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/mriremesh.gif)
+![Remesh Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/mriremesh.gif)
 
 Example from the MRI corrector (only python)
 
