@@ -56,25 +56,6 @@ Todo:
 
 
 
-##VolumetricLVMesh 
-Generates a volumetric mesh of cardiac Left Ventricle (half-ellipsoid like). 
-The elements are wedges aligned radially. Might have some additional requirements.
-To be verified. This was ported from VTK 5.x and needs testing. An example mesh with associate local coordinates can be seen in the following figure
-
-![Volumetric Meshing Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/volmeshbump.gif)
-
-Todo:
-- Test
-
-##layer_Generation_code
-Generates a volumetric mesh of any structure with two boundaries. 
-The elements are wedges aligned radially. 
-This was ported from VTK 5.x and needs testing. 
-
-![Volumetric Meshing Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/layergeneration.gif)
-
-Todo:
-- Test
 
 ##Matlab
 - A landmarking tool for 2D images (Matlab).
