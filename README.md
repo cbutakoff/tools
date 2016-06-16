@@ -21,7 +21,7 @@ array = polydata.GetPointData().GetArray('DT')
 tuple = array.GetTuple(point_id)
 distance = tuple[blob_id]
 ```
-Example image:
+Example image (left - DT, right - red blob):
 
 ![Distance Transform Image](Pics/distancetransform.gif)
 
