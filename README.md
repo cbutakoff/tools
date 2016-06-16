@@ -23,13 +23,13 @@ distance = tuple[blob_id]
 ```
 Example image (left - DT, right - red blob):
 
-![Distance Transform Image](Pics/distancetransform.gif)
+![Distance Transform Image](https://github.com/cbutakoff/tools/blob/master/Pics/distancetransform.gif)
 
 
 ##FillSurfaceHoles
 Detects and fills holes on the surface. Currently under construction. Current version implements P. Liepa "Filling Holes in Meshes" without smoothing. To be added soon. Here's a sample result
 
-![Hole Filling Image](Pics/HoleFilling.gif)
+![Hole Filling Image](https://github.com/cbutakoff/tools/blob/master/Pics/HoleFilling.gif)
 
 Todo:
 - Add smoothing
@@ -37,16 +37,16 @@ Todo:
 
 ##LVMeshFromMRI
 Creates a smoother mesh using splines longitudinally from short axis contours in MRI and a reference point.
-This was ported from VTK 5.x and needs testing. There's also a python script in [Python/mri_mesh_from_contours](Python/mri_mesh_from_contours). 
+This was ported from VTK 5.x and needs testing. There's also a python script in [Python/mri_mesh_from_contours](https://github.com/cbutakoff/tools/blob/master/Python/mri_mesh_from_contours). 
 The input shape are the landmarks in 3D. One of them is the reference point (which is either the first or the last or has a special ID). 
 Also it is possible that the IDs are used to differentiate between endocardiumn and epicardium. Check the code.
 Example reconstrautcion:
 
-![Remesh Image](Pics/mriremesh.gif)
+![Remesh Image](https://github.com/cbutakoff/tools/blob/master/Pics/mriremesh.gif)
 
 Example from the MRI corrector (only python)
 
-![Remesh Image](Pics/mricorrector.gif)
+![Remesh Image](https://github.com/cbutakoff/tools/blob/master/Pics/mricorrector.gif)
 
 
 Todo:
@@ -61,7 +61,7 @@ Generates a volumetric mesh of cardiac Left Ventricle (half-ellipsoid like).
 The elements are wedges aligned radially. Might have some additional requirements.
 To be verified. This was ported from VTK 5.x and needs testing. An example mesh with associate local coordinates can be seen in the following figure
 
-![Volumetric Meshing Image](Pics/volmeshbump.gif)
+![Volumetric Meshing Image](https://github.com/cbutakoff/tools/blob/master/Pics/volmeshbump.gif)
 
 Todo:
 - Test
@@ -71,7 +71,7 @@ Generates a volumetric mesh of any structure with two boundaries.
 The elements are wedges aligned radially. 
 This was ported from VTK 5.x and needs testing. 
 
-![Volumetric Meshing Image](Pics/layergeneration.gif)
+![Volumetric Meshing Image](https://github.com/cbutakoff/tools/blob/master/Pics/layergeneration.gif)
 
 Todo:
 - Test
