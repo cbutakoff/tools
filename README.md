@@ -76,12 +76,17 @@ This was ported from VTK 5.x and needs testing.
 Todo:
 - Test
 
+##Matlab
+A landmarking tool for 2D images (Matlab).
+ASM Fusion script (Matlab). Please cite my paper.
+
+- Need to add an image
+
 ##Python
 Some programs written in python. In particular mesh flattening.
 
 
 ##IrisTools
 A couple of internal use tools. Probably irrelevant for anyone except myself.
-
 
 
