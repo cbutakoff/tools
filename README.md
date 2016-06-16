@@ -77,9 +77,10 @@ Todo:
 - Test
 
 ##Matlab
-A landmarking tool for 2D images (Matlab).
-ASM Fusion script (Matlab). Please cite my paper.
+- A landmarking tool for 2D images (Matlab).
+- ASM Fusion script (Matlab). Please cite my paper.
 
+Todo
 - Need to add an image
 
 ##Python
