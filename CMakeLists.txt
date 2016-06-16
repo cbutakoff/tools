@@ -18,40 +18,22 @@ endif()
 include_directories(Common)
 SET(MYCOMMON_FILES ../Common/CommonTools.h ../Common/CommonTools.cpp)
 
+set(MYPROJECTS
+BasicMeshOperations
+cgal
+FillSurfaceHoles
+IrisTools
+layer_Generation_code
+LVMeshFromMRI
+VolumetricLVMesh
+DistTransform
+) 
 
-option(BUILD_BASIC "Build Basic Tools" ON)
-option(BUILD_CGAL "Build CGAL Tools" ON)
-option(BUILD_FillSurfaceHoles "Build FillSurfaceHoles" ON)
-option(BUILD_IrisTools "Build Iris Tools" ON)
-option(BUILD_layer_Generation_code "Build Layer Generation" ON)
-option(BUILD_LVMeshFromMRI "Build LVMeshFromMRI" ON)
-option(BUILD_VolumetricLVMesh "Build VolumetricLVMesh" ON)
+foreach(program ${MYPROJECTS})
+	option(BUILD_${program} "Build ${program}" ON)
+	if(BUILD_${program})
+		add_subdirectory(${program})
+	endif(BUILD_${program})
+endforeach(program)
 
-if(BUILD_BASIC)
-	add_subdirectory(BasicMeshOperations)
-endif(BUILD_BASIC)
-
-if(BUILD_CGAL)
-	add_subdirectory(cgal)
-endif(BUILD_CGAL)
-
-if(BUILD_FillSurfaceHoles)
-	add_subdirectory(FillSurfaceHoles)
-endif(BUILD_FillSurfaceHoles)
-
-if(BUILD_IrisTools)
-	add_subdirectory(IrisTools)
-endif(BUILD_IrisTools)
-
-if(BUILD_layer_Generation_code)
-	add_subdirectory(layer_Generation_code)
-endif(BUILD_layer_Generation_code)
-
-if(BUILD_LVMeshFromMRI)
-	add_subdirectory(LVMeshFromMRI)
-endif(BUILD_LVMeshFromMRI)
-
-if(BUILD_VolumetricLVMesh)
-	add_subdirectory(VolumetricLVMesh)
-endif(BUILD_VolumetricLVMesh)
 

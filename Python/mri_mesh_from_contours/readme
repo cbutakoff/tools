@@ -1,0 +1,22 @@
+This is a code for reconstruction of surfaces from MRI segmentations. In principle only Left Ventricle for now. Distributed under GNU GPL.
+
+The segmentations should be 3D image masks (1 inside, 0 outside), generated for instance by seg3d: one for epi and one for endo.
+The format for images is nrrd. But can be anything that can be read by vtk or itk (adapt the code appropriately).
+
+The components of this package can be used independently, but if used together the order is the following:
+
+
+contour_extract.py -- processes the masks and extracts the contours as points
+
+mricorrector.py    -- interactive slice shift correction. The keyboard shortcuts are displayed in the window. Basically navigate through the slices and correct any shifts by displacing the points. Only shifts are supported for now. To finish and save the result press S first, and then E. Pressing E without S will close the program without saving the result. Note that S toggles saving on/off
+
+create_mesh.py     -- take the points from mricorrector and build a mesh using splines. Note that this script can use a reference point for consistent point generation across a population. For instance, in every heart set the reference point at the same anatomical location and use in this script, then the positioning of the points in all the meshes will be approximately the same, which means known point correspondence. Note also that there are 2 smoohting parameters. You can disable smoothing by setting them to 0. Any value larger than 0 will increase smoothing. There could be some artifacts during smoothing, so pick the values carefully. See the renderings the script shows and if you are not happy, adjust the smoothing constants
+
+addapex.py   --  finally add apex to the generated meshes. Assumes that the slices are along X axis, and that the apical slices are in the end of the point array. Also assumes that the mesh is the result of the create_mesh.py (needs to know number of vertices per layer). But that actually can be easily generalized by any willing person. This dependency is rather for convenience.
+
+----------------------
+
+Reuirements: the following libraries with python bindings
+scipy, numpy, itk, vtk, OpenCV, optionally mayavi
+
+Mayavi can be disabled, it is used only to show the reconstructed mesh together with the points so that you cold verify if the 
