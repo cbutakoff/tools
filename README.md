@@ -43,6 +43,11 @@ Example reconstrautcion:
 
 ![Remesh Image](Pics/mriremesh.gif)
 
+Example from the MRI corrector (only python)
+
+![Remesh Image](Pics/mricorrector.gif)
+
+
 Todo:
 - The code needs a better documentation
 - Python script was failing with the new VTK/mayavi
