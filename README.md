@@ -70,6 +70,8 @@ Generates a volumetric mesh of any structure with two boundaries.
 The elements are wedges aligned radially. 
 This was ported from VTK 5.x and needs testing. 
 
+![Volumetric Meshing Image](Pics/layergeneration.gif)
+
 Todo:
 - Test
 
