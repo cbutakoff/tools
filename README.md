@@ -23,13 +23,13 @@ distance = tuple[blob_id]
 ```
 Example image (left - DT, right - red blob):
 
-![Distance Transform Image](https://github.com/cbutakoff/tools/blob/master/Pics/distancetransform.gif)
+![Distance Transform Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/distancetransform.gif)
 
 
 ##FillSurfaceHoles
 Detects and fills holes on the surface. Currently under construction. Current version implements P. Liepa "Filling Holes in Meshes" without smoothing. To be added soon. Here's a sample result
 
-![Hole Filling Image](https://github.com/cbutakoff/tools/blob/master/Pics/HoleFilling.gif)
+![Hole Filling Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/HoleFilling.gif)
 
 Todo:
 - Add smoothing
@@ -42,11 +42,11 @@ The input shape are the landmarks in 3D. One of them is the reference point (whi
 Also it is possible that the IDs are used to differentiate between endocardiumn and epicardium. Check the code.
 Example reconstrautcion:
 
-![Remesh Image](https://github.com/cbutakoff/tools/blob/master/Pics/mriremesh.gif)
+![Remesh Image]https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/mriremesh.gif)
 
 Example from the MRI corrector (only python)
 
-![Remesh Image](https://github.com/cbutakoff/tools/blob/master/Pics/mricorrector.gif)
+![Remesh Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/mricorrector.gif)
 
 
 Todo:
@@ -61,7 +61,7 @@ Generates a volumetric mesh of cardiac Left Ventricle (half-ellipsoid like).
 The elements are wedges aligned radially. Might have some additional requirements.
 To be verified. This was ported from VTK 5.x and needs testing. An example mesh with associate local coordinates can be seen in the following figure
 
-![Volumetric Meshing Image](https://github.com/cbutakoff/tools/blob/master/Pics/volmeshbump.gif)
+![Volumetric Meshing Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/volmeshbump.gif)
 
 Todo:
 - Test
@@ -71,7 +71,7 @@ Generates a volumetric mesh of any structure with two boundaries.
 The elements are wedges aligned radially. 
 This was ported from VTK 5.x and needs testing. 
 
-![Volumetric Meshing Image](https://github.com/cbutakoff/tools/blob/master/Pics/layergeneration.gif)
+![Volumetric Meshing Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/layergeneration.gif)
 
 Todo:
 - Test
