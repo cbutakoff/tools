@@ -7,6 +7,7 @@ The collection is in a bit of a disarray and documentation need to be improved.
 #To do
 - Add tests
 - Split CommonTools into vtk only and itk/vtk parts
+- Doxygen documentation is outdated. Also need to correct the cmake files for the doxygen
 
 #Contents of subfolders
 ##BasicMeshoperations
