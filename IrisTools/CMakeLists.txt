@@ -1,16 +1,23 @@
-cmake_minimum_required(VERSION 2.8)
+#cmake_minimum_required(VERSION 2.8)
  
-PROJECT(IrisTools)
+#PROJECT(IrisTools)
  
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
  
-add_executable(ExtractUGRegions ExtractUGRegions)
-target_link_libraries(ExtractUGRegions ${VTK_LIBRARIES})
 
-add_executable(Reclassify Reclassify)
-target_link_libraries(Reclassify ${VTK_LIBRARIES})
+set(IRIS_TOOLS 
+ExtractUGRegions
+Reclassify
+ReplaceLabel
+)
 
-add_executable(ReplaceLabel ReplaceLabel)
-target_link_libraries(ReplaceLabel ${VTK_LIBRARIES})
+
+
+foreach(program ${IRIS_TOOLS})
+  add_executable(${program} ${program}.cpp)
+  target_link_libraries(${program} ${VTK_LIBRARIES})
+endforeach(program)
+
+
 

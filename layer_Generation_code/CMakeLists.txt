@@ -1,9 +1,8 @@
-cmake_minimum_required(VERSION 2.8)
+#cmake_minimum_required(VERSION 2.8)
 
-PROJECT(tools)
+#PROJECT(tools)
 
 FIND_PACKAGE(ITK REQUIRED)
-
 FIND_PACKAGE(VTK REQUIRED)
 
 
@@ -28,7 +27,7 @@ vtkvmtkMisc
 
 
 
-SET(MYCOMMON_FILES CommonTools.h CommonTools.cpp)
+#SET(MYCOMMON_FILES ../Common/CommonTools.h ../Common/CommonTools.cpp)
 
 
 ADD_EXECUTABLE(SmoothMeshThroughImage ${MYCOMMON_FILES} SmoothMeshTrhoughImage.cpp)

@@ -6,9 +6,16 @@ the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE.  See the above copyright notice for more information.
 =========================================================================*/
 
+
+
+
 /*! \file 
     \brief Generate layers of Left atrium. 
 */
+
+
+//#define USE_VMTK 
+
 #include <vtkCleanPolyData.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataReader.h>
@@ -60,7 +67,10 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkImageNormalize.h"
 #include "vtkImageThreshold.h"
 #include "vtkPointLocator.h"
+
+#ifdef USE_VMTK
 #include <vtkvmtkPolyDataSurfaceRemeshing.h>
+#endif
 
 #define FIELD_DT 0
 #define FIELD_LAPLACE 1
@@ -198,7 +208,7 @@ int main(int argc, char **argv)
 	{
 		//run marching cubes to get epi mesh
 		vtkSmartPointer<vtkImageMarchingCubes> mc = vtkSmartPointer<vtkImageMarchingCubes>::New();
-		mc->SetInput(mask_epi);
+		mc->SetInputData(mask_epi);
 		mc->Update();
 		//CommonTools::SaveShapeToFile(mc->GetOutput(),"epi_mc.vtk");
 		
@@ -233,18 +243,18 @@ int main(int argc, char **argv)
 			<<" "<<maxY<<" "<<minZ<<" "<<maxZ<<" "<<std::endl;
 
 		vtkSmartPointer<vtkImageClip> clip = vtkSmartPointer<vtkImageClip>::New();
-		clip->SetInput( mask_epi );
+		clip->SetInputData( mask_epi );
 		clip->SetOutputWholeExtent( minX, maxX, minY, maxY, minZ, maxZ );
 		clip->ClipDataOn();
 		clip->Update();
 		
 		vtkSmartPointer<vtkImageNormalize> mynorm = vtkSmartPointer<vtkImageNormalize>::New();
-		mynorm->SetInput(clip->GetOutput());
+		mynorm->SetInputData(clip->GetOutput());
 		mynorm->Update();
 
 		mask_epi->DeepCopy( mynorm->GetOutput() );
 
-		clip->SetInput( mask_endo );
+		clip->SetInputData( mask_endo );
 		clip->Update();
 		mynorm->Update();
 
@@ -259,19 +269,19 @@ int main(int argc, char **argv)
 	std::cout<<"Hole filling in the masks..."<<std::endl;
 	{
 		vtkSmartPointer<vtkImageContinuousDilate3D> dilate = vtkSmartPointer<vtkImageContinuousDilate3D>::New();
-		dilate->SetInput(mask_epi);
+		dilate->SetInputData(mask_epi);
 		dilate->SetKernelSize(hf_kernelsize,hf_kernelsize,hf_kernelsize);
 		dilate->Update();
 		
 		vtkSmartPointer<vtkImageContinuousErode3D> erode = vtkSmartPointer<vtkImageContinuousErode3D>::New();
-		erode->SetInput(dilate->GetOutput());
+		erode->SetInputData(dilate->GetOutput());
 		erode->SetKernelSize(hf_kernelsize,hf_kernelsize,hf_kernelsize);
 		erode->Update();
 		
 		mask_epi->DeepCopy(erode->GetOutput());
 
 		
-		dilate->SetInput(mask_endo);
+		dilate->SetInputData(mask_endo);
 		dilate->Update();
 		erode->Update();
 		mask_endo->DeepCopy(erode->GetOutput());
@@ -286,7 +296,7 @@ int main(int argc, char **argv)
 	<<" "<<vz/VoxelSize<<std::endl;
 	{
 		vtkSmartPointer<vtkImageResample> resamp = vtkSmartPointer<vtkImageResample>::New();
-		resamp->SetInput( mask_endo );
+		resamp->SetInputData( mask_endo );
 		resamp->SetAxisMagnificationFactor(0,vx/VoxelSize);
 		resamp->SetAxisMagnificationFactor(1,vy/VoxelSize);
 		resamp->SetAxisMagnificationFactor(2,vz/VoxelSize);
@@ -299,7 +309,7 @@ int main(int argc, char **argv)
 		
 		//remove negative pixels
 		vtkSmartPointer<vtkImageThreshold> thold = vtkSmartPointer<vtkImageThreshold>::New();
-		thold->SetInput(resamp->GetOutput());
+		thold->SetInputData(resamp->GetOutput());
 		thold->ThresholdByLower(0);
 		thold->ReplaceInOn();
 		thold->ReplaceOutOff();
@@ -307,7 +317,7 @@ int main(int argc, char **argv)
 		thold->Update();
 
 		vtkSmartPointer<vtkImageThreshold> thold1 = vtkSmartPointer<vtkImageThreshold>::New();
-		thold1->SetInput(thold->GetOutput());
+		thold1->SetInputData(thold->GetOutput());
 		thold1->ThresholdByUpper(1);
 		thold1->ReplaceInOn();
 		thold1->ReplaceOutOff();
@@ -316,7 +326,7 @@ int main(int argc, char **argv)
 		
 		mask_endo->DeepCopy(thold1->GetOutput());
 		
-		resamp->SetInput( mask_epi );
+		resamp->SetInputData( mask_epi );
 		resamp->Update();
 		thold->Update();
 		thold1->Update();
@@ -331,14 +341,14 @@ int main(int argc, char **argv)
 	{
 		std::cout<<"Making epi bigger than endo..."<<std::endl;
 		vtkSmartPointer<vtkImageContinuousDilate3D> dilate = vtkSmartPointer<vtkImageContinuousDilate3D>::New();
-		dilate->SetInput(mask_endo);
+		dilate->SetInputData(mask_endo);
 		dilate->SetKernelSize(ext_dilate_kernelsize,ext_dilate_kernelsize,ext_dilate_kernelsize);
 		dilate->Update();
 		
 		vtkSmartPointer<vtkImageMathematics> math = vtkSmartPointer<vtkImageMathematics>::New();
 		math->SetOperationToMax();
-		math->SetInput1( mask_epi );
-		math->SetInput2( dilate->GetOutput() );
+		math->SetInput1Data( mask_epi );
+		math->SetInput2Data( dilate->GetOutput() );
 		math->Update();
 		mask_epi->DeepCopy(math->GetOutput());
 	}
@@ -353,13 +363,13 @@ int main(int argc, char **argv)
 		
 		std::cout<<"Smoothing..."<<std::endl;
 		vtkSmartPointer<vtkImageGaussianSmooth> smooth = vtkSmartPointer<vtkImageGaussianSmooth>::New();
-		smooth->SetInput(mask_endo);
+		smooth->SetInputData(mask_endo);
 		smooth->SetStandardDeviation( smooth_radius );
 		smooth->Update();
 		
 		std::cout<<"Running marching cubes..."<<std::endl;
 		vtkSmartPointer<vtkImageMarchingCubes> marchingcubes = vtkSmartPointer<vtkImageMarchingCubes>::New();
-		marchingcubes->SetInput(smooth->GetOutput());
+		marchingcubes->SetInputData(smooth->GetOutput());
 		marchingcubes->ComputeNormalsOn();
 		marchingcubes->SetValue(0,0.5);
 		marchingcubes->Update();
@@ -386,14 +396,14 @@ int main(int argc, char **argv)
 		std::cout<<"Cleaning the mesh..."<<std::endl;
 
 		vtkSmartPointer<vtkCleanPolyData> clean = vtkSmartPointer<vtkCleanPolyData>::New();
-		clean->SetInput(tempPD);
+		clean->SetInputData(tempPD);
 		clean->Update();
 		endo_mesh->SetPoints(clean->GetOutput()->GetPoints());
 		endo_mesh->SetPolys(clean->GetOutput()->GetPolys());
-		endo_mesh->Update();
+		//endo_mesh->Update();
 
 		vtkSmartPointer<vtkPolyDataNormals> normalgen = vtkSmartPointer<vtkPolyDataNormals>::New();
-		normalgen->SetInput(endo_mesh);
+		normalgen->SetInputData(endo_mesh);
 		normalgen->SplittingOff();
 		normalgen->FlipNormalsOn();
 		normalgen->Update();
@@ -416,13 +426,13 @@ int main(int argc, char **argv)
 		
 		std::cout<<"Smoothing..."<<std::endl;
 		vtkSmartPointer<vtkImageGaussianSmooth> smooth = vtkSmartPointer<vtkImageGaussianSmooth>::New();
-		smooth->SetInput(mask_epi);
+		smooth->SetInputData(mask_epi);
 		smooth->SetStandardDeviation(smooth_radius);
 		smooth->Update();
 		
 		std::cout<<"Running marching cubes..."<<std::endl;
 		vtkSmartPointer<vtkImageMarchingCubes> marchingcubes = vtkSmartPointer<vtkImageMarchingCubes>::New();
-		marchingcubes->SetInput(smooth->GetOutput());
+		marchingcubes->SetInputData(smooth->GetOutput());
 		marchingcubes->ComputeNormalsOn();
 		marchingcubes->SetValue(0,0.5);
 		marchingcubes->Update();
@@ -450,15 +460,15 @@ int main(int argc, char **argv)
 		std::cout<<"Cleaning the mesh..."<<std::endl;
 
 		vtkSmartPointer<vtkCleanPolyData> clean = vtkSmartPointer<vtkCleanPolyData>::New();
-		clean->SetInput(tempPD);
+		clean->SetInputData(tempPD);
 		clean->Update();
 		epi_mesh->SetPoints(clean->GetOutput()->GetPoints());
 		epi_mesh->SetPolys(clean->GetOutput()->GetPolys());
-		epi_mesh->Update();
+		//epi_mesh->Update();
 
 		//generate normals
 		vtkSmartPointer<vtkPolyDataNormals> normalgen = vtkSmartPointer<vtkPolyDataNormals>::New();
-		normalgen->SetInput(epi_mesh);
+		normalgen->SetInputData(epi_mesh);
 		normalgen->SplittingOff();
 		normalgen->Update();
 
@@ -509,7 +519,7 @@ int main(int argc, char **argv)
 		vtkSmartPointer<vtkPolyData> layer = vtkSmartPointer<vtkPolyData>::New();
 		layer->SetPoints(pts);
 		layer->SetPolys(endo_mesh->GetPolys());
-		layer->Update();
+		//layer->Update();
 
 		
 
@@ -519,7 +529,7 @@ int main(int argc, char **argv)
         }
         
 		vtkSmartPointer<vtkPolyDataNormals> normalgen = vtkSmartPointer<vtkPolyDataNormals>::New();
-		normalgen->SetInput(layer);
+		normalgen->SetInputData(layer);
 		normalgen->SplittingOff();
 		normalgen->Update();
 
@@ -618,7 +628,7 @@ int main(int argc, char **argv)
 		
 		vtkSmartPointer<vtkUnstructuredGridWriter> writer = vtkSmartPointer<vtkUnstructuredGridWriter>::New();
 		writer->SetFileName(volmesh_filename);
-		writer->SetInput(output);
+		writer->SetInputData(output);
 		writer->SetFileTypeToBinary();
 		writer->Update();
 	}
@@ -643,7 +653,7 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 
 	//erode mask
 	vtkSmartPointer<vtkImageContinuousErode3D> erode = vtkSmartPointer<vtkImageContinuousErode3D>::New();
-	erode->SetInput(mask_endo);
+	erode->SetInputData(mask_endo);
 	erode->SetKernelSize(5,5,5);
 	erode->Update();
 
@@ -657,7 +667,7 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 
 	//std::cout<<"Dilating epi mask..."<<std::endl;
 	//vtkSmartPointer<vtkImageContinuousDilate3D> dilate = vtkSmartPointer<vtkImageContinuousDilate3D>::New();
-	//dilate->SetInput(mask_epi);
+	//dilate->SetInputData(mask_epi);
 	//dilate->SetKernelSize(5,5,5);
 	//dilate->Update();
 
@@ -680,7 +690,7 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 	{
 	case FIELD_DT:
 		std::cout<<"Computing distance transform"<<std::endl;
-		dist->SetInput(erode->GetOutput());
+		dist->SetInputData(erode->GetOutput());
 		dist->InitializeOn();
 		dist->ConsiderAnisotropyOff();
 		dist->Update();
@@ -693,7 +703,7 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 				fielddata[i] = fielddata[i]/100000;
 				
 		
-		field_caster->SetInput( dist->GetOutput() );
+		field_caster->SetInputData( dist->GetOutput() );
 		field_caster->SetOutputScalarTypeToFloat();
 		field_caster->Update();
 
@@ -725,20 +735,20 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 	//transform the mask to have 1 inside and 0 outside
 
 	vtkSmartPointer<vtkImageMathematics> epi_shifted = vtkSmartPointer<vtkImageMathematics>::New();
-	epi_shifted->SetInput1( mask_epi );
+	epi_shifted->SetInput1Data( mask_epi );
 	epi_shifted->SetOperationToAddConstant();
 	epi_shifted->SetConstantC(1);
 	epi_shifted->Update();
 
 
 	vtkSmartPointer<vtkImageCast> caster = vtkSmartPointer<vtkImageCast>::New();
-	caster->SetInput( epi_shifted->GetOutput() );
+	caster->SetInputData( epi_shifted->GetOutput() );
 	caster->SetOutputScalarTypeToFloat();
 	caster->Update();
 
 	std::cout<<"vtkImageMathematics - epi_inverted"<<std::endl;
 	vtkSmartPointer<vtkImageMathematics> epi_inverted = vtkSmartPointer<vtkImageMathematics>::New();
-	epi_inverted->SetInput1( caster->GetOutput() );
+	epi_inverted->SetInput1Data( caster->GetOutput() );
 	epi_inverted->SetOperationToAddConstant();
 	epi_inverted->SetConstantC(-1);
 	epi_inverted->Update();
@@ -747,15 +757,15 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 
 	std::cout<<"vtkImageMathematics - im_math_mask"<<std::endl;
 	vtkSmartPointer<vtkImageMathematics> im_math_mask = vtkSmartPointer<vtkImageMathematics>::New();
-	im_math_mask->SetInput1( field );
-	im_math_mask->SetInput2( caster->GetOutput() );
+	im_math_mask->SetInput1Data( field );
+	im_math_mask->SetInput2Data( caster->GetOutput() );
 	im_math_mask->SetOperationToMultiply();
 	im_math_mask->Update();
 
 	std::cout<<"vtkImageMathematics - im_math_setbg"<<std::endl;
 	vtkSmartPointer<vtkImageMathematics> im_math_setbg = vtkSmartPointer<vtkImageMathematics>::New();
-	im_math_setbg->SetInput1( im_math_mask->GetOutput() );
-	im_math_setbg->SetInput2( epi_inverted->GetOutput() );
+	im_math_setbg->SetInput1Data( im_math_mask->GetOutput() );
+	im_math_setbg->SetInput2Data( epi_inverted->GetOutput() );
 	im_math_setbg->SetOperationToSubtract();
 	im_math_setbg->Update();
 
@@ -764,7 +774,7 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 
 	std::cout<<"Computing gradient of the distance transform"<<std::endl;
 	vtkSmartPointer<vtkImageGradient> grad = vtkSmartPointer<vtkImageGradient>::New();
-	grad->SetInput(field);
+	grad->SetInputData(field);
 	grad->SetDimensionality(3);
 	grad->Update();
 
@@ -772,7 +782,7 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 		
 
 	vtkSmartPointer<vtkAssignAttribute> aa = vtkSmartPointer<vtkAssignAttribute>::New();
-	aa->SetInput( grad->GetOutput() );
+	aa->SetInputData( grad->GetOutput() );
 	aa->Assign( vtkDataSetAttributes::SCALARS,
 			vtkDataSetAttributes::VECTORS,
 			vtkAssignAttribute::POINT_DATA );
@@ -781,8 +791,8 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 
 	std::cout<<"Generate streamlines."<<std::endl;
 	vtkSmartPointer<vtkStreamTracer> tracer = vtkSmartPointer<vtkStreamTracer>::New();
-	tracer->SetInput( aa->GetOutput() );
-	tracer->SetSource( endo );
+	tracer->SetInputData( aa->GetOutput() );
+	tracer->SetSourceData( endo );
 	tracer->SetIntegrationDirectionToForward();
 	tracer->SetIntegratorTypeToRungeKutta45();
 	tracer->SetMaximumPropagation(200);
@@ -793,7 +803,7 @@ void GenerateLayersAlongField( vtkPoints* layers, vtkPolyData* epi, vtkPolyData*
 
 	//resample streamlines
 	vtkSmartPointer<vtkSplineFilter> spline = vtkSmartPointer<vtkSplineFilter>::New();
-	spline->SetInput(tracer->GetOutput());
+	spline->SetInputData(tracer->GetOutput());
 	spline->SetSubdivideToSpecified();
 	spline->SetNumberOfSubdivisions(nLayers-1);
 	spline->Update();
@@ -871,10 +881,11 @@ void GenerateImageMask( vtkImageData* res_image, float fg, float bg, vtkPolyData
 	inimage->SetOrigin(origin);
 	inimage->SetSpacing(spacing);
 	inimage->SetDimensions(dims);
-	inimage->SetScalarTypeToChar();
-	inimage->Update();
-	inimage->AllocateScalars();
-	inimage->GetWholeExtent(wextent);
+//	inimage->SetScalarTypeToChar();
+	inimage->AllocateScalars(VTK_UNSIGNED_CHAR, 1);
+//	inimage->Update();
+//	inimage->AllocateScalars();
+	inimage->GetExtent(wextent);
 
 	char* voxels = static_cast<char*>(inimage->GetScalarPointer());
 	for(int i = 0; i<dims[0]*dims[1]*dims[2]; i++)
@@ -890,13 +901,13 @@ void GenerateImageMask( vtkImageData* res_image, float fg, float bg, vtkPolyData
 	filt->SetOutputOrigin( origin );
 	filt->SetOutputSpacing( spacing );
 	filt->SetOutputWholeExtent( wextent );
-	filt->SetInput( endo_closed );
+	filt->SetInputData( endo_closed );
 	filt->Update();
 
 	vtkSmartPointer<vtkImageStencil> stencil = vtkSmartPointer<vtkImageStencil>::New();
-	stencil->SetStencil(filt->GetOutput());
+	stencil->SetStencilData(filt->GetOutput());
 	stencil->SetBackgroundValue(bg);
-	stencil->SetInput(inimage);
+	stencil->SetInputData(inimage);
 	stencil->SetOutput(res_image);
 	stencil->Update();
 }
@@ -920,13 +931,15 @@ void UniformRemesh(vtkPolyData* mesh, float targetarea)
     remove(filename);
 
     //remesh
+#ifdef USE_VMTK
     vtkSmartPointer<vtkvmtkPolyDataSurfaceRemeshing> remesh = 
             vtkSmartPointer<vtkvmtkPolyDataSurfaceRemeshing>::New();
-    remesh->SetInput(temp_mesh);
+    remesh->SetInputData(temp_mesh);
     remesh->SetNumberOfIterations(10);
     remesh->SetElementSizeModeToTargetArea();
     remesh->SetTargetArea(targetarea);
     remesh->Update(); 
     
     mesh->DeepCopy(remesh->GetOutput());
+#endif
 }

@@ -17,6 +17,8 @@ PURPOSE.  See the above copyright notice for more information.
 #define ITK_LEAN_AND_MEAN
 #endif
 
+//#define USE_VMTK
+
 #include "vtkPolyData.h"
 #include "vtkCleanPolyData.h"
 #include "CommonTools.h"
@@ -37,7 +39,9 @@ PURPOSE.  See the above copyright notice for more information.
 #include <stdio.h>
 #include "vtkDataSetSurfaceFilter.h"
 
+#ifdef USE_VMTK
 #include <vtkvmtkPolyDataSurfaceRemeshing.h>
+#endif
 
 
 // Use an anonymous namespace to keep class types and function names
@@ -102,7 +106,7 @@ int main(int argc, char * argv[]) {
     std::cout << "Cleaning the mesh" << std::endl;
 
     vtkSmartPointer<vtkCleanPolyData> clean = vtkSmartPointer<vtkCleanPolyData>::New();
-    clean->SetInput(inshape);
+    clean->SetInputData(inshape);
     clean->Update();
 
     vtkSmartPointer< vtkPolyData > polyOut = vtkSmartPointer< vtkPolyData > ::New();
@@ -115,7 +119,7 @@ int main(int argc, char * argv[]) {
 
             meCloseHoles::Pointer meshcloser = meCloseHoles::New();
             meshcloser->SetAlgorithm(meCloseHoles::LINEAR_TO_CENTER);
-            meshcloser->SetInput(polyOut);
+            meshcloser->SetInputData(polyOut);
             meshcloser->Update();
      */
 
@@ -158,14 +162,15 @@ int main(int argc, char * argv[]) {
     dims[1] = floor((bounds[3] - bounds[2]) / spacing[1]) + padding * 2;
     dims[2] = floor((bounds[5] - bounds[4]) / spacing[2]) + padding * 2;
 
-    inimage->SetScalarTypeToUnsignedChar();
+//    inimage->SetScalarTypeToUnsignedChar();
     inimage->SetOrigin(origin);
     inimage->SetSpacing(spacing);
     inimage->SetDimensions(dims);
-    inimage->SetScalarTypeToFloat();
-    inimage->Update();
-    inimage->AllocateScalars();
-    inimage->GetWholeExtent(wextent);
+//    inimage->SetScalarTypeToFloat();
+//    inimage->Update();
+//    inimage->AllocateScalars();
+    inimage->AllocateScalars(VTK_FLOAT, 1);
+    inimage->GetExtent(wextent);
 
     float* voxels = static_cast<float*> (inimage->GetScalarPointer());
     for (int i = 0; i < dims[0] * dims[1] * dims[2]; i++) {
@@ -180,24 +185,24 @@ int main(int argc, char * argv[]) {
     filt->SetOutputOrigin(origin);
     filt->SetOutputSpacing(spacing);
     filt->SetOutputWholeExtent(wextent);
-    //	filt->SetInput( meshcloser->GetOutput() );
-    filt->SetInput(polyOut);
+    //	filt->SetInputData( meshcloser->GetOutput() );
+    filt->SetInputData(polyOut);
     filt->Update();
 
     vtkSmartPointer<vtkImageStencil> stencil = vtkSmartPointer<vtkImageStencil>::New();
-    stencil->SetStencil(filt->GetOutput());
+    stencil->SetStencilData(filt->GetOutput());
     stencil->SetBackgroundValue(bg);
-    stencil->SetInput(inimage);
+    stencil->SetInputData(inimage);
 
     std::cout << "Smoothing the image" << std::endl;
 
     vtkSmartPointer<vtkImageGaussianSmooth> smooth = vtkSmartPointer<vtkImageGaussianSmooth>::New();
     smooth->SetStandardDeviation(GaussSigma);
-    smooth->SetInput(stencil->GetOutput());
+    smooth->SetInputData(stencil->GetOutput());
     smooth->Update();
 
     //vtkSmartPointer<vtkDataSetWriter> writer = vtkSmartPointer<vtkDataSetWriter>::New();
-    //writer->SetInput( smooth->GetOutput() );
+    //writer->SetInputData( smooth->GetOutput() );
     //writer->SetFileTypeToBinary();
     //writer->SetFileName( "image.vtk");
     //writer->Update();
@@ -205,7 +210,7 @@ int main(int argc, char * argv[]) {
     std::cout << "Running marching cubes" << std::endl;
 
     vtkSmartPointer<vtkImageMarchingCubes> marchingcubes = vtkSmartPointer<vtkImageMarchingCubes>::New();
-    marchingcubes->SetInput(smooth->GetOutput());
+    marchingcubes->SetInputData(smooth->GetOutput());
     marchingcubes->ComputeNormalsOn();
     marchingcubes->SetValue(0, mcthold);
     marchingcubes->Update();
@@ -218,7 +223,7 @@ int main(int argc, char * argv[]) {
         ////cleanup
         //std::cout<<"Cleaning the mesh"<<std::endl;
 
-        //clean->SetInput(marchingcubes->GetOutput());
+        //clean->SetInputData(marchingcubes->GetOutput());
         //clean->Update();
         //polyOut->SetPoints(clean->GetOutput()->GetPoints());
         //polyOut->SetPolys(clean->GetOutput()->GetPolys());
@@ -244,7 +249,7 @@ int main(int argc, char * argv[]) {
     //cleanup
     std::cout << "Cleaning the mesh" << std::endl;
 
-    clean->SetInput(tempPD);
+    clean->SetInputData(tempPD);
     clean->Update();
     polyOut->SetPoints(clean->GetOutput()->GetPoints());
     polyOut->SetPolys(clean->GetOutput()->GetPolys());
@@ -252,12 +257,12 @@ int main(int argc, char * argv[]) {
 
     //generate normals
     vtkSmartPointer<vtkPolyDataNormals> normalgen = vtkSmartPointer<vtkPolyDataNormals>::New();
-    normalgen->SetInput(polyOut);
+    normalgen->SetInputData(polyOut);
     normalgen->SplittingOff();
     normalgen->Update();
 
     vtkSmartPointer<vtkDataSetSurfaceFilter> extrsurf = vtkSmartPointer<vtkDataSetSurfaceFilter>::New();
-    extrsurf->SetInput(normalgen->GetOutput());
+    extrsurf->SetInputData(normalgen->GetOutput());
     extrsurf->Update();
 
     vtkSmartPointer<vtkPolyData> mesh = extrsurf->GetOutput();
@@ -279,20 +284,22 @@ int main(int argc, char * argv[]) {
         remove(filename);
 
         //remesh
+#ifdef USE_VMTK
         vtkSmartPointer<vtkvmtkPolyDataSurfaceRemeshing> remesh =
                 vtkSmartPointer<vtkvmtkPolyDataSurfaceRemeshing>::New();
-        remesh->SetInput(mesh);
+        remesh->SetInputData(mesh);
         remesh->SetNumberOfIterations(10);
         remesh->SetElementSizeModeToTargetArea();
         remesh->SetTargetArea(targetarea);
         remesh->Update();
 
         mesh->DeepCopy(remesh->GetOutput());
+#endif
     }
 
 
     //generate normals
-    normalgen->SetInput(mesh);
+    normalgen->SetInputData(mesh);
     normalgen->SplittingOff();
     normalgen->Update();
 
