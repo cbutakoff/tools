@@ -748,7 +748,7 @@ void SaveIsolatedCover(const HoleCoverType& localCover, vtkPoints * coverVertice
     wr->Write();
 }
 
-//static int cover_id = 0;
+static int cover_id = 0;
 void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, const HoleCoverType& cover, HoleCoverType& refinedCover) {
 
     //create vertex storage
@@ -785,9 +785,9 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
     }
 
     //Save the cover for debugging
-//    char name[100];
-//    sprintf(name,"initial_cover%d.vtk",cover_id++);
-//    SaveIsolatedCover(localCover, coverVertices, name);
+    char name[100];
+    sprintf(name,"initial_cover%d.vtk",cover_id++);
+    SaveIsolatedCover(localCover, coverVertices, name);
             
     
     //build upper triangular! vertex connectivity matrix for the cover
@@ -877,6 +877,8 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
     //          
     VectorType edgeV0(3), edgeV1(3), candV0(3), candV1(3); 
     
+    
+    
     while(!EdgeStack.empty())
     {
         EdgeType edge = EdgeStack.top();
@@ -904,10 +906,10 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
                 if( IsPointInCircle(edgeV0, edgeV1, candV0, candV1) ) //do the swap
                 {
                     //do the swap here. Erase old triangles
-                    HoleCoverType::iterator it;
-                    it = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v0);
-                    localCover.erase(it);
-                    it = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v1);
+                    HoleCoverType::iterator it1;
+                    HoleCoverType::iterator it2;
+                    it1 = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v0);
+                    it2 = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v1);
                     
                     TriangleCellType newtriangle1;
                     TriangleCellType newtriangle2;
@@ -917,7 +919,9 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
                     bool triangles_created = false;
                     for(int i=0; i<3; i++)
                     {
-                        if( ( (*it).id[i]==edge.v0 && (*it).id[(i+1)%2]==edge.v1 && (*it).id[(i+2)%2]==candidateEdge.v0) )
+                        std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
+                        std::cout<<"Checking: "<<(*it1).id[i]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[(i+2)%3]<<std::endl;
+                        if( ( (*it1).id[i]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[(i+2)%3]==candidateEdge.v0) )
                         {
                             newtriangle1.id[0] = candidateEdge.v0;
                             newtriangle1.id[1] = edge.v0;
@@ -934,7 +938,9 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
                     {
                         for(int i=0; i<3; i++)
                         {
-                            if( ( (*it).id[(i+2)%2]==edge.v0 && (*it).id[(i+1)%2]==edge.v1 && (*it).id[i]==candidateEdge.v0) )
+                            std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
+                            std::cout<<"Checking: "<<(*it1).id[(i+2)%3]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[i]<<std::endl;
+                            if( ( (*it1).id[(i+2)%3]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[i]==candidateEdge.v0) )
                             {
                                 newtriangle1.id[0] = candidateEdge.v1;
                                 newtriangle1.id[1] = edge.v0;
@@ -948,18 +954,25 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
                         }
                     }
                     
-                    localCover.erase(it); //erase the second trianle
+                    if(triangles_created)
+                    {
+                        //create triangles
+                        localCover.erase(it1); //erase the second trianle
+                        localCover.erase(it2);
 
-                    //add the new triangles
-                    localCover.push_back(newtriangle1);
-                    localCover.push_back(newtriangle2);
+                        //add the new triangles
+                        localCover.push_back(newtriangle1);
+                        localCover.push_back(newtriangle2);
 
-                    
-                    //update connectivity matrix
-                    conn.erase_element( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) );
-                    conn( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
-                    
-                    //create triangles
+                        std::cout<<"Added triangles"<<std::endl;
+                        std::cout<<"T1: "<<newtriangle1.id[0]<<" "<<newtriangle1.id[1]<<" "<<newtriangle1.id[2]<<std::endl;
+                        std::cout<<"T2: "<<newtriangle2.id[0]<<" "<<newtriangle2.id[1]<<" "<<newtriangle2.id[2]<<std::endl;
+                        std::cout<<"edge: "<<edge.v0<<" "<<edge.v1<<std::endl;
+                        std::cout<<"cand: "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
+                        //update connectivity matrix
+                        conn.erase_element( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) );
+                        conn( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
+                    }
                 }
             }
                 
@@ -997,6 +1010,8 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
     //get the cover with original ids
     //the correspondence with the original is given by
     //i -> boundaryVertexIDs[i]
+    
+    std::cout<<"Copying final refined cover"<<std::endl;
     refinedCover.clear();
     for( HoleCoverType::const_iterator it = localCover.begin(); it!=localCover.end(); ++it )
     {
@@ -1005,7 +1020,10 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
         //for each id, find its position within boundaryVertexIDs
         for(int j=0; j<3; j++)
         {
-            cell.id[j] = boundaryVertexIDs[ (*it).id[j] ];
+            //std::cout<<(*it).id[j]<<" "<<std::endl;
+            const vtkIdType local_id = (*it).id[j];
+            cell.id[j] = boundaryVertexIDs[ local_id ];
+            //std::cout<<local_id<<" "<<std::endl;
         }
         
         refinedCover.push_back(cell);
@@ -1193,7 +1211,7 @@ bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorT
 HoleCoverType::iterator FindTriangleByPointIds(HoleCoverType& localCover, vtkIdType id0, vtkIdType id1, vtkIdType id2)
 {   
     HoleCoverType::iterator retval;
-
+    
     std::vector<vtkIdType> argumentIDs;
     argumentIDs.push_back(id0);
     argumentIDs.push_back(id1);
@@ -1202,6 +1220,8 @@ HoleCoverType::iterator FindTriangleByPointIds(HoleCoverType& localCover, vtkIdT
 
     std::vector<vtkIdType> IDs;
 
+    std::cout<<"To find: "<<argumentIDs[0]<<" "<<argumentIDs[1]<<" "<<argumentIDs[2]<<std::endl;
+    
     for(retval = localCover.begin(); retval!=localCover.end(); retval++)
     {
         IDs.clear();
@@ -1209,6 +1229,9 @@ HoleCoverType::iterator FindTriangleByPointIds(HoleCoverType& localCover, vtkIdT
         IDs.push_back((*retval).id[1]);
         IDs.push_back((*retval).id[2]);
         std::sort(IDs.begin(), IDs.end());
+
+        std::cout<<"Comparing to: "<<IDs[0]<<" "<<IDs[1]<<" "<<IDs[2]<<std::endl;
+
         
         std::vector<vtkIdType> v_intersection;
         std::set_intersection(argumentIDs.begin(), argumentIDs.end(),
