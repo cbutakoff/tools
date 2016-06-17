@@ -113,6 +113,17 @@ bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorT
 
 HoleCoverType::iterator FindTriangleByPointIds(HoleCoverType& localCover, vtkIdType id0, vtkIdType id1, vtkIdType id2);
 
+
+//try to replace edge "edge" with "candidateEdge". Both must have ids into localCover.
+//conn - upper! triangular connectivity matrix, will be updated
+//coverVertices - vertex coordinates of the cover
+//localCover - cover with ids into coverVertices, will be updated
+void FlipEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, vtkPoints* coverVertices, 
+                            HoleCoverType& localCover, SparseShortMatrixType& conn);
+
+void RelaxAllCoverEdges(HoleCoverType& localCover, vtkPoints * coverVertices, SparseShortMatrixType& conn);
+
+
 //======================================================================
 //
 //
@@ -749,6 +760,140 @@ void SaveIsolatedCover(const HoleCoverType& localCover, vtkPoints * coverVertice
 }
 
 static int cover_id = 0;
+void FlipEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, vtkPoints* coverVertices, HoleCoverType& localCover, SparseShortMatrixType& conn){
+    VectorType edgeV0(3), edgeV1(3), candV0(3), candV1(3); 
+    
+    coverVertices->GetPoint(edge.v0, edgeV0.data());
+    coverVertices->GetPoint(edge.v1, edgeV1.data());
+    coverVertices->GetPoint(candidateEdge.v0, candV0.data());
+    coverVertices->GetPoint(candidateEdge.v1, candV1.data());
+    
+    const double edge_length = (edgeV0-edgeV1).squaredNorm();
+    const double cand_edge_length = (candV0-candV1).squaredNorm();
+    
+    if(cand_edge_length<edge_length) //check the circumference criterion
+    {
+        if( IsPointInCircle(edgeV0, edgeV1, candV0, candV1) ) //do the swap
+        {
+            //do the swap here. Erase old triangles
+            HoleCoverType::iterator it1;
+            HoleCoverType::iterator it2;
+            it1 = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v0);
+            it2 = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v1);
+            
+            TriangleCellType newtriangle1;
+            TriangleCellType newtriangle2;
+            
+            //identify vertex order and create new triangles
+            //forward order 
+            bool triangles_created = false;
+            for(int i=0; i<3; i++)
+            {
+                std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
+                std::cout<<"Checking: "<<(*it1).id[i]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[(i+2)%3]<<std::endl;
+                if( ( (*it1).id[i]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[(i+2)%3]==candidateEdge.v0) )
+                {
+                    newtriangle1.id[0] = candidateEdge.v0;
+                    newtriangle1.id[1] = edge.v0;
+                    newtriangle1.id[2] = candidateEdge.v1;
+                    newtriangle2.id[0] = candidateEdge.v1;
+                    newtriangle2.id[1] = edge.v1;
+                    newtriangle2.id[2] = candidateEdge.v0;
+                    triangles_created = true;
+                    break;
+                }
+            }
+            
+            if(!triangles_created)
+            {
+                for(int i=0; i<3; i++)
+                {
+                    std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
+                    std::cout<<"Checking: "<<(*it1).id[(i+2)%3]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[i]<<std::endl;
+                    if( ( (*it1).id[(i+2)%3]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[i]==candidateEdge.v0) )
+                    {
+                        newtriangle1.id[0] = candidateEdge.v1;
+                        newtriangle1.id[1] = edge.v0;
+                        newtriangle1.id[2] = candidateEdge.v0;
+                        newtriangle2.id[0] = candidateEdge.v0;
+                        newtriangle2.id[1] = edge.v1;
+                        newtriangle2.id[2] = candidateEdge.v1;
+                        triangles_created = true;
+                        break;
+                    }
+                }
+            }
+            
+            if(triangles_created)
+            {
+                //create triangles
+                localCover.erase(it1); //erase the second trianle
+                localCover.erase(it2);
+                
+                //add the new triangles
+                localCover.push_back(newtriangle1);
+                localCover.push_back(newtriangle2);
+                
+                std::cout<<"Added triangles"<<std::endl;
+                std::cout<<"T1: "<<newtriangle1.id[0]<<" "<<newtriangle1.id[1]<<" "<<newtriangle1.id[2]<<std::endl;
+                std::cout<<"T2: "<<newtriangle2.id[0]<<" "<<newtriangle2.id[1]<<" "<<newtriangle2.id[2]<<std::endl;
+                std::cout<<"edge: "<<edge.v0<<" "<<edge.v1<<std::endl;
+                std::cout<<"cand: "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
+                //update connectivity matrix
+                conn.erase_element( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) );
+                conn( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
+            }
+        }
+    }
+}
+
+void RelaxAllCoverEdges(HoleCoverType& localCover, vtkPoints * coverVertices, SparseShortMatrixType& conn){
+    typedef SparseShortMatrixType::iterator1 i1_t;
+    typedef SparseShortMatrixType::iterator2 i2_t;
+    
+    std::stack<EdgeType> EdgeStack;
+    
+    for (i1_t i1 = conn.begin1(); i1 != conn.end1(); ++i1) 
+        for (i2_t i2 = i1.begin(); i2 != i1.end(); ++i2){
+            if (*i2 == 2) { //only interior edges (i.e. 2 cover triangles share it)
+                EdgeType e;
+                e.v0 = i2.index1();
+                e.v1 = i2.index2();
+                EdgeStack.push(e);
+            }
+            //std::cout<<(*i2)<<" ";
+        }
+    
+    
+    //      
+    //   for each element in the queue.
+    //      take the intersecting edge vertices
+    //      fit a circle to the original 2 vertices plus one of the intersecting ones
+    //      check if the 2nd intersecting vertex is inside. If it is swap the edge only if it becomes shorter
+    //          compare the length of the old edge and the proposed edge ->swap ->update conn matrix
+    //          
+    
+    
+    
+    while(!EdgeStack.empty())
+    {
+        EdgeType edge = EdgeStack.top();
+        EdgeStack.pop();
+        
+        //Using the upper triangular connectivity matrix find the 2 vertices that are connected to the edge
+        EdgeType candidateEdge;
+        if( FindConnectedVertices(coverVertices, conn, edge, candidateEdge) )
+        {
+            
+            //verify if swap is needed, first check the edge length criterion, then circumference
+            //std::cout<<"edge "<<edge.v0<<" "<<edge.v1<<std::endl;
+            //std::cout<<"cand "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
+            FlipEdgeIfPossible(edge, candidateEdge, coverVertices, localCover, conn);
+            
+        }
+    }
+}
+
 void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, const HoleCoverType& cover, HoleCoverType& refinedCover) {
 
     //create vertex storage
@@ -851,133 +996,7 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
     //   relax all edges of the cover
     //      iterate through nonzero elements of conn. each element is an edge
     //      create queue of edges
-    typedef SparseShortMatrixType::iterator1 i1_t;
-    typedef SparseShortMatrixType::iterator2 i2_t;
-
-    std::stack<EdgeType> EdgeStack;
-    
-    for (i1_t i1 = conn.begin1(); i1 != conn.end1(); ++i1) 
-        for (i2_t i2 = i1.begin(); i2 != i1.end(); ++i2){
-            if (*i2 == 2) { //only interior edges (i.e. 2 cover triangles share it)
-                EdgeType e;
-                e.v0 = i2.index1();
-                e.v1 = i2.index2();
-                EdgeStack.push(e);
-            }
-            //std::cout<<(*i2)<<" ";
-        }
-    
-    
-    //      
-    //   for each element in the queue.
-    //      take the intersecting edge vertices
-    //      fit a circle to the original 2 vertices plus one of the intersecting ones
-    //      check if the 2nd intersecting vertex is inside. If it is swap the edge only if it becomes shorter
-    //          compare the length of the old edge and the proposed edge ->swap ->update conn matrix
-    //          
-    VectorType edgeV0(3), edgeV1(3), candV0(3), candV1(3); 
-    
-    
-    
-    while(!EdgeStack.empty())
-    {
-        EdgeType edge = EdgeStack.top();
-        EdgeStack.pop();
-        
-        //Using the upper triangular connectivity matrix find the 2 vertices that are connected to the edge
-        EdgeType candidateEdge;
-        if( FindConnectedVertices(coverVertices, conn, edge, candidateEdge) )
-        {
-            
-            //verify if swap is needed, first check the edge length criterion, then circumference
-            //std::cout<<"edge "<<edge.v0<<" "<<edge.v1<<std::endl;
-            //std::cout<<"cand "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
-            
-            coverVertices->GetPoint(edge.v0, edgeV0.data());
-            coverVertices->GetPoint(edge.v1, edgeV1.data());
-            coverVertices->GetPoint(candidateEdge.v0, candV0.data());
-            coverVertices->GetPoint(candidateEdge.v1, candV1.data());
-            
-            const double edge_length = (edgeV0-edgeV1).squaredNorm();
-            const double cand_edge_length = (candV0-candV1).squaredNorm();
-            
-            if(cand_edge_length<edge_length) //check the circumference criterion
-            {
-                if( IsPointInCircle(edgeV0, edgeV1, candV0, candV1) ) //do the swap
-                {
-                    //do the swap here. Erase old triangles
-                    HoleCoverType::iterator it1;
-                    HoleCoverType::iterator it2;
-                    it1 = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v0);
-                    it2 = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v1);
-                    
-                    TriangleCellType newtriangle1;
-                    TriangleCellType newtriangle2;
-                    
-                    //identify vertex order and create new triangles
-                    //forward order 
-                    bool triangles_created = false;
-                    for(int i=0; i<3; i++)
-                    {
-                        std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
-                        std::cout<<"Checking: "<<(*it1).id[i]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[(i+2)%3]<<std::endl;
-                        if( ( (*it1).id[i]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[(i+2)%3]==candidateEdge.v0) )
-                        {
-                            newtriangle1.id[0] = candidateEdge.v0;
-                            newtriangle1.id[1] = edge.v0;
-                            newtriangle1.id[2] = candidateEdge.v1;
-                            newtriangle2.id[0] = candidateEdge.v1;
-                            newtriangle2.id[1] = edge.v1;
-                            newtriangle2.id[2] = candidateEdge.v0;
-                            triangles_created = true;
-                            break;
-                        }
-                    }
-
-                    if(!triangles_created)
-                    {
-                        for(int i=0; i<3; i++)
-                        {
-                            std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
-                            std::cout<<"Checking: "<<(*it1).id[(i+2)%3]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[i]<<std::endl;
-                            if( ( (*it1).id[(i+2)%3]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[i]==candidateEdge.v0) )
-                            {
-                                newtriangle1.id[0] = candidateEdge.v1;
-                                newtriangle1.id[1] = edge.v0;
-                                newtriangle1.id[2] = candidateEdge.v0;
-                                newtriangle2.id[0] = candidateEdge.v0;
-                                newtriangle2.id[1] = edge.v1;
-                                newtriangle2.id[2] = candidateEdge.v1;
-                                triangles_created = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if(triangles_created)
-                    {
-                        //create triangles
-                        localCover.erase(it1); //erase the second trianle
-                        localCover.erase(it2);
-
-                        //add the new triangles
-                        localCover.push_back(newtriangle1);
-                        localCover.push_back(newtriangle2);
-
-                        std::cout<<"Added triangles"<<std::endl;
-                        std::cout<<"T1: "<<newtriangle1.id[0]<<" "<<newtriangle1.id[1]<<" "<<newtriangle1.id[2]<<std::endl;
-                        std::cout<<"T2: "<<newtriangle2.id[0]<<" "<<newtriangle2.id[1]<<" "<<newtriangle2.id[2]<<std::endl;
-                        std::cout<<"edge: "<<edge.v0<<" "<<edge.v1<<std::endl;
-                        std::cout<<"cand: "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
-                        //update connectivity matrix
-                        conn.erase_element( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) );
-                        conn( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
-                    }
-                }
-            }
-                
-        }
-    }
+    RelaxAllCoverEdges(localCover, coverVertices, conn);
     
     
     //
