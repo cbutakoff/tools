@@ -111,6 +111,8 @@ bool FindConnectedVertices(vtkPoints* vertices, const SparseShortMatrixType& con
 bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorType& pt2, const VectorType& ptcheck);
 
 
+HoleCoverType::iterator FindTriangleByPointIds(HoleCoverType& localCover, vtkIdType id0, vtkIdType id1, vtkIdType id2);
+
 //======================================================================
 //
 //
@@ -901,7 +903,63 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
             {
                 if( IsPointInCircle(edgeV0, edgeV1, candV0, candV1) ) //do the swap
                 {
-                    //do the swap here
+                    //do the swap here. Erase old triangles
+                    HoleCoverType::iterator it;
+                    it = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v0);
+                    localCover.erase(it);
+                    it = FindTriangleByPointIds(localCover, edge.v0, edge.v1, candidateEdge.v1);
+                    
+                    TriangleCellType newtriangle1;
+                    TriangleCellType newtriangle2;
+                    
+                    //identify vertex order and create new triangles
+                    //forward order 
+                    bool triangles_created = false;
+                    for(int i=0; i<3; i++)
+                    {
+                        if( ( (*it).id[i]==edge.v0 && (*it).id[(i+1)%2]==edge.v1 && (*it).id[(i+2)%2]==candidateEdge.v0) )
+                        {
+                            newtriangle1.id[0] = candidateEdge.v0;
+                            newtriangle1.id[1] = edge.v0;
+                            newtriangle1.id[2] = candidateEdge.v1;
+                            newtriangle2.id[0] = candidateEdge.v1;
+                            newtriangle2.id[1] = edge.v1;
+                            newtriangle2.id[2] = candidateEdge.v0;
+                            triangles_created = true;
+                            break;
+                        }
+                    }
+
+                    if(!triangles_created)
+                    {
+                        for(int i=0; i<3; i++)
+                        {
+                            if( ( (*it).id[(i+2)%2]==edge.v0 && (*it).id[(i+1)%2]==edge.v1 && (*it).id[i]==candidateEdge.v0) )
+                            {
+                                newtriangle1.id[0] = candidateEdge.v1;
+                                newtriangle1.id[1] = edge.v0;
+                                newtriangle1.id[2] = candidateEdge.v0;
+                                newtriangle2.id[0] = candidateEdge.v0;
+                                newtriangle2.id[1] = edge.v1;
+                                newtriangle2.id[2] = candidateEdge.v1;
+                                triangles_created = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    localCover.erase(it); //erase the second trianle
+
+                    //add the new triangles
+                    localCover.push_back(newtriangle1);
+                    localCover.push_back(newtriangle2);
+
+                    
+                    //update connectivity matrix
+                    conn.erase_element( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) );
+                    conn( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
+                    
+                    //create triangles
                 }
             }
                 
@@ -936,6 +994,22 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
 //        }
 //    }    
 
+    //get the cover with original ids
+    //the correspondence with the original is given by
+    //i -> boundaryVertexIDs[i]
+    refinedCover.clear();
+    for( HoleCoverType::const_iterator it = localCover.begin(); it!=localCover.end(); ++it )
+    {
+        TriangleCellType cell; 
+        
+        //for each id, find its position within boundaryVertexIDs
+        for(int j=0; j<3; j++)
+        {
+            cell.id[j] = boundaryVertexIDs[ (*it).id[j] ];
+        }
+        
+        refinedCover.push_back(cell);
+    }    
 }
 
 
@@ -1110,4 +1184,40 @@ bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorT
         return true;
     else
         return false;    
+}
+
+
+
+
+
+HoleCoverType::iterator FindTriangleByPointIds(HoleCoverType& localCover, vtkIdType id0, vtkIdType id1, vtkIdType id2)
+{   
+    HoleCoverType::iterator retval;
+
+    std::vector<vtkIdType> argumentIDs;
+    argumentIDs.push_back(id0);
+    argumentIDs.push_back(id1);
+    argumentIDs.push_back(id2);
+    std::sort(argumentIDs.begin(), argumentIDs.end());
+
+    std::vector<vtkIdType> IDs;
+
+    for(retval = localCover.begin(); retval!=localCover.end(); retval++)
+    {
+        IDs.clear();
+        IDs.push_back((*retval).id[0]);
+        IDs.push_back((*retval).id[1]);
+        IDs.push_back((*retval).id[2]);
+        std::sort(IDs.begin(), IDs.end());
+        
+        std::vector<vtkIdType> v_intersection;
+        std::set_intersection(argumentIDs.begin(), argumentIDs.end(),
+                              IDs.begin(), IDs.end(),
+                              std::back_inserter(v_intersection));         
+        
+        if(v_intersection.size()==3) //bingo
+            break;
+    }
+    
+    return retval;
 }
