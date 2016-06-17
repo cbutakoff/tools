@@ -10,6 +10,9 @@
 #include <vtkDataSetAttributes.h>
 #include <vtkCellData.h>
 #include <vtkPolyDataWriter.h>
+#include <vtkDataWriter.h>
+#include <vtkWriter.h>
+#include <vtkAlgorithm.h>
 
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/numeric/ublas/triangular.hpp>
@@ -20,10 +23,7 @@
 #include <limits>
 #include <cmath>
 #include <float.h>
-#include <vtkDataWriter.h>
-#include <vtkWriter.h>
-#include <vtkAlgorithm.h>
-
+#include <list>
 
 //#define USE_TRIANGLEAREA_WEIGHT
 
@@ -34,7 +34,7 @@ typedef struct __triangle
 
 
 typedef std::complex<double> AreaAngleMeasureType;
-typedef std::vector<TriangleCellType> HoleCoverType;
+typedef std::list<TriangleCellType> HoleCoverType; //to allow random deletion
 typedef std::vector<HoleCoverType> ArrayOfCoversType;
 
 
@@ -91,6 +91,9 @@ inline bool AreaTriangleMeasureLess(const AreaAngleMeasureType& m1,
         const AreaAngleMeasureType& m2);
 
 void InsertCoversIntoMesh(vtkPolyData* mesh, const ArrayOfCoversType& covers);
+
+void RefineCover(vtkPolyData* mesh, const HoleCoverType& cover, HoleCoverType& refinedCover);
+
 
 //======================================================================
 //
@@ -179,7 +182,9 @@ int main(int argc, char **argv) {
 //            std::cout<<hole_boundaries[i][j].v0<<" "<<hole_boundaries[i][j].v1<<std::endl;
 //        }
 
-        InitialCoverTriangulation(mesh, hole_boundaries[i], covers[i]);        
+        HoleCoverType cover;
+        InitialCoverTriangulation(mesh, hole_boundaries[i], covers[i]); 
+        //RefineCover(mesh, cover, covers[i]);
     }
 
     InsertCoversIntoMesh(mesh, covers);
@@ -701,18 +706,39 @@ void InsertCoversIntoMesh(vtkPolyData* mesh, const ArrayOfCoversType& covers)
 
     //create new cells
     for(vtkIdType i=0; i<covers.size(); i++)
-        for(vtkIdType j=0; j<covers[i].size(); j++)
+        for(HoleCoverType::const_iterator it=covers[i].begin(); it != covers[i].end(); ++it)
         {
             cells->InsertNextCell(3);
-            cells->InsertCellPoint(covers[i][j].id[0]);
-            cells->InsertCellPoint(covers[i][j].id[1]);
-            cells->InsertCellPoint(covers[i][j].id[2]);
+            cells->InsertCellPoint((*it).id[0]);
+            cells->InsertCellPoint((*it).id[1]);
+            cells->InsertCellPoint((*it).id[2]);
             
-            //std::cout<<"Copying: "<<covers[i][j].id[0]<<" "<<covers[i][j].id[1]<<" "<<covers[i][j].id[2]<<std::endl;
+            std::cout<<"Copying: "<<(*it).id[0]<<" "<<(*it).id[1]<<" "<<(*it).id[2]<<std::endl;
         }
 
     //Add the cover to the mesh
     mesh->SetPolys(cells);
     mesh->GetCellData()->Initialize();
     mesh->BuildCells();    
+}
+
+
+
+
+void RefineCover(vtkPolyData* mesh, const HoleCoverType& cover, HoleCoverType& refinedCover)
+{
+    //   algorithm:
+    //   for each vertex on hole boundary calculate s(vi) = average adjacent edge lengths, !!do not consider cover edges!!
+    //2: for each (vi,vj,vk) of the cover 
+    //   get centroid vc
+    //   s(vc) = (s(vi)+s(vj)+s(vk))/3
+    //   (originally) check for all m=i,j,k sqrt(2)*||vc-vm||>max(s(vc),s(vm))
+    //   check for all m=i,j,k 2*||vc-vm||^2 > max(s(vc)^2,s(vm)^2)
+    //          replace (vi,vj,vk) with (vc,vj,vk), (vi,vc,vk), (vi,vj,vc)
+    //          relax edges (vi,vj), (vi,vk), (vj,vk)
+    //          split_created = true
+    //   if !split_created end
+    //4: swaps = Relax all cover edges
+    //   if !swaps go to 2 else go to 4
+    
 }
