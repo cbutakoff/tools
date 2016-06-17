@@ -26,8 +26,17 @@
 
 
 //#define USE_TRIANGLEAREA_WEIGHT
+
+typedef struct __triangle
+{
+    vtkIdType id[3];
+} TriangleCellType;
+
+
 typedef std::complex<double> AreaAngleMeasureType;
-typedef std::vector<vtkSmartPointer<vtkCellArray> > ArrayOfCoversType;
+typedef std::vector<TriangleCellType> HoleCoverType;
+typedef std::vector<HoleCoverType> ArrayOfCoversType;
+
 
 
 typedef Eigen::Vector3d VectorType;
@@ -52,10 +61,10 @@ void SplitHoles(HoleBoundaryType& unordered_edges, ArrayOfBoundariesType& hole_b
 void EdgesToVertexArray(const HoleBoundaryType& ordered_boundary, VertexArrayType& vertices);
 
 
-void InitialCoverTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary, vtkCellArray* cover);
+void InitialCoverTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary, HoleCoverType& cover);
 
 //for explanation of O, see the paper. This is recursive function Trace
-void PopulateCover(vtkCellArray* cover, vtkIdType i, vtkIdType k, const TriangularIDMatrixType& O, const VertexArrayType& vertices);
+void PopulateCover(HoleCoverType& cover, vtkIdType i, vtkIdType k, const TriangularIDMatrixType& O, const VertexArrayType& vertices);
 
 inline double TriangleWeightFunctionArea(const VectorType& u, const VectorType& v, const VectorType& w);
 
@@ -170,7 +179,6 @@ int main(int argc, char **argv) {
 //            std::cout<<hole_boundaries[i][j].v0<<" "<<hole_boundaries[i][j].v1<<std::endl;
 //        }
 
-        covers[i] = vtkSmartPointer<vtkCellArray>::New();
         InitialCoverTriangulation(mesh, hole_boundaries[i], covers[i]);        
     }
 
@@ -328,7 +336,7 @@ inline double TriangleWeightFunctionArea(const VectorType& u, const VectorType& 
     return 0.5 * ((v - u).cross(w - u)).norm();
 }
 
-void InitialCoverTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary, vtkCellArray* cover) {
+void InitialCoverTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boundary, HoleCoverType& cover) {
     //create an array of vertices, this will create an array ending with vertex 0
     VertexArrayType vertices;
     EdgesToVertexArray(ordered_boundary, vertices);
@@ -547,27 +555,45 @@ void InitialCoverTriangulation(vtkPolyData* mesh, HoleBoundaryType& ordered_boun
     //create new cells
     PopulateCover(cover, 0, n - 1, O, vertices);
 
+    //for(vtkIdType j=0; j<cover.size(); j++)
+    //{
+    //    std::cout<<"Verifying: "<<cover[j].id[0]<<" "<<cover[j].id[1]<<" "<<cover[j].id[2]<<std::endl;
+    //}
+    
+    
     //Add the cover to the mesh
     //mesh->SetPolys(cells);
     //mesh->GetCellData()->Initialize();
     //mesh->BuildCells();
 }
 
-void PopulateCover(vtkCellArray* cover, vtkIdType i, vtkIdType k, const TriangularIDMatrixType& O, const VertexArrayType& vertices) {
+void PopulateCover(HoleCoverType& cover, vtkIdType i, vtkIdType k, const TriangularIDMatrixType& O, const VertexArrayType& vertices) {
     if (i + 2 == k) {
-        cover->InsertNextCell(3);
-        cover->InsertCellPoint(vertices[i]); //readjusted the orientation wrt the paper
-        cover->InsertCellPoint(vertices[i + 1]);
-        cover->InsertCellPoint(vertices[k]);
+        //cover->InsertNextCell(3);
+        //cover->InsertCellPoint(vertices[i]); //readjusted the orientation wrt the paper
+        //cover->InsertCellPoint(vertices[i + 1]);
+        //cover->InsertCellPoint(vertices[k]);
+        TriangleCellType triangle;
+        triangle.id[0] = vertices[i];
+        triangle.id[1] = vertices[i+1];
+        triangle.id[2] = vertices[k];
+        cover.push_back(triangle);
+        //std::cout<<"Adding: "<<vertices[i]<<" "<<vertices[i+1]<<" "<<vertices[k]<<std::endl;
     } else {
         const vtkIdType o = O(i, k);
         if (o != i + 1)
             PopulateCover(cover, i, o, O, vertices);
 
-        cover->InsertNextCell(3);
-        cover->InsertCellPoint(vertices[i]); //readjusted the orientation wrt the paper
-        cover->InsertCellPoint(vertices[o]);
-        cover->InsertCellPoint(vertices[k]);
+        //cover->InsertNextCell(3);
+        //cover->InsertCellPoint(vertices[i]); //readjusted the orientation wrt the paper
+        //cover->InsertCellPoint(vertices[o]);
+        //cover->InsertCellPoint(vertices[k]);
+        TriangleCellType triangle;
+        triangle.id[0] = vertices[i];
+        triangle.id[1] = vertices[o];
+        triangle.id[2] = vertices[k];
+        cover.push_back(triangle);
+        //std::cout<<"Adding: "<<vertices[i]<<" "<<vertices[o]<<" "<<vertices[k]<<std::endl;
 
         if (o != k - 1)
             PopulateCover(cover, o, k, O, vertices);
@@ -675,11 +701,14 @@ void InsertCoversIntoMesh(vtkPolyData* mesh, const ArrayOfCoversType& covers)
 
     //create new cells
     for(vtkIdType i=0; i<covers.size(); i++)
-        for(vtkIdType j=0; j<covers[i]->GetNumberOfCells(); j++)
+        for(vtkIdType j=0; j<covers[i].size(); j++)
         {
-            vtkSmartPointer<vtkIdList> ptids = vtkSmartPointer<vtkIdList>::New();
-            covers[i]->GetCell(j, ptids);
-            cells->InsertNextCell(ptids);
+            cells->InsertNextCell(3);
+            cells->InsertCellPoint(covers[i][j].id[0]);
+            cells->InsertCellPoint(covers[i][j].id[1]);
+            cells->InsertCellPoint(covers[i][j].id[2]);
+            
+            //std::cout<<"Copying: "<<covers[i][j].id[0]<<" "<<covers[i][j].id[1]<<" "<<covers[i][j].id[2]<<std::endl;
         }
 
     //Add the cover to the mesh
