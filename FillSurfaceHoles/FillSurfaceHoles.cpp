@@ -26,6 +26,7 @@
 #include <float.h>
 #include <list>
 #include <set>
+#include <stack>
 
 //#define USE_TRIANGLEAREA_WEIGHT
 
@@ -101,6 +102,13 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
 void SaveIsolatedCover(const HoleCoverType& localCover, vtkPoints * coverVertices);
 
 void GetVertexNeighbors(vtkPolyData *mesh, vtkIdType vertexId, std::set<vtkIdType>& connectedVertices);
+
+
+//return false if there is no pair
+bool FindConnectedVertices(vtkPoints* vertices, const SparseShortMatrixType& conn, const EdgeType& edge, EdgeType& intersectingEdge);
+
+//check if ptcheck is inside a circle defined by the 3 points
+bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorType& pt2, const VectorType& ptcheck);
 
 
 //======================================================================
@@ -718,7 +726,7 @@ void InsertCoversIntoMesh(vtkPolyData* mesh, const ArrayOfCoversType& covers) {
     mesh->BuildCells();
 }
 
-void SaveIsolatedCover(const HoleCoverType& localCover, vtkPoints * coverVertices){
+void SaveIsolatedCover(const HoleCoverType& localCover, vtkPoints * coverVertices, const char* filename){
     vtkSmartPointer<vtkCellArray> coverCells = vtkSmartPointer<vtkCellArray>::New();
     for( HoleCoverType::const_iterator it = localCover.begin(); it!=localCover.end(); ++it )
     {
@@ -733,11 +741,12 @@ void SaveIsolatedCover(const HoleCoverType& localCover, vtkPoints * coverVertice
     pd->SetPolys(coverCells);
     
     vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
-    wr->SetFileName("initial_cover.vtk");
+    wr->SetFileName(filename);
     wr->SetInputData(pd);
     wr->Write();
 }
 
+//static int cover_id = 0;
 void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, const HoleCoverType& cover, HoleCoverType& refinedCover) {
 
     //create vertex storage
@@ -774,23 +783,31 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
     }
 
     //Save the cover for debugging
-    //SaveIsolatedCover(localCover, coverVertices);
+//    char name[100];
+//    sprintf(name,"initial_cover%d.vtk",cover_id++);
+//    SaveIsolatedCover(localCover, coverVertices, name);
             
     
     //build upper triangular! vertex connectivity matrix for the cover
-    SparseShortMatrixType conn(cover.size(), cover.size());
+    SparseShortMatrixType conn(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
 
-    for (HoleCoverType::const_iterator it = cover.begin(); it != cover.end(); ++it) {
+    //std::cout<<"Cover size: "<<localCover.size()<<std::endl;
+    for (HoleCoverType::const_iterator it = localCover.begin(); it != localCover.end(); ++it) {
         const vtkIdType id0 = (*it).id[0];
         const vtkIdType id1 = (*it).id[1];
         const vtkIdType id2 = (*it).id[2];
 
-        conn(min(id0, id1), max(id0, id1)) += 1;
-        conn(min(id1, id2), max(id1, id2)) += 1;
-        conn(min(id0, id2), max(id0, id2)) += 1;
+        conn(std::min(id0, id1), std::max(id0, id1)) += 1;
+        conn(std::min(id1, id2), std::max(id1, id2)) += 1;
+        conn(std::min(id0, id2), std::max(id0, id2)) += 1;
+        
+//        std::cout<<"Adding ("<<id0<<", "<<id1<<")"<<std::endl;
+//        std::cout<<"Adding ("<<id1<<", "<<id2<<")"<<std::endl;
+//        std::cout<<"Adding ("<<id0<<", "<<id2<<")"<<std::endl;
+        
+        
+        //std::cout<<"Adding "<<std::min(id0, id1)<<", "<< std::max(id0, id1)<<std::endl;
     }
-
-    
     //create storage for weights
     //this will be synchronized with coverVertices
     std::vector<double> sigmas(coverVertices->GetNumberOfPoints()); 
@@ -832,6 +849,23 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
     //   relax all edges of the cover
     //      iterate through nonzero elements of conn. each element is an edge
     //      create queue of edges
+    typedef SparseShortMatrixType::iterator1 i1_t;
+    typedef SparseShortMatrixType::iterator2 i2_t;
+
+    std::stack<EdgeType> EdgeStack;
+    
+    for (i1_t i1 = conn.begin1(); i1 != conn.end1(); ++i1) 
+        for (i2_t i2 = i1.begin(); i2 != i1.end(); ++i2){
+            if (*i2 == 2) { //only interior edges (i.e. 2 cover triangles share it)
+                EdgeType e;
+                e.v0 = i2.index1();
+                e.v1 = i2.index2();
+                EdgeStack.push(e);
+            }
+            //std::cout<<(*i2)<<" ";
+        }
+    
+    
     //      
     //   for each element in the queue.
     //      take the intersecting edge vertices
@@ -839,6 +873,40 @@ void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, co
     //      check if the 2nd intersecting vertex is inside. If it is swap the edge only if it becomes shorter
     //          compare the length of the old edge and the proposed edge ->swap ->update conn matrix
     //          
+    VectorType edgeV0(3), edgeV1(3), candV0(3), candV1(3); 
+    
+    while(!EdgeStack.empty())
+    {
+        EdgeType edge = EdgeStack.top();
+        EdgeStack.pop();
+        
+        //Using the upper triangular connectivity matrix find the 2 vertices that are connected to the edge
+        EdgeType candidateEdge;
+        if( FindConnectedVertices(coverVertices, conn, edge, candidateEdge) )
+        {
+            
+            //verify if swap is needed, first check the edge length criterion, then circumference
+            //std::cout<<"edge "<<edge.v0<<" "<<edge.v1<<std::endl;
+            //std::cout<<"cand "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
+            
+            coverVertices->GetPoint(edge.v0, edgeV0.data());
+            coverVertices->GetPoint(edge.v1, edgeV1.data());
+            coverVertices->GetPoint(candidateEdge.v0, candV0.data());
+            coverVertices->GetPoint(candidateEdge.v1, candV1.data());
+            
+            const double edge_length = (edgeV0-edgeV1).squaredNorm();
+            const double cand_edge_length = (candV0-candV1).squaredNorm();
+            
+            if(cand_edge_length<edge_length) //check the circumference criterion
+            {
+                if( IsPointInCircle(edgeV0, edgeV1, candV0, candV1) ) //do the swap
+                {
+                    //do the swap here
+                }
+            }
+                
+        }
+    }
     
     
     //
@@ -899,4 +967,147 @@ void GetVertexNeighbors(vtkPolyData *mesh, vtkIdType vertexId, std::set<vtkIdTyp
             }
         }
     }
+}
+
+
+//conn - upper triangular connectivity matrix
+bool FindConnectedVertices(vtkPoints* vertices, const SparseShortMatrixType& conn, const EdgeType& edge, EdgeType& intersectingEdge)
+{
+    typedef SparseShortMatrixType::const_iterator1 i1_t;
+    typedef SparseShortMatrixType::const_iterator2 i2_t;
+
+    //find edge.v0 and edge.v1 neighbors
+    std::vector<vtkIdType> v0neighbors;
+    std::vector<vtkIdType> v1neighbors;
+    for (i1_t i1 = conn.begin1(); i1 != conn.end1(); ++i1) 
+        for (i2_t i2 = i1.begin(); i2 != i1.end(); ++i2){
+            //std::cout<<"("<<i2.index1()<<", "<<i2.index2()<<") = "<<(*i2)<<std::endl;
+            if (*i2 == 2) {
+                if( i2.index1() == edge.v0 )
+                    v0neighbors.push_back(i2.index2());
+                else if( i2.index1() == edge.v1 )
+                    v1neighbors.push_back(i2.index2());
+                
+                if( i2.index2() == edge.v0 )
+                    v0neighbors.push_back(i2.index1());                
+                else if( i2.index2() == edge.v1 )
+                    v1neighbors.push_back(i2.index1());
+            }
+        }
+    
+    //calculate intersection
+    //sets must be ordered
+    std::sort(v0neighbors.begin(), v0neighbors.end());
+    std::sort(v1neighbors.begin(), v1neighbors.end());
+
+
+    std::vector<vtkIdType> v_intersection;
+    std::set_intersection(v0neighbors.begin(), v0neighbors.end(),
+                          v1neighbors.begin(), v1neighbors.end(),
+                          std::back_inserter(v_intersection)); 
+    
+    bool retval = false;
+    if(v_intersection.size()==2)
+    {
+        retval = true; //a pair exists
+        intersectingEdge.v0 = v_intersection[0];
+        intersectingEdge.v1 = v_intersection[1];
+    }
+    
+//    std::cout<<"("<<edge.v0<<", "<<edge.v1<<") Common vertices ("<<v_intersection.size()<<") :";
+//    
+//    for(int i=0; i<v_intersection.size(); i++)
+//    {
+//        std::cout << v_intersection[i] << " ";
+//    }
+//    std::cout<<std::endl;
+//    
+//    std::cout<<"v0neighbors : ";
+//    for(int i=0; i<v0neighbors.size(); i++)
+//    {
+//        std::cout << v0neighbors[i] << " ";
+//    }
+//    std::cout<<std::endl;
+//    
+//    std::cout<<"v1neighbors : ";
+//    for(int i=0; i<v1neighbors.size(); i++)
+//    {
+//        std::cout << v1neighbors[i] << " ";
+//    }
+//    std::cout<<std::endl;
+    return retval;
+}
+
+
+
+
+bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorType& pt2, const VectorType& ptcheck)
+{
+    //https://en.wikipedia.org/wiki/Circumscribed_circle
+    Eigen::Matrix4d M;
+    //if det(M)>0 - inside
+    //if det(M)=0 - on the circle
+    //if det(M)<0 - outside
+
+    //map points to 2 dimensions    
+    Eigen::Matrix<double, 2, 3> T3Dto2D;
+    VectorType v10 = (pt1-pt0).normalized();
+    VectorType v  = pt2-pt0;
+    VectorType n = v.cross( v10 );
+    VectorType v20 = v10.cross(n).normalized();
+    
+    
+    T3Dto2D.row(0) = v10;
+    T3Dto2D.row(1) = v20;
+    
+    VectorType A(2);
+    A.fill(0); // = T3Dto2D * (pt0-pt0);
+    Eigen::Matrix<double, 2, 1> B = T3Dto2D * (pt1-pt0);
+    Eigen::Matrix<double, 2, 1> C = T3Dto2D * (pt2-pt0);
+    Eigen::Matrix<double, 2, 1> v1 = T3Dto2D * (ptcheck-pt0);
+    
+    M(0,0) = v1.squaredNorm();
+    M(1,0) = A.squaredNorm();
+    M(2,0) = B.col(0).squaredNorm();
+    M(3,0) = C.col(0).squaredNorm();
+    
+//    std::cout<<"B: "<<B<<std::endl;
+//    std::cout<<"T3Dto2D * (pt1-pt0): "<<T3Dto2D * (pt1-pt0)<<std::endl;
+//    std::cout<<"C: "<<C<<std::endl;
+//    std::cout<<"v1: "<<v1<<std::endl;
+    
+    M(0,1) = v1[0]; 
+    M(1,1) = A[0];
+    M(2,1) = B[0];
+    M(3,1) = C[0];
+    
+    M(0,2) = v1[1];
+    M(1,2) = A[1];
+    M(2,2) = B[1];
+    M(3,2) = C[1];
+
+    M(0,3) = 1;
+    M(1,3) = 1;
+    M(2,3) = 1;
+    M(3,3) = 1;
+    
+//    std::cout<<"3DPoints 1: "<<pt0<<" | "<<pt1<<" | "<<pt2<<" | "<<ptcheck<<std::endl;
+//    std::cout<<"M: "<<M<<std::endl;
+    
+    
+//    M = [v*v' p(1) p(2) 1; ...
+//     A*A' A(1) A(2) 1; ...
+//     B*B' B(1) B(2) 1; ...
+//     C*C' C(1) C(2) 1];
+    
+    const double det = M.determinant();
+
+//    std::cout<<"Det: "<<det<<std::endl;
+//    exit(0);
+
+    
+    if(det > 0)
+        return true;
+    else
+        return false;    
 }
