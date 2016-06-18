@@ -27,7 +27,7 @@ Example image (left - DT, right - red blob):
 
 
 ##FillSurfaceHoles
-Detects and fills holes on the surface. Currently under construction. Current version implements P. Liepa "Filling Holes in Meshes" without smoothing. To be added soon. Here's a sample result
+Detects and fills holes on the surface. Currently under construction. Current version implements P. Liepa "Filling Holes in Meshes" without smoothing. Already has subdivision. Smoothing to be added soon. Here's a sample result
 
 ![Hole Filling Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/HoleFilling.gif)
 
