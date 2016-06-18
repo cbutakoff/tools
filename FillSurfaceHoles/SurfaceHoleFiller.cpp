@@ -36,13 +36,6 @@ PURPOSE.  See the above copyright notice for more information.
 //#define USE_TRIANGLEAREA_WEIGHT
 
 
-SurfaceHoleFiller::SurfaceHoleFiller()
-{
-    m_performRefinement = true;
-    m_performSmoothing = true;
-}
-
-
 
 void SurfaceHoleFiller::Update()
 {
@@ -78,32 +71,20 @@ void SurfaceHoleFiller::Update()
         //        }
 
         HoleCoverType cover;
-        if (this->m_performRefinement)
-        {
-            vtkSmartPointer<vtkPolyData> refinedCover = vtkSmartPointer<vtkPolyData>::New();
-            InitialCoverTriangulation(m_outputMesh, hole_boundaries[i], cover);
-            RefineCover(m_outputMesh, hole_boundaries[i], cover);
 
-            vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
-            wr->SetFileName("closed.vtk");
-            wr->SetInputData(m_outputMesh);
-            wr->Write();
+        vtkSmartPointer<vtkPolyData> refinedCover = vtkSmartPointer<vtkPolyData>::New();
+        InitialCoverTriangulation(m_outputMesh, hole_boundaries[i], cover);
+        
+        //updates the mesh inside
+        RefineCover(m_outputMesh, hole_boundaries[i], cover);
 
-        }
-        else
-        {
-            InitialCoverTriangulation(m_outputMesh, hole_boundaries[i], covers[i]);
-        }
+//            vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
+//            wr->SetFileName("closed.vtk");
+//            wr->SetInputData(m_outputMesh);
+//            wr->Write();
+
     }
 
-    
-    //this is a bit ugly, needs to be done in a nicer way.
-    //I assume that nobody really will use this program without refinement, so this will
-    //never get executed. Maybe I will even remove the choice completely.
-    if(!this->m_performRefinement)
-    {
-        InsertCoversIntoMesh(m_outputMesh, covers);    
-    }
 }
 
 
@@ -589,28 +570,7 @@ bool SurfaceHoleFiller::AreaTriangleMeasureLess(const AreaAngleMeasureType& m1,
     return less;
 }
 
-void SurfaceHoleFiller::InsertCoversIntoMesh(vtkPolyData* mesh, const ArrayOfCoversType& covers) const {
-    vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
 
-    for (vtkIdType i = 0; i < mesh->GetNumberOfCells(); i++)
-        cells->InsertNextCell(mesh->GetCell(i));
-
-    //create new cells
-    for (vtkIdType i = 0; i < covers.size(); i++)
-        for (HoleCoverType::const_iterator it = covers[i].begin(); it != covers[i].end(); ++it) {
-            cells->InsertNextCell(3);
-            cells->InsertCellPoint((*it).id[0]);
-            cells->InsertCellPoint((*it).id[1]);
-            cells->InsertCellPoint((*it).id[2]);
-
-            std::cout << "Copying: " << (*it).id[0] << " " << (*it).id[1] << " " << (*it).id[2] << std::endl;
-        }
-
-    //Add the cover to the mesh
-    mesh->SetPolys(cells);
-    mesh->GetCellData()->Initialize();
-    mesh->BuildCells();
-}
 
 
 void SurfaceHoleFiller::SaveIsolatedCover(const HoleCoverType& localCover, vtkPoints * coverVertices, const char* filename) const {
@@ -633,7 +593,7 @@ void SurfaceHoleFiller::SaveIsolatedCover(const HoleCoverType& localCover, vtkPo
     wr->Write();
 }
 
-static int cover_id = 0;
+//static int cover_id = 0; //for debugging output
 bool SurfaceHoleFiller::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge,
         vtkPoints* coverVertices, HoleCoverType& localCover, SparseShortMatrixType& conn) const {
     VectorType edgeV0, edgeV1, candV0, candV1; 
@@ -666,8 +626,8 @@ bool SurfaceHoleFiller::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType
             bool triangles_created = false;
             for(int i=0; i<3; i++)
             {
-                std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
-                std::cout<<"Checking: "<<(*it1).id[i]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[(i+2)%3]<<std::endl;
+//                std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
+//                std::cout<<"Checking: "<<(*it1).id[i]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[(i+2)%3]<<std::endl;
                 if( ( (*it1).id[i]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[(i+2)%3]==candidateEdge.v0) )
                 {
                     newtriangle1.id[0] = candidateEdge.v0;
@@ -685,8 +645,8 @@ bool SurfaceHoleFiller::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType
             {
                 for(int i=0; i<3; i++)
                 {
-                    std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
-                    std::cout<<"Checking: "<<(*it1).id[(i+2)%3]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[i]<<std::endl;
+//                    std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
+//                    std::cout<<"Checking: "<<(*it1).id[(i+2)%3]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[i]<<std::endl;
                     if( ( (*it1).id[(i+2)%3]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[i]==candidateEdge.v0) )
                     {
                         newtriangle1.id[0] = candidateEdge.v1;
@@ -711,11 +671,11 @@ bool SurfaceHoleFiller::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType
                 localCover.push_back(newtriangle1);
                 localCover.push_back(newtriangle2);
                 
-                std::cout<<"Added triangles"<<std::endl;
-                std::cout<<"T1: "<<newtriangle1.id[0]<<" "<<newtriangle1.id[1]<<" "<<newtriangle1.id[2]<<std::endl;
-                std::cout<<"T2: "<<newtriangle2.id[0]<<" "<<newtriangle2.id[1]<<" "<<newtriangle2.id[2]<<std::endl;
-                std::cout<<"edge: "<<edge.v0<<" "<<edge.v1<<std::endl;
-                std::cout<<"cand: "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
+//                std::cout<<"Added triangles"<<std::endl;
+//                std::cout<<"T1: "<<newtriangle1.id[0]<<" "<<newtriangle1.id[1]<<" "<<newtriangle1.id[2]<<std::endl;
+//                std::cout<<"T2: "<<newtriangle2.id[0]<<" "<<newtriangle2.id[1]<<" "<<newtriangle2.id[2]<<std::endl;
+//                std::cout<<"edge: "<<edge.v0<<" "<<edge.v1<<std::endl;
+//                std::cout<<"cand: "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
                 //update connectivity matrix
                 conn.coeffRef( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) ) = 0;
                 conn.coeffRef( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
@@ -797,18 +757,18 @@ bool SurfaceHoleFiller::IsTriangleSplitRequired(vtkPoints* coverVertices, const 
     const double dist2_Vc_Vj = 2*(Vc-Vj).squaredNorm();
     const double dist2_Vc_Vk = 2*(Vc-Vk).squaredNorm();
     
-    std::cout<<"Splitting triangle ("<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
-    std::cout<<"S(vi,vj,vk)="<<sigmas[idVi]<<" "<<sigmas[idVj]<<" "<<sigmas[idVk]<<std::endl;
-    std::cout<<"S(vc)="<<Svc<<std::endl;
-    std::cout<<"||Vc-Vi||="<<std::sqrt(dist2_Vc_Vi)<<std::endl;
-    std::cout<<"||Vc-Vj||="<<std::sqrt(dist2_Vc_Vj)<<std::endl;
-    std::cout<<"||Vc-Vk||="<<std::sqrt(dist2_Vc_Vk)<<std::endl;
+//    std::cout<<"Splitting triangle ("<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
+//    std::cout<<"S(vi,vj,vk)="<<sigmas[idVi]<<" "<<sigmas[idVj]<<" "<<sigmas[idVk]<<std::endl;
+//    std::cout<<"S(vc)="<<Svc<<std::endl;
+//    std::cout<<"||Vc-Vi||="<<std::sqrt(dist2_Vc_Vi)<<std::endl;
+//    std::cout<<"||Vc-Vj||="<<std::sqrt(dist2_Vc_Vj)<<std::endl;
+//    std::cout<<"||Vc-Vk||="<<std::sqrt(dist2_Vc_Vk)<<std::endl;
     
     const bool split_required = ( dist2_Vc_Vi > std::max(Svc2, Svi2) &&
             dist2_Vc_Vj > std::max(Svc2, Svj2) && 
             dist2_Vc_Vk > std::max(Svc2, Svk2) );
     
-    std::cout<<"Split ?: "<<split_required<<std::endl;
+//    std::cout<<"Split ?: "<<split_required<<std::endl;
     return split_required;
 }
 
@@ -849,9 +809,9 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     }
 
     //Save the cover for debugging
-    char name[100];
-    sprintf(name,"initial_cover%d.vtk",cover_id++);
-    SaveIsolatedCover(localCover, coverVertices, name);
+//    char name[100];
+//    sprintf(name,"initial_cover%d.vtk",cover_id++);
+//    SaveIsolatedCover(localCover, coverVertices, name);
             
     
     //build upper triangular! vertex connectivity matrix for the cover
@@ -948,7 +908,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     {
         bool TriangleSplitted = false; //algorithm stops when no more splits are required
         
-        for(HoleCoverType::iterator coverIt = localCover.begin(); coverIt!=localCover.end(); coverIt++)    
+        for(HoleCoverType::iterator coverIt = localCover.begin(); coverIt!=localCover.end(); ++coverIt)    
         {
             //calculate centroid
             const vtkIdType idVi = (*coverIt).id[0];
@@ -958,12 +918,12 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
             VectorType Vc;
             double Svc;
             
-            std::cout<<"Splitting verifying: "<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
+//            std::cout<<"Splitting verifying: "<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
             if( IsTriangleSplitRequired(coverVertices, sigmas, idVi, idVj, idVk, Vc, Svc) )
             {  //create new triangles
                 //erase old triangle
                 
-                std::cout<<"Splitting confirmed: "<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
+//                std::cout<<"Splitting confirmed: "<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
                 
                 localCover.erase(coverIt);
                 //add new vertex
@@ -993,7 +953,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
                     conn.coeffRef(std::min(tri3.id[i], tri3.id[(i+1)%3]), std::max(tri3.id[i], tri3.id[(i+1)%3])) = 2;
                 }
 
-                std::cout<<conn<<std::endl;
+//                std::cout<<conn<<std::endl;
 
                 //relax edges (vi,vj), (vi,vk), (vj,vk)
                 EdgeType edge; edge.v0 = idVi; edge.v1 = idVj; 
@@ -1003,7 +963,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
                 
                 TriangleSplitted = true;
                 
-                SaveIsolatedCover(localCover, coverVertices, "refined.vtk");
+//                SaveIsolatedCover(localCover, coverVertices, "refined.vtk");
             }
 
         }
@@ -1046,10 +1006,11 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     //the correspondence with the original is given by
     //i -> boundaryVertexIDs[i]
     
-    SaveIsolatedCover(localCover, coverVertices, "refined.vtk");
+//    SaveIsolatedCover(localCover, coverVertices, "refined.vtk");
     
     
-    std::cout<<"Copying final refined cover"<<std::endl;
+//    std::cout<<"Copying final refined cover"<<std::endl;
+
     vtkCellArray* mesh_cells = m_outputMesh->GetPolys();
     vtkPoints* mesh_points = m_outputMesh->GetPoints();
     
@@ -1070,21 +1031,13 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
         mesh_cells->InsertNextCell(3);
         for(int j=0; j<3; j++)
         {
-            //std::cout<<(*it).id[j]<<" "<<std::endl;
             const vtkIdType local_id = (*it).id[j];
-            //cell.id[j] = boundaryVertexIDs[ local_id ];
-            //std::cout<<local_id<<" "<<std::endl;
             
-            //if local_id < boundaryVertexIDs.size() - retrieve the id from the original mesh
-            vtkIdType targetId;
-//            if( local_id < boundaryVertexIDs.size() )
-                targetId = boundaryVertexIDs[ local_id ];
-//            else
-//                targetId = nOriginalVertices+local_id;
+            const vtkIdType targetId = boundaryVertexIDs[ local_id ];
 
             mesh_cells->InsertCellPoint( targetId );
             
-            std::cout<<"Id "<<local_id<<" converted to "<<targetId<<std::endl;
+//            std::cout<<"Id "<<local_id<<" converted to "<<targetId<<std::endl;
         }
         
         //refinedCover.push_back(cell);
@@ -1094,10 +1047,10 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     m_outputMesh->GetPointData()->Initialize();
     m_outputMesh->BuildCells();
     
-    vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
-    wr->SetFileName("integrated.vtk");
-    wr->SetInputData(m_outputMesh);
-    wr->Write();
+//    vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
+//    wr->SetFileName("integrated.vtk");
+//    wr->SetInputData(m_outputMesh);
+//    wr->Write();
 }
 
 
@@ -1141,7 +1094,7 @@ bool SurfaceHoleFiller::FindConnectedVertices(vtkPoints* vertices,
     std::vector<vtkIdType> ids;
     bool found_edge = false;
     
-    std::cout<<"Edge orthogonal to ("<<edge.v0<<" "<<edge.v1<<")"<<std::endl;
+//    std::cout<<"Edge orthogonal to ("<<edge.v0<<" "<<edge.v1<<")"<<std::endl;
     
     //iterate through the triangles and find the 2 sharing the edge
     for( HoleCoverType::const_iterator it = localCover.begin(); it!=localCover.end(); it++ )
@@ -1174,13 +1127,13 @@ bool SurfaceHoleFiller::FindConnectedVertices(vtkPoints* vertices,
     {
         intersectingEdge.v0 = ids[0];
         intersectingEdge.v1 = ids[1];
-        std::cout<<"("<<ids.size()<<") Triangles adjacent to ("<<intersectingEdge.v0<<" "<<intersectingEdge.v1<<")"<<std::endl;
+//        std::cout<<"("<<ids.size()<<") Triangles adjacent to ("<<intersectingEdge.v0<<" "<<intersectingEdge.v1<<")"<<std::endl;
     }
     else
     {
         intersectingEdge.v0 = -1;
         intersectingEdge.v1 = -1;
-        std::cout<<"("<<ids.size()<<") No alternative edge"<<std::endl;
+//        std::cout<<"("<<ids.size()<<") No alternative edge"<<std::endl;
     }
     
     return found_edge;
@@ -1210,7 +1163,6 @@ bool SurfaceHoleFiller::IsPointInCircle(const VectorType& pt0,
     Vector2DType A;
     A.fill(0); // = T3Dto2D * (pt0-pt0);
     
-    std::cout<<T3Dto2D * (pt1-pt0);
     Eigen::Matrix<double, 2, 1> B = T3Dto2D * (pt1-pt0);
     Eigen::Matrix<double, 2, 1> C = T3Dto2D * (pt2-pt0);
     Eigen::Matrix<double, 2, 1> v1 = T3Dto2D * (ptcheck-pt0);
@@ -1281,7 +1233,7 @@ HoleCoverType::iterator SurfaceHoleFiller::FindTriangleByPointIds(HoleCoverType&
 
     std::vector<vtkIdType> IDs;
 
-    std::cout<<"To find: "<<argumentIDs[0]<<" "<<argumentIDs[1]<<" "<<argumentIDs[2]<<std::endl;
+//    std::cout<<"To find: "<<argumentIDs[0]<<" "<<argumentIDs[1]<<" "<<argumentIDs[2]<<std::endl;
     
     for(retval = localCover.begin(); retval!=localCover.end(); retval++)
     {
@@ -1291,7 +1243,7 @@ HoleCoverType::iterator SurfaceHoleFiller::FindTriangleByPointIds(HoleCoverType&
         IDs.push_back((*retval).id[2]);
         std::sort(IDs.begin(), IDs.end());
 
-        std::cout<<"Comparing to: "<<IDs[0]<<" "<<IDs[1]<<" "<<IDs[2]<<std::endl;
+//        std::cout<<"Comparing to: "<<IDs[0]<<" "<<IDs[1]<<" "<<IDs[2]<<std::endl;
 
         
         std::vector<vtkIdType> v_intersection;

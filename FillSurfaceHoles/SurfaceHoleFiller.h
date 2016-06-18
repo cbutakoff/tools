@@ -63,21 +63,9 @@ public:
 
     vtkPolyData* GetOutput() {return m_outputMesh; };
     
-    void SetRefinement(bool v) {m_performRefinement=v;};
-    void RefinementOn() {m_performRefinement=true;};
-    void RefinementOff() {m_performRefinement=false;};
-
-    void SetSmoothing(bool v) {m_performSmoothing=v;};
-    void SmoothingOn() {m_performSmoothing=true;};
-    void SmoothingOff() {m_performSmoothing=false;};
-
-    
-    SurfaceHoleFiller();
 protected:
     
 private:
-    bool m_performRefinement;
-    bool m_performSmoothing;
     
     vtkSmartPointer<vtkPolyData> m_inputMesh;
     vtkSmartPointer<vtkPolyData> m_outputMesh;
@@ -120,8 +108,7 @@ private:
     bool AreaTriangleMeasureLess(const AreaAngleMeasureType& m1,
             const AreaAngleMeasureType& m2) const;
 
-    void InsertCoversIntoMesh(vtkPolyData* mesh, const ArrayOfCoversType& covers) const;
-
+    //modifies the mesh
     void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, const HoleCoverType& cover) const;
     
     //returns also Vc - centroid, and Svc - centroid's weight
