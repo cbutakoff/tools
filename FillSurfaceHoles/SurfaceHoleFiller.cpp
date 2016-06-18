@@ -83,6 +83,12 @@ void SurfaceHoleFiller::Update()
             vtkSmartPointer<vtkPolyData> refinedCover = vtkSmartPointer<vtkPolyData>::New();
             InitialCoverTriangulation(m_outputMesh, hole_boundaries[i], cover);
             RefineCover(m_outputMesh, hole_boundaries[i], cover);
+
+            vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
+            wr->SetFileName("closed.vtk");
+            wr->SetInputData(m_outputMesh);
+            wr->Write();
+
         }
         else
         {
@@ -992,7 +998,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
                 //relax edges (vi,vj), (vi,vk), (vj,vk)
                 EdgeType edge; edge.v0 = idVi; edge.v1 = idVj; 
                 EdgeType candidateEdge;
-                if( FindConnectedVertices(coverVertices, conn, edge, candidateEdge) )
+                if( FindConnectedVertices(coverVertices, localCover, edge, candidateEdge) )
                     RelaxEdgeIfPossible(edge, candidateEdge, coverVertices, localCover, conn);
                 
                 TriangleSplitted = true;
@@ -1128,11 +1134,55 @@ void SurfaceHoleFiller::GetVertexNeighbors(vtkPolyData *mesh, vtkIdType vertexId
 
 //conn - upper triangular connectivity matrix
 bool SurfaceHoleFiller::FindConnectedVertices(vtkPoints* vertices, 
-        const HoleCoverType localCover, const EdgeType& edge, 
+        const HoleCoverType& localCover, const EdgeType& edge, 
         EdgeType& intersectingEdge) const {
 
+    std::vector<vtkIdType> ids;
+    bool found_edge = false;
     
-    return retval;
+    std::cout<<"Edge orthogonal to ("<<edge.v0<<" "<<edge.v1<<")"<<std::endl;
+    
+    //iterate through the triangles and find the 2 sharing the edge
+    for( HoleCoverType::const_iterator it = localCover.begin(); it!=localCover.end(); it++ )
+    {
+        int mask[] = {0,0,0}; //0 - vertex not used, 1 - vertex used
+        for(int i=0; i<3; i++)
+            if( (*it).id[i]==edge.v0 )
+            {
+                mask[i] = 1;
+                for(int j=0; j<3; j++)
+                    if( (*it).id[j]==edge.v1 )
+                    {
+                        mask[j]=1;
+                        
+                        //triangle found
+                        for(int k=0; k<3; k++)
+                            if(mask[k]==0)
+                            {
+                                ids.push_back( (*it).id[k] );
+                                k=4; //continue to the next triangle
+                                j=4;
+                                i=4;
+                                found_edge = true; 
+                            }
+                    }
+            }
+    }
+
+    if (found_edge)
+    {
+        intersectingEdge.v0 = ids[0];
+        intersectingEdge.v1 = ids[1];
+        std::cout<<"("<<ids.size()<<") Triangles adjacent to ("<<intersectingEdge.v0<<" "<<intersectingEdge.v1<<")"<<std::endl;
+    }
+    else
+    {
+        intersectingEdge.v0 = -1;
+        intersectingEdge.v1 = -1;
+        std::cout<<"("<<ids.size()<<") No alternative edge"<<std::endl;
+    }
+    
+    return found_edge;
 }
 
 

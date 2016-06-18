@@ -137,7 +137,7 @@ private:
 
 
     //return false if there is no pair
-    bool FindConnectedVertices(vtkPoints* vertices, const SparseShortMatrixType& conn, const EdgeType& edge, EdgeType& intersectingEdge) const;
+    bool FindConnectedVertices(vtkPoints* vertices, const HoleCoverType& localCover, const EdgeType& edge, EdgeType& intersectingEdge) const;
 
     //check if ptcheck is inside a circle defined by the 3 points
     bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorType& pt2, const VectorType& ptcheck) const;
