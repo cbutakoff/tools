@@ -121,7 +121,12 @@ private:
 
     void InsertCoversIntoMesh(vtkPolyData* mesh, const ArrayOfCoversType& covers) const;
 
-    void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, const HoleCoverType& cover, HoleCoverType& refinedCover) const;
+    void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, const HoleCoverType& cover) const;
+    
+    //returns also Vc - centroid, and Svc - centroid's weight
+    bool IsTriangleSplitRequired(vtkPoints* coverVertices, const std::vector<double>& sigmas, const vtkIdType idVi, 
+            const vtkIdType idVj, const vtkIdType idVk, VectorType& Vc, double& Svc) const;
+
 
     //save the cover for debugging mostly. the localCover ids should point to the elements of the 
     //coverVertices array
@@ -144,10 +149,12 @@ private:
     //conn - upper! triangular connectivity matrix, will be updated
     //coverVertices - vertex coordinates of the cover
     //localCover - cover with ids into coverVertices, will be updated
-    void FlipEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, vtkPoints* coverVertices, 
+    //returns true if at least one swap was performed
+    bool RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, vtkPoints* coverVertices, 
                                 HoleCoverType& localCover, SparseShortMatrixType& conn) const;
 
-    void RelaxAllCoverEdges(HoleCoverType& localCover, vtkPoints * coverVertices, SparseShortMatrixType& conn) const;    
+    //returns true if at least one swap was performed
+    bool RelaxAllCoverEdges(HoleCoverType& localCover, vtkPoints * coverVertices, SparseShortMatrixType& conn) const;    
 };
 
 
