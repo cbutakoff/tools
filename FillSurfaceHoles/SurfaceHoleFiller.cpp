@@ -27,6 +27,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <float.h>
 
 
+
 #include <stack>
 
 //To create initial cover, by default the triangle areas augmented by dihedral angles are used.
@@ -127,29 +128,27 @@ void SurfaceHoleFiller::FindHoles(vtkPolyData *mesh, HoleBoundaryType& unordered
             const vtkIdType pt0 = edge->GetPointId(0);
             const vtkIdType pt1 = edge->GetPointId(1);
             if (pt0 < pt1) //to conserve memory due to symmetry
-                adj(pt0, pt1) += 1;
+                adj.coeffRef(pt0, pt1) += 1;
             else
-                adj(pt1, pt0) -= 1; //to keep track of orientation
+                adj.coeffRef(pt1, pt0) -= 1; //to keep track of orientation
         }
     }
 
     //std::cout << adj << std::endl;
     //iterate over every edge that adj(i,j)==1, these are  the boundaries
-    typedef SparseShortMatrixType::iterator1 i1_t;
-    typedef SparseShortMatrixType::iterator2 i2_t;
 
-    for (i1_t i1 = adj.begin1(); i1 != adj.end1(); ++i1) {
-        for (i2_t i2 = i1.begin(); i2 != i1.end(); ++i2)
-            if (*i2 != 0) {
+    for (vtkIdType k=0; k<adj.outerSize(); ++k) {        
+        for (SparseShortMatrixType::InnerIterator it(adj,k); it; ++it)
+            if ( it.value() != 0) {
                 EdgeType edge;
 
-                if (*i2 > 0) {
-                    edge.v0 = i2.index1();
-                    edge.v1 = i2.index2();
+                if ( it.value() > 0) {
+                    edge.v0 = it.row();
+                    edge.v1 = it.col();
                 } else //orientation was reversed
                 {
-                    edge.v0 = i2.index2();
-                    edge.v1 = i2.index1();
+                    edge.v0 = it.col();
+                    edge.v1 = it.row();
                 }
 
                 //                double n[3];
@@ -712,8 +711,8 @@ bool SurfaceHoleFiller::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType
                 std::cout<<"edge: "<<edge.v0<<" "<<edge.v1<<std::endl;
                 std::cout<<"cand: "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
                 //update connectivity matrix
-                conn.erase_element( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) );
-                conn( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
+                conn.coeffRef( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) ) = 0;
+                conn.coeffRef( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
                 
                 swap_performed = true;
             }
@@ -725,17 +724,16 @@ bool SurfaceHoleFiller::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType
 
 bool SurfaceHoleFiller::RelaxAllCoverEdges(HoleCoverType& localCover, 
         vtkPoints * coverVertices, SparseShortMatrixType& conn) const {
-    typedef SparseShortMatrixType::iterator1 i1_t;
-    typedef SparseShortMatrixType::iterator2 i2_t;
+
     
     std::stack<EdgeType> EdgeStack;
     
-    for (i1_t i1 = conn.begin1(); i1 != conn.end1(); ++i1) 
-        for (i2_t i2 = i1.begin(); i2 != i1.end(); ++i2){
-            if (*i2 == 2) { //only interior edges (i.e. 2 cover triangles share it)
+    for (int k=0; k<conn.outerSize(); ++k)
+        for (SparseShortMatrixType::InnerIterator it(conn,k); it; ++it)  {
+            if ( it.value() == 2) { //only interior edges (i.e. 2 cover triangles share it)
                 EdgeType e;
-                e.v0 = i2.index1();
-                e.v1 = i2.index2();
+                e.v0 = it.row();
+                e.v1 = it.col();
                 EdgeStack.push(e);
             }
             //std::cout<<(*i2)<<" ";
@@ -760,7 +758,7 @@ bool SurfaceHoleFiller::RelaxAllCoverEdges(HoleCoverType& localCover,
         
         //Using the upper triangular connectivity matrix find the 2 vertices that are connected to the edge
         EdgeType candidateEdge;
-        if( FindConnectedVertices(coverVertices, conn, edge, candidateEdge) )
+        if( FindConnectedVertices(coverVertices, localCover, edge, candidateEdge) )
         {
             
             //verify if swap is needed, first check the edge length criterion, then circumference
@@ -859,9 +857,9 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
         const vtkIdType id1 = (*it).id[1];
         const vtkIdType id2 = (*it).id[2];
 
-        conn(std::min(id0, id1), std::max(id0, id1)) += 1;
-        conn(std::min(id1, id2), std::max(id1, id2)) += 1;
-        conn(std::min(id0, id2), std::max(id0, id2)) += 1;
+        conn.coeffRef(std::min(id0, id1), std::max(id0, id1)) += 1;
+        conn.coeffRef(std::min(id1, id2), std::max(id1, id2)) += 1;
+        conn.coeffRef(std::min(id0, id2), std::max(id0, id2)) += 1;
         
 //        std::cout<<"Adding ("<<id0<<", "<<id1<<")"<<std::endl;
 //        std::cout<<"Adding ("<<id1<<", "<<id2<<")"<<std::endl;
@@ -964,7 +962,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
                 localCover.erase(coverIt);
                 //add new vertex
                 const vtkIdType idVc = coverVertices->InsertNextPoint(Vc.data());
-                sigmas.push_back(Svc);
+                
                 
                 //replace (vi,vj,vk) with (vc,vj,vk), (vi,vc,vk), (vi,vj,vc)
                 TriangleCellType tri1; tri1.id[0]=idVc; tri1.id[1]=idVj; tri1.id[2]=idVk;
@@ -976,6 +974,21 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
                 localCover.push_back(tri2);
                 localCover.push_back(tri3);
                 
+
+                //Update matrices
+                sigmas.push_back(Svc);
+                
+                //new point added - need resize
+                conn.conservativeResize(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
+                for(int i=0; i<3; i++)
+                {
+                    conn.coeffRef(std::min(tri1.id[i], tri1.id[(i+1)%3]), std::max(tri1.id[i], tri1.id[(i+1)%3])) = 2;
+                    conn.coeffRef(std::min(tri2.id[i], tri2.id[(i+1)%3]), std::max(tri2.id[i], tri2.id[(i+1)%3])) = 2;
+                    conn.coeffRef(std::min(tri3.id[i], tri3.id[(i+1)%3]), std::max(tri3.id[i], tri3.id[(i+1)%3])) = 2;
+                }
+
+                std::cout<<conn<<std::endl;
+
                 //relax edges (vi,vj), (vi,vk), (vj,vk)
                 EdgeType edge; edge.v0 = idVi; edge.v1 = idVj; 
                 EdgeType candidateEdge;
@@ -1115,70 +1128,10 @@ void SurfaceHoleFiller::GetVertexNeighbors(vtkPolyData *mesh, vtkIdType vertexId
 
 //conn - upper triangular connectivity matrix
 bool SurfaceHoleFiller::FindConnectedVertices(vtkPoints* vertices, 
-        const SparseShortMatrixType& conn, const EdgeType& edge, 
+        const HoleCoverType localCover, const EdgeType& edge, 
         EdgeType& intersectingEdge) const {
-    typedef SparseShortMatrixType::const_iterator1 i1_t;
-    typedef SparseShortMatrixType::const_iterator2 i2_t;
 
-    //find edge.v0 and edge.v1 neighbors
-    std::vector<vtkIdType> v0neighbors;
-    std::vector<vtkIdType> v1neighbors;
-    for (i1_t i1 = conn.begin1(); i1 != conn.end1(); ++i1) 
-        for (i2_t i2 = i1.begin(); i2 != i1.end(); ++i2){
-            //std::cout<<"("<<i2.index1()<<", "<<i2.index2()<<") = "<<(*i2)<<std::endl;
-            if (*i2 == 2) {
-                if( i2.index1() == edge.v0 )
-                    v0neighbors.push_back(i2.index2());
-                else if( i2.index1() == edge.v1 )
-                    v1neighbors.push_back(i2.index2());
-                
-                if( i2.index2() == edge.v0 )
-                    v0neighbors.push_back(i2.index1());                
-                else if( i2.index2() == edge.v1 )
-                    v1neighbors.push_back(i2.index1());
-            }
-        }
     
-    //calculate intersection
-    //sets must be ordered
-    std::sort(v0neighbors.begin(), v0neighbors.end());
-    std::sort(v1neighbors.begin(), v1neighbors.end());
-
-
-    std::vector<vtkIdType> v_intersection;
-    std::set_intersection(v0neighbors.begin(), v0neighbors.end(),
-                          v1neighbors.begin(), v1neighbors.end(),
-                          std::back_inserter(v_intersection)); 
-    
-    bool retval = false;
-    if(v_intersection.size()==2)
-    {
-        retval = true; //a pair exists
-        intersectingEdge.v0 = v_intersection[0];
-        intersectingEdge.v1 = v_intersection[1];
-    }
-    
-//    std::cout<<"("<<edge.v0<<", "<<edge.v1<<") Common vertices ("<<v_intersection.size()<<") :";
-//    
-//    for(int i=0; i<v_intersection.size(); i++)
-//    {
-//        std::cout << v_intersection[i] << " ";
-//    }
-//    std::cout<<std::endl;
-//    
-//    std::cout<<"v0neighbors : ";
-//    for(int i=0; i<v0neighbors.size(); i++)
-//    {
-//        std::cout << v0neighbors[i] << " ";
-//    }
-//    std::cout<<std::endl;
-//    
-//    std::cout<<"v1neighbors : ";
-//    for(int i=0; i<v1neighbors.size(); i++)
-//    {
-//        std::cout << v1neighbors[i] << " ";
-//    }
-//    std::cout<<std::endl;
     return retval;
 }
 
@@ -1212,9 +1165,9 @@ bool SurfaceHoleFiller::IsPointInCircle(const VectorType& pt0,
     Eigen::Matrix<double, 2, 1> v1 = T3Dto2D * (ptcheck-pt0);
     
     Eigen::Matrix4d M;
-//    if det(M)>0 - inside
+//    if det(M)<0 - inside
 //    if det(M)=0 - on the circle
-//    if det(M)<0 - outside
+//    if det(M)>0 - outside
     M(0,0) = v1.squaredNorm();
     M(1,0) = A.squaredNorm();
     M(2,0) = B.col(0).squaredNorm();
@@ -1256,9 +1209,9 @@ bool SurfaceHoleFiller::IsPointInCircle(const VectorType& pt0,
 
     
     if(det > 0)
-        return true;
+        return false;
     else
-        return false;    
+        return true;    
 }
 
 

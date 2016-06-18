@@ -18,6 +18,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/numeric/ublas/triangular.hpp>
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 
 #include <list>
 #include <vector>
@@ -44,7 +45,7 @@ typedef std::vector<HoleCoverType> ArrayOfCoversType;
 
 typedef Eigen::Vector3d VectorType;
 typedef boost::numeric::ublas::triangular_matrix<vtkIdType, boost::numeric::ublas::upper> TriangularIDMatrixType;
-typedef boost::numeric::ublas::coordinate_matrix<vtkIdType> SparseShortMatrixType;
+typedef Eigen::SparseMatrix<vtkIdType> SparseShortMatrixType;
 
 typedef std::vector<EdgeType> HoleBoundaryType;
 typedef std::vector<HoleBoundaryType> ArrayOfBoundariesType;
