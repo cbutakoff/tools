@@ -1058,7 +1058,8 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     //insert new points, skip old ones, they are in the beginning
     for( vtkIdType ptid = boundaryVertexIDs.size(); ptid<coverVertices->GetNumberOfPoints(); ptid++)
     {
-        mesh_points->InsertNextPoint( coverVertices->GetPoint(ptid) );
+        const vtkIdType id = mesh_points->InsertNextPoint( coverVertices->GetPoint(ptid) );
+        boundaryVertexIDs.push_back(id);
     }
     
     for( HoleCoverType::const_iterator it = localCover.begin(); it!=localCover.end(); ++it )
@@ -1076,10 +1077,10 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
             
             //if local_id < boundaryVertexIDs.size() - retrieve the id from the original mesh
             vtkIdType targetId;
-            if( local_id < boundaryVertexIDs.size() )
+//            if( local_id < boundaryVertexIDs.size() )
                 targetId = boundaryVertexIDs[ local_id ];
-            else
-                targetId = nOriginalVertices+local_id;
+//            else
+//                targetId = nOriginalVertices+local_id;
 
             mesh_cells->InsertCellPoint( targetId );
             
