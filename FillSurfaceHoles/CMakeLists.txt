@@ -9,6 +9,6 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${Boost_INCLUDE_DIRS})
 
 
-ADD_EXECUTABLE(FillSurfaceHoles  FillSurfaceHoles.cpp)
+ADD_EXECUTABLE(FillSurfaceHoles SurfaceHoleFiller.h  SurfaceHoleFiller.cpp FillSurfaceHoles.cpp)
 TARGET_LINK_LIBRARIES(FillSurfaceHoles ${VTK_LIBRARIES} ${Boost_LIBRARIES})
 
