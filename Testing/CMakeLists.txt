@@ -11,7 +11,7 @@ ExternalProject_Add(googletest
     SOURCE_DIR        "${CMAKE_BINARY_DIR}/googletest-src"
     BINARY_DIR        "${CMAKE_BINARY_DIR}/googletest-build"
     CMAKE_ARGS -DBUILD_GTEST=ON
-	       -DBUILD_SHARED_LIBS=ON
+	       -DBUILD_SHARED_LIBS=OFF
                -Dgtest_force_shared_crt=ON
     # Disable install step
     INSTALL_COMMAND ""
