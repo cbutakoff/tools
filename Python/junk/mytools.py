@@ -182,7 +182,7 @@ def FlattenMesh( vertex, faces ):
     boundary = np.array( GetSurfaceBoundary( faces ) )
 
     p = boundary.size
-    t = np.linspace(0, 2*np.pi, p, endpoint=False)
+    t = np.linspace(0, 2*np.pi, p+1, endpoint=False)
     x0 = np.cos(t);
     y0 = np.sin(t);
 
@@ -266,29 +266,29 @@ def GetSurfaceBoundary( faces ):
     for i in range(n):
         u = np.where( A[i,:]==1 )[1];
         if u.size > 0:
-            boundary = [i, u[0,0]];
+            boundary = [i, u[0]];
             break;
 
+            
     s=boundary[1];
     i=1;
     while i<n:
         u=np.where(A[s,:]==1)[1];
         if u.size != 2:
             raise Exception("problem in boundary");
-        if u[0,0]==boundary[i-1]:
-            s=u[0,1];
+        if u[0]==boundary[i-1]:
+            s=u[1];
         else:
-            s=u[0,0];
+            s=u[0];
 
         if s!=boundary[0]:
             boundary.append(s);
         else:
             break;
         i=i+1;
-
+        
+        
     return boundary
-
-
 
 
 
