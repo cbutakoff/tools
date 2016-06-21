@@ -19,7 +19,27 @@ void UmbrellaWeightedOrder2Smoother::CalculateWeightMatrix()
     //Create cotan weight n x n matrix 
     SparseDoubleMatrixType W(n_pts, n_pts);
     
- 
+    //for every triangle calculate cot of every angle and fill the matrix W
+    VectorType v1, v2, v3;
+    for( HoleCoverType::const_iterator it = m_coverFaces->begin(); it!=m_coverFaces->end(); it++)
+    {
+        const TriangleCellType& tri = *it;
+        for(int j=0; j<3; j++)
+        {
+            const int id1 = j;
+            const int id2 = (j+1)%3;
+            const int id3 = (j+2)%3;
+            m_coverVertices->GetPoint(id1, v1.data());
+            m_coverVertices->GetPoint(id2, v2.data());
+            m_coverVertices->GetPoint(id3, v3.data());
+            
+            //angle between v[3],v[1] and v[1],v[2]
+            const VectorType v31 = (v1-v3).normalized();
+            const VectorType v12 = (v2-v1).normalized();
+            const double angle = std::acos(v32.dot(v12));
+            const double w23 = std::atan(angle);
+        }
+    }
 }
 
 
