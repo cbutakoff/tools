@@ -101,7 +101,7 @@ void SurfaceHoleFiller::Update()
 void SurfaceHoleFiller::FindHoles(vtkPolyData *mesh, HoleBoundaryType& unordered_edges) const {
 
     const vtkIdType nPts = mesh->GetNumberOfPoints();
-    SparseShortMatrixType adj(nPts, nPts); //adjacency matrix, counts number of times an edge appears
+    SparseIDMatrixType adj(nPts, nPts); //adjacency matrix, counts number of times an edge appears
 
     unordered_edges.clear();
 
@@ -125,7 +125,7 @@ void SurfaceHoleFiller::FindHoles(vtkPolyData *mesh, HoleBoundaryType& unordered
     //iterate over every edge that adj(i,j)==1, these are  the boundaries
 
     for (vtkIdType k=0; k<adj.outerSize(); ++k) {        
-        for (SparseShortMatrixType::InnerIterator it(adj,k); it; ++it)
+        for (SparseIDMatrixType::InnerIterator it(adj,k); it; ++it)
             if ( it.value() != 0) {
                 EdgeType edge;
 
@@ -595,7 +595,7 @@ void SurfaceHoleFiller::SaveIsolatedCover(const HoleCoverType& localCover, vtkPo
 
 //static int cover_id = 0; //for debugging output
 bool SurfaceHoleFiller::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge,
-        vtkPoints* coverVertices, HoleCoverType& localCover, SparseShortMatrixType& conn) const {
+        vtkPoints* coverVertices, HoleCoverType& localCover, SparseIDMatrixType& conn) const {
     VectorType edgeV0, edgeV1, candV0, candV1; 
     
     coverVertices->GetPoint(edge.v0, edgeV0.data());
@@ -689,13 +689,13 @@ bool SurfaceHoleFiller::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType
 }
 
 bool SurfaceHoleFiller::RelaxAllCoverEdges(HoleCoverType& localCover, 
-        vtkPoints * coverVertices, SparseShortMatrixType& conn) const {
+        vtkPoints * coverVertices, SparseIDMatrixType& conn) const {
 
     
     std::stack<EdgeType> EdgeStack;
     
     for (int k=0; k<conn.outerSize(); ++k)
-        for (SparseShortMatrixType::InnerIterator it(conn,k); it; ++it)  {
+        for (SparseIDMatrixType::InnerIterator it(conn,k); it; ++it)  {
             if ( it.value() == 2) { //only interior edges (i.e. 2 cover triangles share it)
                 EdgeType e;
                 e.v0 = it.row();
@@ -815,7 +815,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
             
     
     //build upper triangular! vertex connectivity matrix for the cover
-    SparseShortMatrixType conn(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
+    SparseIDMatrixType conn(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
 
     //std::cout<<"Cover size: "<<localCover.size()<<std::endl;
     for (HoleCoverType::const_iterator it = localCover.begin(); it != localCover.end(); ++it) {

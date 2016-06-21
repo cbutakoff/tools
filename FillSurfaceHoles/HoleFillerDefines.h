@@ -40,7 +40,8 @@ typedef std::vector<HoleCoverType> ArrayOfCoversType;
 
 typedef Eigen::Vector3d VectorType;
 typedef boost::numeric::ublas::triangular_matrix<vtkIdType, boost::numeric::ublas::upper> TriangularIDMatrixType;
-typedef Eigen::SparseMatrix<vtkIdType> SparseShortMatrixType;
+typedef Eigen::SparseMatrix<double> SparseDoubleMatrixType;
+typedef Eigen::SparseMatrix<vtkIdType> SparseIDMatrixType;
 
 typedef std::vector<EdgeType> HoleBoundaryType;
 typedef std::vector<HoleBoundaryType> ArrayOfBoundariesType;

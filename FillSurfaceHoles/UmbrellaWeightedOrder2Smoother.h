@@ -25,18 +25,26 @@ PURPOSE.  See the above copyright notice for more information.
 class UmbrellaWeightedOrder2Smoother
 {
 public:
-    void SetInput(const HoleCoverType *cover, const VertexIDArrayType *boundaryIds);
+    void SetInputFaces(const HoleCoverType *coverFaces) {m_coverFaces = coverFaces;};
+    void SetInputVertices(vtkPoints* coverVertices) {m_coverVertices = coverVertices; };
+    void SetInputBOundaryIds( const VertexIDArrayType *boundaryIds ) {m_boundaryIds=boundaryIds;};
     
     void Update();
     
-    std::auto_ptr<HoleCoverType> GetOutput() {return m_smoothCover; }; //the output will be deleted upon class destruction, copy it
+    vtkSmartPointer<vtkPoints> GetOutputVertices() {return m_smoothedCoverPoints; }; //the output will be deleted upon class destruction, copy it
     
-    UmbrellaWeightedOrder2Smoother():m_originalCover(NULL), m_boundaryIds(NULL) {};
+    UmbrellaWeightedOrder2Smoother():m_coverFaces(NULL), m_boundaryIds(NULL) {};
 protected:
+    
+    void CalculateWeightMatrix();
+    
 private:
-    const HoleCoverType *m_originalCover;
+    const HoleCoverType *m_coverFaces;
     const VertexIDArrayType *m_boundaryIds;
-    std::auto_ptr<HoleCoverType> m_smoothCover;
+    vtkPoints* m_coverVertices;
+    vtkSmartPointer<vtkPoints> m_smoothedCoverPoints;
+    
+    SparseDoubleMatrixType m_C; //sparse matrix of the system of equations
 };
 
 

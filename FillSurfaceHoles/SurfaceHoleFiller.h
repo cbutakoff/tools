@@ -101,10 +101,10 @@ private:
     //localCover - cover with ids into coverVertices, will be updated
     //returns true if at least one swap was performed
     bool RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, vtkPoints* coverVertices, 
-                                HoleCoverType& localCover, SparseShortMatrixType& conn) const;
+                                HoleCoverType& localCover, SparseIDMatrixType& conn) const;
 
     //returns true if at least one swap was performed
-    bool RelaxAllCoverEdges(HoleCoverType& localCover, vtkPoints * coverVertices, SparseShortMatrixType& conn) const;    
+    bool RelaxAllCoverEdges(HoleCoverType& localCover, vtkPoints * coverVertices, SparseIDMatrixType& conn) const;    
 };
 
 
