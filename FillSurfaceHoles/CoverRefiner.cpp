@@ -13,7 +13,8 @@ PURPOSE.  See the above copyright notice for more information.
 void CoverRefiner::Update()
 {
     //SparseIDMatrixType conn(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
-    SparseIDMatrixType conn(10000, 10000);
+    Eigen::MatrixXi conn(10000, 10000);
+    conn.fill(0);
     
     //std::cout<<"Cover size: "<<localCover.size()<<std::endl;
     for (HoleCoverType::const_iterator it = localCover.begin(); it != localCover.end(); ++it) {
@@ -21,16 +22,10 @@ void CoverRefiner::Update()
         const vtkIdType id1 = (*it).id[1];
         const vtkIdType id2 = (*it).id[2];
         
-        conn.coeffRef(std::min(id0, id1), std::max(id0, id1)) += 1;
-        conn.coeffRef(std::min(id1, id2), std::max(id1, id2)) += 1;
-        conn.coeffRef(std::min(id0, id2), std::max(id0, id2)) += 1;
-        
-        //        std::cout<<"Adding ("<<id0<<", "<<id1<<")"<<std::endl;
-        //        std::cout<<"Adding ("<<id1<<", "<<id2<<")"<<std::endl;
-        //        std::cout<<"Adding ("<<id0<<", "<<id2<<")"<<std::endl;
-        
-        
-        //std::cout<<"Adding "<<std::min(id0, id1)<<", "<< std::max(id0, id1)<<std::endl;
+        conn(std::min(id0, id1), std::max(id0, id1)) += 1;
+        conn(std::min(id1, id2), std::max(id1, id2)) += 1;
+        conn(std::min(id0, id2), std::max(id0, id2)) += 1;
+
     }
     //create storage for weights
     //this will be synchronized with coverVertices
@@ -44,33 +39,7 @@ void CoverRefiner::Update()
     //
     //
     //--------------------------------------------------------------
-    VectorType pt0, pt1;
-    for( vtkIdType vertexId=0; vertexId<coverVertices->GetNumberOfPoints(); vertexId++ )
-    {
-        //get the point id in the original mesh
-        const vtkIdType originalVertexID = boundaryVertexIDs.at(vertexId);
-        
-        //find vertex neighbors
-        std::set<vtkIdType> vertexNeighbors;
-        GetVertexNeighbors(mesh, originalVertexID, vertexNeighbors);
-        
-        //        std::cout<<"Vertex "<<originalVertexID<<" connected to ";
-        //        for(std::set<vtkIdType>::const_iterator it=vertexNeighbors.begin(); it!=vertexNeighbors.end(); it++)
-        //            std::cout<<(*it)<<" ";
-        //        std::cout<<std::endl;                             
-        double sigma = 0;
-        
-        mesh->GetPoint(originalVertexID, pt0.data());
-        
-        for(std::set<vtkIdType>::const_iterator it=vertexNeighbors.begin(); it!=vertexNeighbors.end(); it++)
-        {
-            mesh->GetPoint((*it), pt1.data());
-            sigma += (pt1-pt0).norm();
-        }
-        
-        sigmas.at(vertexId) = sigma/vertexNeighbors.size();
-    }
-    
+??
     //    for(int i=0;i<sigmas.size();i++)
     //        std::cout<<sigmas[i]<<" "<<std::endl;
     
@@ -222,4 +191,36 @@ void CoverRefiner::Update()
         std::cout<<"relaxing complete"<<std::endl;
         
     }    
+}
+
+
+
+void CoverRefiner::InitializeVertexWeights( const vtkPolyData* mesh, const VertexIDArrayType *originalBoundaryIds )
+{
+    VectorType pt0, pt1;
+    for( vtkIdType vertexId=0; vertexId<originalBoundaryIds.size(); vertexId++ )
+    {
+        //get the point id in the original mesh
+        const vtkIdType originalVertexID = boundaryVertexIDs.at(vertexId);
+        
+        //find vertex neighbors
+        std::set<vtkIdType> vertexNeighbors;
+        GetVertexNeighbors(mesh, originalVertexID, vertexNeighbors);
+        
+        //        std::cout<<"Vertex "<<originalVertexID<<" connected to ";
+        //        for(std::set<vtkIdType>::const_iterator it=vertexNeighbors.begin(); it!=vertexNeighbors.end(); it++)
+        //            std::cout<<(*it)<<" ";
+        //        std::cout<<std::endl;                             
+        double sigma = 0;
+        
+        mesh->GetPoint(originalVertexID, pt0.data());
+        
+        for(std::set<vtkIdType>::const_iterator it=vertexNeighbors.begin(); it!=vertexNeighbors.end(); it++)
+        {
+            mesh->GetPoint((*it), pt1.data());
+            sigma += (pt1-pt0).norm();
+        }
+        
+        sigmas.at(vertexId) = sigma/vertexNeighbors.size();
+    }
 }

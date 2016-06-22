@@ -24,6 +24,8 @@ public:
     void SetInputVertices(vtkPoints* coverVertices) {m_coverVertices = coverVertices; };
     void SetInputBoundaryIds( const VertexIDArrayType *boundaryIds ) {m_boundaryIds=boundaryIds;};
     
+    void InitializeVertexWeights( const vtkPolyData* mesh, const VertexIDArrayType *originalBoundaryIds );
+    
     void Update();
         
     CoverRefiner():m_coverFaces(NULL), m_boundaryIds(NULL) {};
@@ -33,7 +35,9 @@ protected:
 private:
     HoleCoverType *m_coverFaces;
     const VertexIDArrayType *m_boundaryIds;
-    vtkPoints* m_coverVertices;        
+    vtkPoints* m_coverVertices;    
+
+    std::vector<double> m_sigmas;
 };
 
 
