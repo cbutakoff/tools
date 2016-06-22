@@ -81,6 +81,8 @@ private:
 
     //modifies the mesh
     void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, const HoleCoverType& cover) const;
+    void SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType& boundaryVertexIDs, HoleCoverType& localCover, vtkPoints* coverVertices) const;
+
     
     //returns also Vc - centroid, and Svc - centroid's weight
     bool IsTriangleSplitRequired(vtkPoints* coverVertices, const std::vector<double>& sigmas, const vtkIdType idVi, 
@@ -114,6 +116,8 @@ private:
 
     //returns true if at least one swap was performed
     bool RelaxAllCoverEdges(HoleCoverType& localCover, vtkPoints * coverVertices, SparseIDMatrixType& conn) const;    
+    
+    bool CheckForDuplicateTriangles(const HoleCoverType& localCover) const;
 };
 
 
