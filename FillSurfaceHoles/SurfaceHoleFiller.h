@@ -21,13 +21,22 @@ class SurfaceHoleFiller
 public:
     void SetInput(vtkPolyData* mesh) { m_inputMesh = mesh; };
 
+    void SmoothinOn() {m_performCoverSMoothing=true;};
+    void SmoothinOff() {m_performCoverSMoothing=false;};
+    bool GetSmoothing(){return m_performCoverSMoothing;};
+    bool SetSmoothing(bool v){ m_performCoverSMoothing = v;};
+    
     void Update();
 
+    
+    
     vtkPolyData* GetOutput() {return m_outputMesh; };
     
+    SurfaceHoleFiller():m_performCoverSMoothing(true){};
 protected:
     
 private:
+    bool m_performCoverSMoothing;    
     
     vtkSmartPointer<vtkPolyData> m_inputMesh;
     vtkSmartPointer<vtkPolyData> m_outputMesh;

@@ -6,7 +6,7 @@ the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE.  See the above copyright notice for more information.
 =========================================================================*/
 #include "SurfaceHoleFiller.h"
-
+#include "UmbrellaWeightedOrder2Smoother.h"
 
 #include <vtkCell.h>
 #include <vtkPolyDataNormals.h>
@@ -29,6 +29,8 @@ PURPOSE.  See the above copyright notice for more information.
 
 
 #include <stack>
+#include <vtkSmartPointer.h>
+#include <vtkType.h>
 
 //To create initial cover, by default the triangle areas augmented by dihedral angles are used.
 //Uncomment this to return to just triangle areas. Not recommended, becasue sometimes the cover can become crap
@@ -772,6 +774,11 @@ bool SurfaceHoleFiller::IsTriangleSplitRequired(vtkPoints* coverVertices, const 
     return split_required;
 }
 
+
+
+
+
+
 void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, 
         const HoleCoverType& cover) const {
 
@@ -1007,6 +1014,36 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     //i -> boundaryVertexIDs[i]
     
 //    SaveIsolatedCover(localCover, coverVertices, "refined.vtk");
+    
+    
+    
+    //---------------------------------------------------------
+    //
+    // 
+    // Run cover smoothing
+    //
+    //
+    //---------------------------------------------------------
+    
+    //create the array with ids for the edge. 
+    //I created the cover so that the edge vertices are at the beginning of the 
+    //vertex array and are ordered. So this array is simply 1:number_of_edge_vertices
+    //ps. boundaryVertexIDs - ids in the original mesh, can't use here
+    
+    if( m_performCoverSMoothing ){
+        std::cout<<"Smoothing the cover"<<std::endl;
+        VertexIDArrayType local_boundary;
+        for(vtkIdType id = 0; id<boundaryVertexIDs.size(); id++)
+            local_boundary.push_back(id);
+
+        UmbrellaWeightedOrder2Smoother smoother;
+        smoother.SetInputBoundaryIds( &local_boundary );
+        smoother.SetInputFaces( &localCover );
+        smoother.SetInputVertices( coverVertices );
+        smoother.Update();
+
+        coverVertices = smoother.GetOutputVertices();
+    }
     
     
 //    std::cout<<"Copying final refined cover"<<std::endl;

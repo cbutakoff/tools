@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
 
     SurfaceHoleFiller hole_filler;
     hole_filler.SetInput(rdr->GetOutput());
+    hole_filler.SmoothinOn();
     hole_filler.Update();
 
     //save the result

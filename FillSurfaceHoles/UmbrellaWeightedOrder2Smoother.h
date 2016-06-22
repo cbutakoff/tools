@@ -27,7 +27,7 @@ class UmbrellaWeightedOrder2Smoother
 public:
     void SetInputFaces(const HoleCoverType *coverFaces) {m_coverFaces = coverFaces;};
     void SetInputVertices(vtkPoints* coverVertices) {m_coverVertices = coverVertices; };
-    void SetInputBOundaryIds( const VertexIDArrayType *boundaryIds ) {m_boundaryIds=boundaryIds;};
+    void SetInputBoundaryIds( const VertexIDArrayType *boundaryIds ) {m_boundaryIds=boundaryIds;};
     
     void Update();
     
@@ -37,6 +37,11 @@ public:
 protected:
     
     void CalculateWeightMatrix();
+    void SumSparseMatrixCols( const SparseDoubleMatrixType& m, Eigen::VectorXd& s);
+    void FormRightHandSide();
+    void AddBoundaryToWeigtMatrix();
+    void CreateOutput();
+    void TestBoundaryConservation(); //check that the smoothing solution did not modify the boundary
     
 private:
     const HoleCoverType *m_coverFaces;
@@ -44,7 +49,10 @@ private:
     vtkPoints* m_coverVertices;
     vtkSmartPointer<vtkPoints> m_smoothedCoverPoints;
     
+    
     SparseDoubleMatrixType m_C; //sparse matrix of the system of equations
+    Eigen::MatrixXd m_b; //solve Cx = b, where x and b have 3 coordinates (3 columns)
+    Eigen::MatrixXd m_x;
 };
 
 
