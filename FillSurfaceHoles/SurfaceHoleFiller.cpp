@@ -807,7 +807,10 @@ bool SurfaceHoleFiller::IsTriangleSplitRequired(vtkPoints* coverVertices, const 
 
 
 void SurfaceHoleFiller::SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType& boundaryVertexIDs, HoleCoverType& localCover, vtkPoints* coverVertices) const {
-    SparseIDMatrixType conn(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
+    
+    
+    //SparseIDMatrixType conn(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
+    SparseIDMatrixType conn(10000, 10000);
     
     //std::cout<<"Cover size: "<<localCover.size()<<std::endl;
     for (HoleCoverType::const_iterator it = localCover.begin(); it != localCover.end(); ++it) {
@@ -878,7 +881,9 @@ void SurfaceHoleFiller::SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType
     //
     //--------------------------------------------------
     while( RelaxAllCoverEdges(localCover, coverVertices, conn) ) {};
+
     
+        
     //------------------------------------------
     //
     //  Step 2:    
@@ -959,7 +964,7 @@ void SurfaceHoleFiller::SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType
                 sigmas.push_back(Svc);
                 
                 //new point added - need resize
-                conn.conservativeResize(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
+                //conn.conservativeResize(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
                 std::cout<<"conn matrix size: "<<conn.rows()<<", "<<conn.cols()<<std::endl;
                 std::cout<<"max id to store: "<<std::max(tri1.id[0], std::max(tri1.id[1], std::max(tri1.id[3], std::max(
                         tri2.id[0], std::max( tri2.id[1], std::max( tri2.id[2], std::max(
