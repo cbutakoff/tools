@@ -694,21 +694,20 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
         local_boundary.push_back(id);
             
     
-    //SplitRelaxTriangles(mesh, boundaryVertexIDs, localCover, coverVertices);
-//    try
-//    {
-//        CoverRefiner refiner;
-//        refiner.SetInputBoundaryIds(&local_boundary);
-//        refiner.SetInputFaces(&localCover); 
-//        refiner.SetInputVertices(coverVertices); 
-//        refiner.InitializeVertexWeights(mesh, &boundaryVertexIDs);
-//        refiner.Update(); //modifies inputs
-//    }
-//    catch(...)
-//    {
-//        std::cout<<"Some exception happened"<<std::endl;
-//    }
-//    
+    try
+    {
+        CoverRefiner refiner;
+        refiner.SetInputBoundaryIds(&local_boundary);
+        refiner.SetInputFaces(&localCover); 
+        refiner.SetInputVertices(coverVertices); 
+        refiner.InitializeVertexWeights(mesh, &boundaryVertexIDs);
+        refiner.Update(); //modifies inputs
+    }
+    catch(...)
+    {
+        std::cout<<"Some exception happened"<<std::endl;
+    }
+    
     SaveIsolatedCover(localCover, coverVertices, "aaa.vtk");
     
    

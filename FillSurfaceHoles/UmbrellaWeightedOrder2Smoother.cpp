@@ -153,7 +153,7 @@ void UmbrellaWeightedOrder2Smoother::Update()
     
 //    std::cout<<"Matrix x: "<<std::endl<<m_x<<std::endl;
 
-    TestBoundaryConservation();
+    //TestBoundaryConservation();
     
     CreateOutput();
 }
