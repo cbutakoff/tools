@@ -65,18 +65,30 @@ void SurfaceHoleFiller::Update()
     ArrayOfCoversType covers(hole_boundaries.size());
 
     for (int i = 0; i < hole_boundaries.size(); i++) {
-//        std::cout << "Filling hole " << i << "/" << hole_boundaries.size() << std::endl;
+        std::cout << "Filling hole " << i << "/" << hole_boundaries.size() << std::endl;
 
-        //        std::cout<<"Boundary "<<i<<std::endl;
-        //        for(int j=0; j<hole_boundaries[i].size(); j++)
-        //        {
-        //            std::cout<<hole_boundaries[i][j].v0<<" "<<hole_boundaries[i][j].v1<<std::endl;
-        //        }
+                std::cout<<"Boundary "<<i<<std::endl;
+                for(int j=0; j<hole_boundaries[i].size(); j++)
+                {
+                    std::cout<<hole_boundaries[i][j].v0<<" "<<hole_boundaries[i][j].v1<<std::endl;
+                }
 
         HoleCoverType cover;
 
         vtkSmartPointer<vtkPolyData> refinedCover = vtkSmartPointer<vtkPolyData>::New();
-        InitialCoverTriangulation(m_outputMesh, hole_boundaries.at(i), cover);
+        
+        try
+        {
+            InitialCoverTriangulation(m_outputMesh, hole_boundaries.at(i), cover);
+        }
+        catch(...)
+        {
+            std::cout<<"Some exception"<<std::endl;
+        }
+        
+        std::cout<<"Initial cover"<<std::endl;
+        for(HoleCoverType::iterator it = cover.begin(); it!=cover.end(); it++)
+            std::cout<<(*it).id[0]<<" "<<(*it).id[1]<<" "<<(*it).id[2]<<std::endl;
         
         //updates the mesh inside
         RefineCover(m_outputMesh, hole_boundaries.at(i), cover);
@@ -105,7 +117,7 @@ void SurfaceHoleFiller::FindHoles(vtkPolyData *mesh, HoleBoundaryType& unordered
 
     const vtkIdType nPts = mesh->GetNumberOfPoints();
     SparseIDMatrixType adj(nPts, nPts); //adjacency matrix, counts number of times an edge appears
-
+    
     unordered_edges.clear();
 
     for (vtkIdType cellid = 0; cellid < mesh->GetNumberOfCells(); cellid++) {
@@ -683,16 +695,21 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
             
     
     //SplitRelaxTriangles(mesh, boundaryVertexIDs, localCover, coverVertices);
-    {
-        CoverRefiner refiner;
-        refiner.SetInputBoundaryIds(&local_boundary);
-        refiner.SetInputFaces(&localCover); 
-        refiner.SetInputVertices(coverVertices); 
-        refiner.InitializeVertexWeights(mesh, &boundaryVertexIDs);
-        refiner.Update(); //modifies inputs
-    }
-    
-
+//    try
+//    {
+//        CoverRefiner refiner;
+//        refiner.SetInputBoundaryIds(&local_boundary);
+//        refiner.SetInputFaces(&localCover); 
+//        refiner.SetInputVertices(coverVertices); 
+//        refiner.InitializeVertexWeights(mesh, &boundaryVertexIDs);
+//        refiner.Update(); //modifies inputs
+//    }
+//    catch(...)
+//    {
+//        std::cout<<"Some exception happened"<<std::endl;
+//    }
+//    
+    SaveIsolatedCover(localCover, coverVertices, "aaa.vtk");
     
    
     
