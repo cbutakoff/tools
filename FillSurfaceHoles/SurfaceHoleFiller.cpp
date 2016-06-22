@@ -830,6 +830,7 @@ void SurfaceHoleFiller::SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType
     //this will be synchronized with coverVertices
     std::vector<double> sigmas(coverVertices->GetNumberOfPoints()); 
     
+   
     //------------------------------------------
     //
     //  Step 1:    
@@ -867,7 +868,7 @@ void SurfaceHoleFiller::SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType
     //    for(int i=0;i<sigmas.size();i++)
     //        std::cout<<sigmas[i]<<" "<<std::endl;
     
-    
+  
     
     //------------------------------------------
     //
@@ -895,13 +896,13 @@ void SurfaceHoleFiller::SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType
     //
     //--------------------------------------------------
     
-    
     while ( true ) 
     {
         bool TriangleSplitted = false; //algorithm stops when no more splits are required
         
         for(HoleCoverType::iterator coverIt = localCover.begin(); coverIt!=localCover.end(); ++coverIt)    
         {
+            
             //calculate centroid
             const vtkIdType idVi = (*coverIt).id[0];
             const vtkIdType idVj = (*coverIt).id[1];
@@ -959,20 +960,28 @@ void SurfaceHoleFiller::SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType
                 
                 //new point added - need resize
                 conn.conservativeResize(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
+                std::cout<<"conn matrix size: "<<conn.rows()<<", "<<conn.cols()<<std::endl;
+                std::cout<<"max id to store: "<<std::max(tri1.id[0], std::max(tri1.id[1], std::max(tri1.id[3], std::max(
+                        tri2.id[0], std::max( tri2.id[1], std::max( tri2.id[2], std::max(
+                        tri3.id[0], std::max( tri3.id[1], tri3.id[2])         ))) 
+                        ) ) ) )                         <<std::endl;
                 for(int i=0; i<3; i++)
                 {
                     conn.coeffRef(std::min(tri1.id[i], tri1.id[(i+1)%3]), std::max(tri1.id[i], tri1.id[(i+1)%3])) = 2;
                     conn.coeffRef(std::min(tri2.id[i], tri2.id[(i+1)%3]), std::max(tri2.id[i], tri2.id[(i+1)%3])) = 2;
                     conn.coeffRef(std::min(tri3.id[i], tri3.id[(i+1)%3]), std::max(tri3.id[i], tri3.id[(i+1)%3])) = 2;
                 }
-                
+                std::cout<<"Stored"<<std::endl;
                 //                std::cout<<conn<<std::endl;
                 
                 //relax edges (vi,vj), (vi,vk), (vj,vk)
                 EdgeType edge; edge.v0 = idVi; edge.v1 = idVj; 
                 EdgeType candidateEdge;
+                
+                std::cout<<"relaxing after split"<<std::endl;
                 if( FindConnectedVertices(coverVertices, localCover, edge, candidateEdge) )
                     RelaxEdgeIfPossible(edge, candidateEdge, coverVertices, localCover, conn);
+                std::cout<<"relaxed after split"<<std::endl;
                 
                 TriangleSplitted = true;
                 
@@ -1216,7 +1225,7 @@ bool SurfaceHoleFiller::FindConnectedVertices(vtkPoints* vertices,
     {
         int mask[] = {0,0,0}; //0 - vertex not used, 1 - vertex used
         
-        std::cout<<"Searching ("<<edge.v0<<","<<edge.v1<<"). Triangle "<<(*it).id[0]<<" "<<(*it).id[1]<<" "<<(*it).id[2]<<std::endl;
+//        std::cout<<"Searching ("<<edge.v0<<","<<edge.v1<<"). Triangle "<<(*it).id[0]<<" "<<(*it).id[1]<<" "<<(*it).id[2]<<std::endl;
         for(int i=0; i<3; i++)
             if( (*it).id[i]==edge.v0 )
             {
@@ -1231,7 +1240,7 @@ bool SurfaceHoleFiller::FindConnectedVertices(vtkPoints* vertices,
                             if(mask[k]==0)
                             {
                                 ids.push_back( (*it).id[k] );
-                                std::cout<<"Found 3rd"<<(*it).id[k]<<std::endl;
+//                                std::cout<<"Found 3rd"<<(*it).id[k]<<std::endl;
                                 k=4; //continue to the next triangle
                                 j=4;
                                 i=4;
