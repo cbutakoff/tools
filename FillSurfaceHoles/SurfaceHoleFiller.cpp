@@ -7,6 +7,7 @@ PURPOSE.  See the above copyright notice for more information.
 =========================================================================*/
 #include "SurfaceHoleFiller.h"
 #include "UmbrellaWeightedOrder2Smoother.h"
+#include "CoverRefiner.h"
 
 #include <vtkCell.h>
 #include <vtkPolyDataNormals.h>
@@ -1021,6 +1022,35 @@ void SurfaceHoleFiller::SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType
     }
 }
 
+void SurfaceHoleFiller::IsolateCover(const HoleCoverType& cover, VertexIDArrayType& boundaryVertexIDs, HoleCoverType& localCover) const{
+    for( HoleCoverType::const_iterator it = cover.begin(); it!=cover.end(); ++it )
+    {
+        TriangleCellType cell; 
+        
+        
+        
+        //for each id, find its position within boundaryVertexIDs
+        for(int j=0; j<3; j++)
+        {
+            vtkIdType i;
+            for(i=0; i<boundaryVertexIDs.size(); i++)
+                if( (*it).id[j] == boundaryVertexIDs.at(i) ) break;
+            
+            cell.id[j] = i;
+        }
+        
+        localCover.push_back(cell);
+        
+        if( CheckForDuplicateTriangles(localCover) )
+        {
+            for( HoleCoverType::const_iterator it1=localCover.begin(); it1!=localCover.end(); it1++  )
+            {                
+                std::cout<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<" "<<std::endl;
+            }
+        }
+    }
+}
+
 void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, 
         const HoleCoverType& cover) const {
 
@@ -1042,32 +1072,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     //the correspondence with the original is given by
     //i -> boundaryVertexIDs[i]
     HoleCoverType localCover;
-    for( HoleCoverType::const_iterator it = cover.begin(); it!=cover.end(); ++it )
-    {
-        TriangleCellType cell; 
-        
-        
-
-        //for each id, find its position within boundaryVertexIDs
-        for(int j=0; j<3; j++)
-        {
-            vtkIdType i;
-            for(i=0; i<boundaryVertexIDs.size(); i++)
-                if( (*it).id[j] == boundaryVertexIDs.at(i) ) break;
-            
-            cell.id[j] = i;
-        }
-        
-        localCover.push_back(cell);
-
-        if( CheckForDuplicateTriangles(localCover) )
-        {
-            for( HoleCoverType::const_iterator it1=localCover.begin(); it1!=localCover.end(); it1++  )
-            {                
-                std::cout<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<" "<<std::endl;
-            }
-        }
-    }
+    IsolateCover(cover, boundaryVertexIDs, localCover);
     
     
     //copy boundary vertices to point storage
@@ -1083,30 +1088,30 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
 //    SaveIsolatedCover(localCover, coverVertices, name);
             
     
-    //build upper triangular! vertex connectivity matrix for the cover
-    SplitRelaxTriangles(mesh, boundaryVertexIDs, localCover, coverVertices);
-
+  
+    
+    
+    //create the array with ids for the edge. 
+    //I created the cover so that the edge vertices are at the beginning of the 
+    //vertex array and are ordered. So this array is simply 1:number_of_edge_vertices
+    //ps. boundaryVertexIDs - ids in the original mesh, can't use here    
+    VertexIDArrayType local_boundary;
+    for(vtkIdType id = 0; id<boundaryVertexIDs.size(); id++)
+        local_boundary.push_back(id);
+            
+    
+    //SplitRelaxTriangles(mesh, boundaryVertexIDs, localCover, coverVertices);
+    {
+        CoverRefiner refiner;
+        refiner.SetInputBoundaryIds(&local_boundary);
+        refiner.SetInputFaces(&localCover); 
+        refiner.SetInputVertices(coverVertices); 
+        refiner.Update(); //modifies inputs
+    }
     
 
     
-    
-    //    //Create edge storage. Put only interior edges (no boundary)
-//    for (SparseIDMatrixType::iterator1 it1 = conn.begin1(); it1 != conn.end1(); it1++) {
-//        for (SparseIDMatrixType::iterator2 it2 = it1.begin(); it2 != it1.end(); it2++) {
-//            if (*it2 == 2) {
-//                EdgeType edge;
-//                edge.v0 = it2.index1();
-//                edge.v1 = it2.index2();
-//            }
-//        }
-//    }    
-
-    //get the cover with original ids
-    //the correspondence with the original is given by
-    //i -> boundaryVertexIDs[i]
-    
-//    SaveIsolatedCover(localCover, coverVertices, "refined.vtk");
-    
+   
     
     
     //---------------------------------------------------------
@@ -1117,16 +1122,11 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     //
     //---------------------------------------------------------
     
-    //create the array with ids for the edge. 
-    //I created the cover so that the edge vertices are at the beginning of the 
-    //vertex array and are ordered. So this array is simply 1:number_of_edge_vertices
-    //ps. boundaryVertexIDs - ids in the original mesh, can't use here
+
     
     if( m_performCoverSMoothing ){
         std::cout<<"Smoothing the cover"<<std::endl;
-        VertexIDArrayType local_boundary;
-        for(vtkIdType id = 0; id<boundaryVertexIDs.size(); id++)
-            local_boundary.push_back(id);
+
 
         UmbrellaWeightedOrder2Smoother smoother;
         smoother.SetInputBoundaryIds( &local_boundary );

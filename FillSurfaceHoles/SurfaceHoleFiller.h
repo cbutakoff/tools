@@ -81,6 +81,8 @@ private:
 
     //modifies the mesh
     void RefineCover(vtkPolyData* mesh, const HoleBoundaryType& ordered_boundary, const HoleCoverType& cover) const;
+    void IsolateCover(const HoleCoverType& cover, VertexIDArrayType& boundaryVertexIDs, HoleCoverType& localCover) const;
+
     void SplitRelaxTriangles(vtkPolyData* mesh, VertexIDArrayType& boundaryVertexIDs, HoleCoverType& localCover, vtkPoints* coverVertices) const;
 
     

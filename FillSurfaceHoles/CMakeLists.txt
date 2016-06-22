@@ -15,6 +15,8 @@ UmbrellaWeightedOrder2Smoother.cpp
 SurfaceHoleFiller.h  
 SurfaceHoleFiller.cpp 
 FillSurfaceHoles.cpp
+CoverRefiner.h
+CoverRefiner.cpp
 )
 
 ADD_EXECUTABLE(FillSurfaceHoles ${SOURCES})
