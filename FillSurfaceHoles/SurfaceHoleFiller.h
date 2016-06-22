@@ -94,14 +94,10 @@ private:
     //coverVertices array
     void SaveIsolatedCover(const HoleCoverType& localCover, vtkPoints * coverVertices, const char* filename) const;
 
-    void GetVertexNeighbors(vtkPolyData *mesh, vtkIdType vertexId, std::set<vtkIdType>& connectedVertices) const;
 
 
     //return false if there is no pair
-    bool FindConnectedVertices(vtkPoints* vertices, const HoleCoverType& localCover, const EdgeType& edge, EdgeType& intersectingEdge) const;
 
-    //check if ptcheck is inside a circle defined by the 3 points
-    bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorType& pt2, const VectorType& ptcheck) const;
 
 
     HoleCoverType::iterator FindTriangleByPointIds(HoleCoverType& localCover, vtkIdType id0, vtkIdType id1, vtkIdType id2) const;
@@ -112,11 +108,8 @@ private:
     //coverVertices - vertex coordinates of the cover
     //localCover - cover with ids into coverVertices, will be updated
     //returns true if at least one swap was performed
-    bool RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, vtkPoints* coverVertices, 
-                                HoleCoverType& localCover, SparseIDMatrixType& conn) const;
 
     //returns true if at least one swap was performed
-    bool RelaxAllCoverEdges(HoleCoverType& localCover, vtkPoints * coverVertices, SparseIDMatrixType& conn) const;    
     
     bool CheckForDuplicateTriangles(const HoleCoverType& localCover) const;
 };
