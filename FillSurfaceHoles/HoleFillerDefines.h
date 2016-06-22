@@ -12,8 +12,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
 
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/triangular.hpp>
+//#include <boost/numeric/ublas/matrix_sparse.hpp>
+//#include <boost/numeric/ublas/triangular.hpp>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
@@ -39,7 +39,8 @@ typedef std::list<TriangleCellType> HoleCoverType; //to allow random deletion
 typedef std::vector<HoleCoverType> ArrayOfCoversType;
 
 typedef Eigen::Vector3d VectorType;
-typedef boost::numeric::ublas::triangular_matrix<vtkIdType, boost::numeric::ublas::upper> TriangularIDMatrixType;
+//typedef boost::numeric::ublas::triangular_matrix<vtkIdType, boost::numeric::ublas::upper> TriangularIDMatrixType;
+typedef Eigen::SparseMatrix<vtkIdType> TriangularIDMatrixType;
 typedef Eigen::SparseMatrix<double> SparseDoubleMatrixType;
 typedef Eigen::SparseMatrix<vtkIdType> SparseIDMatrixType;
 

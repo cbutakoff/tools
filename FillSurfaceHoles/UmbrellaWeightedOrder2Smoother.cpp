@@ -81,10 +81,10 @@ void UmbrellaWeightedOrder2Smoother::SumSparseMatrixCols( const SparseDoubleMatr
     Eigen::Index k;
     
     for (k = 0; k < m.outerSize(); ++k){
-        s[k] = 0;
+        s(k) = 0;
 //        std::cout<<"k= "<<k<<std::endl;
         for (SparseDoubleMatrixType::InnerIterator it(m, k); it; ++it) {
-            s[k] += it.value();
+            s(k) += it.value();
 //            std::cout<<"V= "<<it.value()<<std::endl;
 //            std::cout<<"s[k]= "<<s[k]<<std::endl;
 
@@ -168,7 +168,7 @@ void UmbrellaWeightedOrder2Smoother::TestBoundaryConservation()
     for(Eigen::Index i=0; i<m_boundaryIds->size(); i++)
     {
         m_coverVertices->GetPoint(i, v.data());
-        const Eigen::Index k=(*m_boundaryIds)[i];
+        const Eigen::Index k=(*m_boundaryIds).at(i);
 
         error += (m_x.row(k) - v).norm();
     }        
@@ -201,7 +201,7 @@ void UmbrellaWeightedOrder2Smoother::FormRightHandSide()
     for(Eigen::Index i=0; i<m_boundaryIds->size(); i++)
     {
         m_coverVertices->GetPoint(i, v.data());
-        const Eigen::Index k=(*m_boundaryIds)[i];
+        const Eigen::Index k=(*m_boundaryIds).at(i);
 
         m_b.row(k) = v;
     }
@@ -217,7 +217,7 @@ void UmbrellaWeightedOrder2Smoother::AddBoundaryToWeigtMatrix()
     
     for(Eigen::Index i=0; i<m_boundaryIds->size(); i++)
     {
-        const Eigen::Index k=(*m_boundaryIds)[i];
+        const Eigen::Index k=(*m_boundaryIds).at(i);
 
         //reset the k-th row
         for (Eigen::Index j = 0; j < m_C.outerSize(); ++j)
