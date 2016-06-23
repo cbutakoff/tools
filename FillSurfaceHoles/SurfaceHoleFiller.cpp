@@ -726,18 +726,6 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     
 
     
-    if( m_performCoverSMoothing ){
-        std::cout<<"Smoothing the cover"<<std::endl;
-
-
-        UmbrellaWeightedOrder2Smoother smoother;
-        smoother.SetInputBoundaryIds( &local_boundary );
-        smoother.SetInputFaces( &localCover );
-        smoother.SetInputVertices( coverVertices );
-        smoother.Update();
-
-        coverVertices = smoother.GetOutputVertices();
-    }
     
     
 //    std::cout<<"Copying final refined cover"<<std::endl;
@@ -777,6 +765,20 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     m_outputMesh->GetCellData()->Initialize();
     m_outputMesh->GetPointData()->Initialize();
     m_outputMesh->BuildCells();
+    
+
+
+    if( m_performCoverSMoothing ){
+        std::cout<<"Smoothing the cover"<<std::endl;
+
+
+        UmbrellaWeightedOrder2Smoother smoother;
+        smoother.SetInputMesh(m_outputMesh);
+        smoother.SetCoverVertexIds(&boundaryVertexIDs);
+        smoother.Update();
+    }
+
+    
     
 //    vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
 //    wr->SetFileName("integrated.vtk");

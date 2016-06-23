@@ -26,40 +26,46 @@ PURPOSE.  See the above copyright notice for more information.
 //#define USE_COTANGENT_WEIGHTS
 
 
+//updates the input mesh
 class UmbrellaWeightedOrder2Smoother
 {
 public:
-    void SetInputFaces(const HoleCoverType *coverFaces) {m_coverFaces = coverFaces;};
-    void SetInputVertices(vtkPoints* coverVertices) {m_coverVertices = coverVertices; };
-    void SetInputBoundaryIds( const VertexIDArrayType *boundaryIds ) {m_boundaryIds=boundaryIds;};
+    typedef std::vector<vtkIdType> VertexIDArrayType;
+    
+    void SetInputMesh(vtkPolyData *mesh) {m_originalMesh = mesh;};
+    void SetCoverVertexIds(VertexIDArrayType* ids) {m_coverVertexIDs = ids;};
     
     void Update();
     
-    vtkSmartPointer<vtkPoints> GetOutputVertices() {return m_smoothedCoverPoints; }; //the output will be deleted upon class destruction, copy it
     
-    UmbrellaWeightedOrder2Smoother():m_coverFaces(NULL), m_boundaryIds(NULL) {};
+    UmbrellaWeightedOrder2Smoother():m_originalMesh(NULL), m_coverVertexIDs(NULL) {};
+    
+    
 protected:
+    typedef enum {vcInterior, vcBoundary, vcExterior} VertexClassType;
+ 
+    typedef struct __connectivity
+    {
+        vtkIdType originalID;
+        VertexIDArrayType connectedVertices;
+        VertexClassType vertexClass;
+    } VertexConnectivityType;    
     
-    void CalculateWeightMatrix();
-    void SumSparseMatrixCols( const SparseDoubleMatrixType& m, Eigen::VectorXd& s);
-    void FormRightHandSide();
-    void AddBoundaryToWeigtMatrix();
-    void CreateOutput();
-    void TestBoundaryConservation(); //check that the smoothing solution did not modify the boundary
     
-    //returns cotangent of the angle between v1v2 and v1v3
-    double TriangleWeightCotangent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const;
-    double TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const;
+    double TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const;    
+    void GetVertexNeighbors(vtkIdType vertexId, VertexIDArrayType& neighbors);
+    
+    void CalculateConnectivity(); //updates m_C
+    void ClassifyVertex(VertexConnectivityType& v);
+    
 private:
-    const HoleCoverType *m_coverFaces;
-    const VertexIDArrayType *m_boundaryIds;
-    vtkPoints* m_coverVertices;
-    vtkSmartPointer<vtkPoints> m_smoothedCoverPoints;
+    vtkPolyData *m_originalMesh;
+    VertexIDArrayType* m_coverVertexIDs;
     
+   
+
     
-    SparseDoubleMatrixType m_C; //sparse matrix of the system of equations
-    Eigen::MatrixXd m_b; //solve Cx = b, where x and b have 3 coordinates (3 columns)
-    Eigen::MatrixXd m_x;
+    std::vector<VertexConnectivityType> m_C;
 };
 
 
