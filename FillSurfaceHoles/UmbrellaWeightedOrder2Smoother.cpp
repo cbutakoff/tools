@@ -11,9 +11,9 @@ PURPOSE.  See the above copyright notice for more information.
 
 
 
-double UmbrellaWeightedOrder2Smoother::TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const
+double UmbrellaWeightedOrder2Smoother::TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2) const
 {
-    return 1/( (v2-v3).norm() );
+    return 1/( (v1-v2).norm() );
 }
 
 
@@ -127,3 +127,31 @@ void UmbrellaWeightedOrder2Smoother::CalculateConnectivity()
 
 
 
+void UmbrellaWeightedOrder2Smoother::CalculateU(MatrixUType& U)
+{
+    for( std::vector<VertexConnectivityType>::const_iterator it=m_C.begin(); it!=m_C.end(); it++ )
+    {
+        Eigen::VectorXd w(it->connectedVertices.size()); //weights
+
+        Eigen::Vector3d v;
+        m_originalMesh->GetPoint( it->originalID, v.data() );
+        
+        //iterate over all the neighbors and calculate weights
+        vtkIdType vertex_index=0;
+        Eigen::Vector3d vi;
+        for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
+                neighb_it != it->connectedVertices.end(); it++, vertex_index++)
+        {
+            const vtkIdType neighb_id = (*neighb_it);
+            m_originalMesh->GetPoint( neighb_id, vi.data() );
+
+            w(vertex_index) = TriangleWeightScaleDependent(v,vi);
+        }
+    }
+}
+
+
+void UmbrellaWeightedOrder2Smoother::CalculateU2(MatrixUType& U2)
+{
+    
+}

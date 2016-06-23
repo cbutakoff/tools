@@ -11,7 +11,9 @@ PURPOSE.  See the above copyright notice for more information.
 //v - each of the patch vertices
 //The patch must be a topological disk embedded in 3D
 //For details see paper of Liepa, Filling Holes in Meshes
-
+//
+//Solution using iterative process from :
+//Interactive Multi-Resolution Modeling on Arbitrary Meshes, Leif Kobbelt
 
 #ifndef __UmbrellaWeightedOrder2Smoother_h
 #define __UmbrellaWeightedOrder2Smoother_h
@@ -52,11 +54,16 @@ protected:
     } VertexConnectivityType;    
     
     
-    double TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const;    
+    typedef Eigen::Matrix<double, 3, Eigen::Dynamic> MatrixUType;
+    
+    double TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2) const;    
     void GetVertexNeighbors(vtkIdType vertexId, VertexIDArrayType& neighbors);
     
     void CalculateConnectivity(); //updates m_C
     void ClassifyVertex(VertexConnectivityType& v);
+    
+    void CalculateU( MatrixUType& U );
+    void CalculateU2( MatrixUType& U2 );
     
 private:
     vtkPolyData *m_originalMesh;
