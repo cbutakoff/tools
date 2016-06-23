@@ -56,6 +56,23 @@ void UmbrellaWeightedOrder2Smoother::GetVertexNeighbors( vtkIdType vertexId, Ver
 void UmbrellaWeightedOrder2Smoother::Update()
 {
     CalculateConnectivity();
+    
+    vtkPoints* pts = m_originalMesh->GetPoints();
+    //start iterative updater
+    bool converged = false;
+    
+    Eigen::VectorXd U(m_C.size());
+    Eigen::VectorXd U2(m_C.size());
+    U.fill(-1); //initialize. Some values will not be initialized, so checking will be needed
+    U2.fill(-1);
+    while (!converged)
+    {
+        //calculate U for inner and boundary vertices
+        
+        //calculate U^2 only for interior vertices
+        
+        //update only the interior vertices
+    }
 }
 
 
