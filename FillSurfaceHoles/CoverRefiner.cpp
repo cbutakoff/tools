@@ -156,7 +156,7 @@ void CoverRefiner::Update()
 //                std::cout<<"Inserting: "<<tri2.id[0]<<" "<<tri2.id[1]<<" "<<tri2.id[2]<<std::endl;                
 //                std::cout<<"Inserting: "<<tri3.id[0]<<" "<<tri3.id[1]<<" "<<tri3.id[2]<<std::endl;                
 
-                CheckForDuplicateTriangles();
+//                CheckForDuplicateTriangles();
                 
                 
                 //Update matrices
@@ -272,6 +272,8 @@ void CoverRefiner::Update()
 //        std::cout<<"relaxing complete"<<std::endl;
         
     }    
+    
+    CheckForDuplicateTriangles();
     
 }
 
@@ -617,7 +619,7 @@ bool CoverRefiner::RelaxEdgeIfPossible(HoleCoverType *coverFaces, const EdgeType
                 coverFaces->push_back( tri1 );                
             }
 
-            CheckForDuplicateTriangles();
+//            CheckForDuplicateTriangles();
         }
     }
     
