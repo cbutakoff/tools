@@ -16,6 +16,14 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include "HoleFillerDefines.h"
 
+//we will work with a sparse matrix, so this number is irrelevant
+//just to avoid calling resize every time a vertex is added to the refinement
+//if it is exceeded, the resize will be called
+//#define MAX_NUMBER_OF_VERTICES 100000
+
+//typedef Eigen::MatrixXi ConnectivityMatrixType;
+typedef Eigen::SparseMatrix<int> ConnectivityMatrixType;
+
 
 class CoverRefiner //inplace refinement
 {
@@ -28,14 +36,16 @@ public:
     void InitializeVertexWeights( vtkPolyData* mesh, const VertexIDArrayType *originalBoundaryIds );
     
     void Update();
+    void InitializeConnectivityMatrix(ConnectivityMatrixType& conn);
+
         
     CoverRefiner():m_coverFaces(NULL), m_boundaryIds(NULL) {};
 protected:
     
     void GetVertexNeighbors(vtkPolyData *mesh, vtkIdType vertexId, std::set<vtkIdType>& connectedVertices);
-    bool RelaxAllCoverEdges(Eigen::MatrixXi& conn);    
+    bool RelaxAllCoverEdges(ConnectivityMatrixType& conn);    
     bool FindConnectedVertices(const EdgeType& edge, EdgeType& intersectingEdge);
-    bool RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, Eigen::MatrixXi& conn);
+    bool RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, ConnectivityMatrixType& conn);
     bool CheckForDuplicateTriangles();
     bool IsTriangleSplitRequired(const vtkIdType idVi, const vtkIdType idVj, const vtkIdType idVk, VectorType& Vc, double& Svc);
     

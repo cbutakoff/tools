@@ -692,6 +692,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     VertexIDArrayType local_boundary;
     for(vtkIdType id = 0; id<boundaryVertexIDs.size(); id++)
         local_boundary.push_back(id);
+    SaveIsolatedCover(localCover, coverVertices, "beforeRefine.vtk");
             
     
     try
@@ -705,10 +706,11 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     }
     catch(...)
     {
-        std::cout<<"Some exception happened"<<std::endl;
+        std::cout<<"Some exception happened during call to refiner."<<std::endl;
+        throw;
     }
     
-    SaveIsolatedCover(localCover, coverVertices, "aaa.vtk");
+    SaveIsolatedCover(localCover, coverVertices, "afterRefine.vtk");
     
    
     

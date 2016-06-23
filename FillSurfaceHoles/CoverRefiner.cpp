@@ -12,23 +12,46 @@ PURPOSE.  See the above copyright notice for more information.
 #include <stack>
 
 
-void CoverRefiner::Update()
-{
-    //SparseIDMatrixType conn(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
-    Eigen::MatrixXi conn(10000, 10000);
-    conn.fill(0);
+void CoverRefiner::InitializeConnectivityMatrix(ConnectivityMatrixType& conn){
     
-    //std::cout<<"Cover size: "<<localCover.size()<<std::endl;
+    typedef Eigen::Triplet<double> T;
+    std::vector<T> tripletList;
+    
     for (HoleCoverType::const_iterator it = m_coverFaces->begin(); it != m_coverFaces->end(); ++it) {
         const vtkIdType id0 = (*it).id[0];
         const vtkIdType id1 = (*it).id[1];
         const vtkIdType id2 = (*it).id[2];
         
-        conn(std::min(id0, id1), std::max(id0, id1)) += 1;
-        conn(std::min(id1, id2), std::max(id1, id2)) += 1;
-        conn(std::min(id0, id2), std::max(id0, id2)) += 1;
-
+//        conn.coeffRef(std::min(id0, id1), std::max(id0, id1)) += 1;
+//        conn.coeffRef(std::min(id1, id2), std::max(id1, id2)) += 1;
+//        conn.coeffRef(std::min(id0, id2), std::max(id0, id2)) += 1;
+        tripletList.push_back(T(std::min(id0, id1), std::max(id0, id1),1) );
+        tripletList.push_back(T(std::min(id1, id2), std::max(id1, id2),1) );
+        tripletList.push_back(T(std::min(id0, id2), std::max(id0, id2),1) );
     }
+    
+    conn.setFromTriplets(tripletList.begin(), tripletList.end());
+    
+    //std::cout<<conn<<std::endl;
+}
+
+void CoverRefiner::Update()
+{
+    ConnectivityMatrixType conn;
+    try
+    {
+        //conn.resize(MAX_NUMBER_OF_VERTICES, MAX_NUMBER_OF_VERTICES);
+        conn.resize(m_coverVertices->GetNumberOfPoints(), m_coverVertices->GetNumberOfPoints());
+        //conn.fill(0);
+    }
+    catch(...)
+    {
+        std::cout<<"Error allocating space for connectivity matrix in Refiner"<<std::endl;
+        throw;
+    }
+        
+    //std::cout<<"Cover size: "<<localCover.size()<<std::endl;
+    InitializeConnectivityMatrix(conn);
     //create storage for weights
     //this will be synchronized with coverVertices
    
@@ -80,11 +103,14 @@ void CoverRefiner::Update()
     //
     //--------------------------------------------------
     
+    
     while ( true ) 
     {
         bool TriangleSplitted = false; //algorithm stops when no more splits are required
         
-        for(HoleCoverType::iterator coverIt = m_coverFaces->begin(); coverIt!=m_coverFaces->end(); ++coverIt)    
+        HoleCoverType new_cover;
+        
+        for(HoleCoverType::iterator coverIt = m_coverFaces->begin(); coverIt!=m_coverFaces->end(); coverIt++)    
         {
             
             //calculate centroid
@@ -102,7 +128,8 @@ void CoverRefiner::Update()
                 
                 //                std::cout<<"Splitting confirmed: "<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
                 
-                m_coverFaces->erase(coverIt);
+                //m_coverFaces->erase(coverIt);
+                
                 //add new vertex
                 const vtkIdType idVc = m_coverVertices->InsertNextPoint(Vc.data());
                 
@@ -113,30 +140,11 @@ void CoverRefiner::Update()
                 TriangleCellType tri3; tri3.id[0]=idVi; tri3.id[1]=idVj; tri3.id[2]=idVc;
                 //relax edges (vi,vj), (vi,vk), (vj,vk)
                 //              TriangleSplitted = true;
-                m_coverFaces->push_back(tri1);
-                if( CheckForDuplicateTriangles() )
-                {
-                    for( HoleCoverType::const_iterator it1=m_coverFaces->begin(); it1!=m_coverFaces->end(); it1++  )
-                    {                
-                        std::cout<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<" "<<std::endl;
-                    }
-                }
-                m_coverFaces->push_back(tri2);
-                if( CheckForDuplicateTriangles() )
-                {
-                    for( HoleCoverType::const_iterator it1=m_coverFaces->begin(); it1!=m_coverFaces->end(); it1++  )
-                    {                
-                        std::cout<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<" "<<std::endl;
-                    }
-                }
-                m_coverFaces->push_back(tri3);
-                if( CheckForDuplicateTriangles() )
-                {
-                    for( HoleCoverType::const_iterator it1=m_coverFaces->begin(); it1!=m_coverFaces->end(); it1++  )
-                    {                
-                        std::cout<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<" "<<std::endl;
-                    }
-                }
+                new_cover.push_back(tri1);
+                new_cover.push_back(tri2);
+                new_cover.push_back(tri3);
+
+                CheckForDuplicateTriangles();
                 
                 
                 //Update matrices
@@ -144,11 +152,27 @@ void CoverRefiner::Update()
                 
                 //new point added - need resize
                 //conn.conservativeResize(coverVertices->GetNumberOfPoints(), coverVertices->GetNumberOfPoints());
-                std::cout<<"conn matrix size: "<<conn.rows()<<", "<<conn.cols()<<std::endl;
-                std::cout<<"max id to store: "<<std::max(tri1.id[0], std::max(tri1.id[1], std::max(tri1.id[3], std::max(
-                        tri2.id[0], std::max( tri2.id[1], std::max( tri2.id[2], std::max(
-                        tri3.id[0], std::max( tri3.id[1], tri3.id[2])         ))) 
-                        ) ) ) )                         <<std::endl;
+                //std::cout<<"conn matrix size: "<<conn.rows()<<", "<<conn.cols()<<std::endl;
+//                vtkIdType max_id1 =  std::max( tri1.id[0], std::max( tri1.id[1], tri1.id[2]) );
+//                vtkIdType max_id2 =  std::max( tri2.id[0], std::max( tri2.id[1], tri2.id[2]) );
+//                vtkIdType max_id3 =  std::max( tri3.id[0], std::max( tri3.id[1], tri3.id[2]) );
+//                vtkIdType max_id4 =  std::max( max_id1, std::max( max_id2, max_id3) );
+//
+//                std::cout<<"max id to store: "<<max_id4<<std::endl;
+                
+//                if(m_coverVertices->GetNumberOfPoints()>MAX_NUMBER_OF_VERTICES)
+//                {
+                try
+                {
+                    conn.conservativeResize(m_coverVertices->GetNumberOfPoints(), m_coverVertices->GetNumberOfPoints());
+                }
+                catch(...)
+                {
+                    std::cout<<"Error during conservativeResize of conn in refiner"<<std::endl;
+                    throw;
+                }
+//                }
+                
                 for(int i=0; i<3; i++)
                 {
                     conn.coeffRef(std::min(tri1.id[i], tri1.id[(i+1)%3]), std::max(tri1.id[i], tri1.id[(i+1)%3])) = 2;
@@ -171,13 +195,21 @@ void CoverRefiner::Update()
                 
                 //                SaveIsolatedCover(localCover, coverVertices, "refined.vtk");
             }
+            else
+            {
+                TriangleCellType tri1; tri1.id[0]=idVi; tri1.id[1]=idVj; tri1.id[2]=idVk;
+                new_cover.push_back(tri1);
+            }
             
         }
+        
+        m_coverFaces->clear();
+        (*m_coverFaces) = new_cover;
         
         
         std::cout<<"Cover size: "<<m_coverFaces->size()<<std::endl;
         std::cout<<"Sigmas size: "<<m_sigmas.size()<<std::endl;
-        std::cout<<"Connectivity: "<<conn.rows()<<", "<<conn.cols()<<", "<<conn.size()<<std::endl;
+        //std::cout<<"Connectivity: "<<conn.rows()<<", "<<conn.cols()<<", "<<conn.size()<<std::endl;
         
         //------------------------------------------
         //
@@ -198,6 +230,7 @@ void CoverRefiner::Update()
         std::cout<<"relaxing complete"<<std::endl;
         
     }    
+    
 }
 
 
@@ -274,22 +307,31 @@ void CoverRefiner::GetVertexNeighbors(vtkPolyData *mesh, vtkIdType vertexId,
 
 
 
-bool CoverRefiner::RelaxAllCoverEdges(Eigen::MatrixXi& conn)  {
+bool CoverRefiner::RelaxAllCoverEdges(ConnectivityMatrixType& conn)  {
 
     
     std::stack<EdgeType> EdgeStack;
     
-    for (int k=0; k<conn.rows(); ++k)
-        for (int j=0; j<conn.cols(); j++)  {
-            if ( conn(k,j) == 2) { //only interior edges (i.e. 2 cover triangles share it)
-                EdgeType e;
-                e.v0 = k;
-                e.v1 = j;
-                EdgeStack.push(e);
-            }
-            //std::cout<<(*i2)<<" ";
+//    for (int k=0; k<conn.rows(); ++k)
+//        for (int j=0; j<conn.cols(); j++)  {
+//            if ( conn.coeffRef(k,j) == 2) { //only interior edges (i.e. 2 cover triangles share it)
+//                EdgeType e;
+//                e.v0 = k;
+//                e.v1 = j;
+//                EdgeStack.push(e);
+//            }
+//            //std::cout<<(*i2)<<" ";
+//        }
+  
+    EdgeType e;
+    for (int k=0; k<conn.outerSize(); ++k)
+        for (ConnectivityMatrixType::InnerIterator it(conn,k); it; ++it)
+        {
+            e.v0 = it.row();
+            e.v1 = it.col();
+            EdgeStack.push(e);
         }
-    
+
     
     //      
     //   for each element in the queue.
@@ -408,7 +450,7 @@ bool CoverRefiner::FindConnectedVertices(const EdgeType& edge,
 
 //static int cover_id = 0; //for debugging output
 bool CoverRefiner::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge,
-        Eigen::MatrixXi& conn)  {
+        ConnectivityMatrixType& conn)  {
     VectorType edgeV0, edgeV1, candV0, candV1; 
     
     if(candidateEdge.v1==candidateEdge.v0)
@@ -488,35 +530,24 @@ bool CoverRefiner::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& can
             if(triangles_created)
             {
                 //create triangles
-                m_coverFaces->erase(it1); //erase the second trianle
+                m_coverFaces->erase(it1); //erase the second triangle
                 m_coverFaces->erase(it2);
                 
                 //add the new triangles
                 m_coverFaces->push_back(newtriangle1);
-                if( CheckForDuplicateTriangles() )
-                {
-                    for( HoleCoverType::const_iterator it1=m_coverFaces->begin(); it1!=m_coverFaces->end(); it1++  )
-                    {                
-                        std::cout<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<" "<<std::endl;
-                    }
-                }
                 m_coverFaces->push_back(newtriangle2);
-                if( CheckForDuplicateTriangles() )
-                {
-                    for( HoleCoverType::const_iterator it1=m_coverFaces->begin(); it1!=m_coverFaces->end(); it1++  )
-                    {                
-                        std::cout<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<" "<<std::endl;
-                    }
-                }
                 
+                CheckForDuplicateTriangles();
+
+                    
 //                std::cout<<"Added triangles"<<std::endl;
 //                std::cout<<"T1: "<<newtriangle1.id[0]<<" "<<newtriangle1.id[1]<<" "<<newtriangle1.id[2]<<std::endl;
 //                std::cout<<"T2: "<<newtriangle2.id[0]<<" "<<newtriangle2.id[1]<<" "<<newtriangle2.id[2]<<std::endl;
 //                std::cout<<"edge: "<<edge.v0<<" "<<edge.v1<<std::endl;
 //                std::cout<<"cand: "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
                 //update connectivity matrix
-                conn( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) ) = 0;
-                conn( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) ) = 2;
+                conn.coeffRef( std::min(edge.v0, edge.v1), std::max(edge.v0, edge.v1) ) = 0;
+                conn.coeffRef( std::min(candidateEdge.v0, candidateEdge.v1), std::max(candidateEdge.v0, candidateEdge.v1) )  = 2;
                 
                 swap_performed = true;
             }
@@ -535,26 +566,34 @@ bool CoverRefiner::CheckForDuplicateTriangles()
     {
         for( HoleCoverType::const_iterator it2=m_coverFaces->begin(); it2!=m_coverFaces->end(); it2++  )
         {
-            if (it1==it2) continue;
-            for(int i=0; i<3; i++)
+            if(it1!=it2)
             {
-                if((*it1).id[0]==(*it2).id[i])
+                std::vector<vtkIdType> tri1;
+                std::vector<vtkIdType> tri2;
+
+                for(int i = 0; i<3; i++) 
                 {
-                    for(int j=0; j<3; j++)
-                    {
-                        if((*it1).id[1]==(*it2).id[j])
-                        {
-                            for(int k=0; k<3; k++)
-                            {
-                                if((*it1).id[2]==(*it2).id[k])
-                                {
-                                    std::cout<<"Duplicate triangle found: "<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<
-                                        " and "<<(*it2).id[0]<<" "<<(*it2).id[1]<<" "<<(*it2).id[2]<<std::endl;
-                                    return true;
-                                }
-                            }                    
-                        }
-                    }                    
+                    tri1.push_back( (*it1).id[i] );
+                    tri2.push_back( (*it2).id[i] );
+                }
+
+                std::sort(tri1.begin(), tri1.end());
+                std::sort(tri2.begin(), tri2.end());
+
+                bool equal = true;
+
+                std::vector<vtkIdType>::const_iterator tit1, tit2;
+                for( tit1 = tri1.begin(), tit2 = tri2.begin();
+                        tit1!=tri1.end(); ++tit1, ++tit2)
+                {
+                    equal = equal && ( (*tit1)==(*tit2) );
+                }
+
+                if(equal)
+                {
+                    std::cout<<"Duplicate triangle found: "<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<
+                        " and "<<(*it2).id[0]<<" "<<(*it2).id[1]<<" "<<(*it2).id[2]<<std::endl;
+                    return true;
                 }
             }
         }
