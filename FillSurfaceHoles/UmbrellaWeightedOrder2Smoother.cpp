@@ -11,6 +11,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <Eigen/IterativeLinearSolvers>
 #include <vtkSmartPointer.h>
 
+#include <fstream>
 
 void UmbrellaWeightedOrder2Smoother::CalculateWeightMatrix()
 {
@@ -21,27 +22,45 @@ void UmbrellaWeightedOrder2Smoother::CalculateWeightMatrix()
     SparseDoubleMatrixType W(n_pts, n_pts);
     
     //for every triangle calculate cot of every angle and fill the matrix W
-    VectorType v1, v2, v3;
-    for( HoleCoverType::const_iterator it = m_coverFaces->begin(); it!=m_coverFaces->end(); it++)
-    {
-        const TriangleCellType& tri = *it;
-        for(int j=0; j<3; j++)
+    
+    { //Create a scope for triplet list (to release it afterwards)
+        typedef Eigen::Triplet<double> T;
+        std::vector<T> tripletList;
+
+        VectorType v1, v2, v3;
+        for( HoleCoverType::const_iterator it = m_coverFaces->begin(); it!=m_coverFaces->end(); it++)
         {
-            const int id1 = tri.id[j];
-            const int id2 = tri.id[(j+1)%3];
-            const int id3 = tri.id[(j+2)%3];
-            m_coverVertices->GetPoint(id1, v1.data());
-            m_coverVertices->GetPoint(id2, v2.data());
-            m_coverVertices->GetPoint(id3, v3.data());
-            
-            //angle between v[3],v[1] and v[1],v[2]
-            const VectorType v13 = (v3-v1).normalized();
-            const VectorType v12 = (v2-v1).normalized();
-            const double angle = std::acos(v13.dot(v12));
-            const double w23 = 1/std::tan(angle);
-            W.coeffRef(id2,id3) += w23;
-            W.coeffRef(id3,id2) += w23;
+            const TriangleCellType& tri = *it;
+            for(int j=0; j<3; j++)
+            {
+                const int id1 = tri.id[j];
+                const int id2 = tri.id[(j+1)%3];
+                const int id3 = tri.id[(j+2)%3];
+                m_coverVertices->GetPoint(id1, v1.data());
+                m_coverVertices->GetPoint(id2, v2.data());
+                m_coverVertices->GetPoint(id3, v3.data());
+
+                //angle between v[3],v[1] and v[1],v[2]
+//                const VectorType v13 = (v3-v1).normalized();
+//                const VectorType v12 = (v2-v1).normalized();
+//                const double angle = std::acos(v13.dot(v12));
+//                const double w23 = 1/std::tan(angle);
+    //            W.coeffRef(id2,id3) += w23;
+    //            W.coeffRef(id3,id2) += w23;
+                
+#ifdef USE_COTANGENT_WEIGHTS                
+                const double w23 = TriangleWeightCotangent(v1, v2, v3);
+#else
+                const double w23 = TriangleWeightScaleDependent(v1, v2, v3);
+#endif
+
+                tripletList.push_back(T(id2, id3, 23));
+                tripletList.push_back(T(id3, id2, w23));
+            }
         }
+
+        //fill W from triplets
+        W.setFromTriplets(tripletList.begin(), tripletList.end());
     }
     
     
@@ -143,13 +162,21 @@ void UmbrellaWeightedOrder2Smoother::Update()
 
 //    std::cout<<"Matrix C: "<<std::endl<<m_C<<std::endl;
 //    std::cout<<"Matrix b: "<<std::endl<<m_b<<std::endl;
-    
+        
     Eigen::BiCGSTAB < Eigen::SparseMatrix<double> > cg;
     cg.compute(m_C);
     m_x = cg.solve(m_b);
     std::cout << "Solving sparse system using BiCGSTAB" << std::endl;
     std::cout << "#iterations:     " << cg.iterations() << std::endl;
     std::cout << "estimated error: " << cg.error() << std::endl;     
+    
+    
+    std::ofstream file("matrix.txt");
+    file << m_C ;
+    std::ofstream file1("b.txt");
+    file1 << m_b ;
+
+
     
 //    std::cout<<"Matrix x: "<<std::endl<<m_x<<std::endl;
 
@@ -246,4 +273,24 @@ void UmbrellaWeightedOrder2Smoother::CreateOutput()
         v = m_x.row(i);
         m_smoothedCoverPoints->InsertNextPoint( v.data() );
     }
+}
+
+
+
+
+double UmbrellaWeightedOrder2Smoother::TriangleWeightCotangent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const
+{
+    const VectorType v13 = (v3-v1).normalized();
+    const VectorType v12 = (v2-v1).normalized();
+    const double angle = std::acos(v13.dot(v12));
+    const double w23 = 1/std::tan(angle);
+    return w23;
+}
+
+
+
+
+double UmbrellaWeightedOrder2Smoother::TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const
+{
+    const double w23 = 1/( (v2-v3).norm() );
 }

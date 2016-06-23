@@ -22,6 +22,10 @@ PURPOSE.  See the above copyright notice for more information.
 #include "HoleFillerDefines.h"
 
 
+//uncomment to use cotangent weights during smoothing instead of scale-dependent
+//#define USE_COTANGENT_WEIGHTS
+
+
 class UmbrellaWeightedOrder2Smoother
 {
 public:
@@ -43,6 +47,9 @@ protected:
     void CreateOutput();
     void TestBoundaryConservation(); //check that the smoothing solution did not modify the boundary
     
+    //returns cotangent of the angle between v1v2 and v1v3
+    double TriangleWeightCotangent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const;
+    double TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2, const Eigen::VectorXd& v3) const;
 private:
     const HoleCoverType *m_coverFaces;
     const VertexIDArrayType *m_boundaryIds;
