@@ -24,6 +24,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include "HoleFillerDefines.h"
 
 
+
 //uncomment to use cotangent weights during smoothing instead of scale-dependent
 //#define USE_COTANGENT_WEIGHTS
 
@@ -37,10 +38,16 @@ public:
     void SetInputMesh(vtkPolyData *mesh) {m_originalMesh = mesh;};
     void SetCoverVertexIds(VertexIDArrayType* ids) {m_coverVertexIDs = ids;};
     
+    void SetTolerance( double eps ) {m_tolerance = eps; };
+    double GetTolerance() {return m_tolerance; };
+    
+    void SetMaxIter( int i ) {m_maxIter = i; };
+    int GetMaxIter() {return m_maxIter; };
+    
     void Update();
     
     
-    UmbrellaWeightedOrder2Smoother():m_originalMesh(NULL), m_coverVertexIDs(NULL) {};
+    UmbrellaWeightedOrder2Smoother():m_originalMesh(NULL), m_coverVertexIDs(NULL), m_maxIter(50), m_tolerance(1e-6) {};
     
     
 protected:
@@ -67,13 +74,16 @@ protected:
     //uses U and weights and fills U2
     void CalculateU2( MatrixUType& U2, const MatrixUType& U, const Eigen::SparseMatrix<double>& weights );
     
-    void UpdateMeshPoints( const MatrixUType& U2 );
+    double UpdateMeshPoints( const MatrixUType& U2 );
+    
+    vtkIdType FindVertexConnectivityInfo( vtkIdType id ); //uses ids within mesh, compares to originalID
     
 private:
     vtkPolyData *m_originalMesh;
     VertexIDArrayType* m_coverVertexIDs;
     
-   
+    double m_tolerance;
+    int m_maxIter;
 
     
     std::vector<VertexConnectivityType> m_C;

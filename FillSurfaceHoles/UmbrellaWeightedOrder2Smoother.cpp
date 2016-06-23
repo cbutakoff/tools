@@ -8,6 +8,7 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include "UmbrellaWeightedOrder2Smoother.h"
 #include <vtkSmartPointer.h>
+#include <vtkPolyDataWriter.h>
 
 
 
@@ -49,15 +50,24 @@ void UmbrellaWeightedOrder2Smoother::GetVertexNeighbors( vtkIdType vertexId, Ver
     }
     
     neighbors.clear();
+//    std::cout<<"Neighbors of "<<vertexId<<" "<<std::endl;
     for( std::set<vtkIdType>::const_iterator it=connectedVertices.begin(); it!=connectedVertices.end(); it++ )
+    {
         neighbors.push_back( (*it) );
+//        std::cout<<(*it)<<" "<<std::endl;
+    }
 }
 
+static int idx = 0;
 void UmbrellaWeightedOrder2Smoother::Update()
 {
+    vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
+    wr->SetFileName("input_mesh.vtk");
+    wr->SetInputData(m_originalMesh);
+    wr->Write();
+
     CalculateConnectivity();
     
-    vtkPoints* pts = m_originalMesh->GetPoints();
     //start iterative updater
     bool converged = false;
     
@@ -65,8 +75,13 @@ void UmbrellaWeightedOrder2Smoother::Update()
     Eigen::VectorXd U2(m_C.size());
     U.fill(-1); //initialize. Some values will not be initialized, so checking will be needed
     U2.fill(-1);
+    
+    int iter = 0;
+    
     while (!converged)
     {
+        //std::cout<<"Smoothing iter "<<iter<<std::endl;
+        
         //calculate U for inner and boundary vertices
         MatrixUType U, U2;
         Eigen::SparseMatrix<double> weights;
@@ -76,6 +91,24 @@ void UmbrellaWeightedOrder2Smoother::Update()
         CalculateU2(U2, U, weights);
         
         //update only the interior vertices
+        const double diff = UpdateMeshPoints(U2);
+        
+
+        char filename[100];
+        sprintf(filename,"mesh%03d.vtk",idx++);
+        m_originalMesh->BuildCells();
+        vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
+        wr->SetFileName(filename);
+        wr->SetInputData(m_originalMesh);
+        wr->Write();
+
+        iter++;
+        
+        if( diff<m_tolerance || iter>=m_maxIter )
+        {
+            converged = true;
+        }
+        
     }
 }
 
@@ -127,6 +160,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateConnectivity()
         
         m_C.push_back(vc);
     }
+
 }
 
 
@@ -136,7 +170,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateU(MatrixUType& U, Eigen::SparseMat
     weights.resize(m_originalMesh->GetNumberOfPoints(), m_originalMesh->GetNumberOfPoints());
     U.resize(Eigen::NoChange, m_C.size());
     
-    vtkIdType vertex_index=0;
+    vtkIdType vertex_index=0;    
     for( std::vector<VertexConnectivityType>::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
     {
         Eigen::VectorXd w(it->connectedVertices.size()); //weights
@@ -151,7 +185,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateU(MatrixUType& U, Eigen::SparseMat
         Eigen::Vector3d Un; Un.fill(0);
         
         for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
-                neighb_it != it->connectedVertices.end(); it++, neighb_index++)
+                neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
         {
             const vtkIdType neighb_id = (*neighb_it);
             m_originalMesh->GetPoint( neighb_id, vi.data() );
@@ -159,6 +193,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateU(MatrixUType& U, Eigen::SparseMat
             w(neighb_index) = TriangleWeightScaleDependent(v,vi);
             
             //save only upper triangular matrix
+//            std::cout<<"Adding connectivity : "<<it->originalID<<", "<<neighb_id<<std::endl;
             weights.coeffRef(std::min(it->originalID, neighb_id), std::max(it->originalID, neighb_id)) = w(neighb_index);
             
             Un += vi*w(neighb_index);
@@ -191,11 +226,11 @@ void UmbrellaWeightedOrder2Smoother::CalculateU2(MatrixUType& U2, const MatrixUT
         Eigen::Vector3d Un; Un.fill(0);
         
         for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
-                neighb_it != it->connectedVertices.end(); it++, neighb_index++)
+                neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
         {
             const vtkIdType neighb_id = (*neighb_it);
 
-            Uvi = U.col(neighb_id);
+            Uvi = U.col(neighb_index);
             w(neighb_index) = weights.coeff( std::min(it->originalID, neighb_id), std::max(it->originalID, neighb_id) );
             
             Un += Uvi*w(neighb_index);
@@ -209,7 +244,56 @@ void UmbrellaWeightedOrder2Smoother::CalculateU2(MatrixUType& U2, const MatrixUT
 
 
 
-void UmbrellaWeightedOrder2Smoother::UpdateMeshPoints( const MatrixUType& U2 )
+double UmbrellaWeightedOrder2Smoother::UpdateMeshPoints( const MatrixUType& U2 )
 {
+    double vertex_difference = 0; //how much the update displaced the vertices
+
+    vtkIdType vertex_index=0;
     
+    for( std::vector<VertexConnectivityType>::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
+    {
+        if(it->vertexClass==vcInterior)
+        {
+            Eigen::Vector3d Pi;
+            m_originalMesh->GetPoint( it->originalID, Pi.data() );
+            
+            //iterate over all the neighbors and calculate valences
+            vtkIdType neighb_index=0;
+            double Vsum = 0; //valence factor
+            for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
+                    neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
+            {
+                const vtkIdType neighb_id = (*neighb_it);
+                
+                //find neighb_id in m_C and get its valence
+                vtkIdType neighb_C_id = FindVertexConnectivityInfo(neighb_id);
+                Vsum += 1/m_C.at(neighb_C_id).connectedVertices.size();
+                
+            }
+            
+            const double V = 1 + Vsum/it->connectedVertices.size();
+            
+            Eigen::Vector3d Pi_new = Pi - U2.col(vertex_index)/V;
+            m_originalMesh->GetPoints()->SetPoint( it->originalID, Pi_new.data() );
+            
+            vertex_difference += (Pi-Pi_new).norm();
+        }
+    }
+    
+    return vertex_difference;
+}
+
+
+
+
+vtkIdType UmbrellaWeightedOrder2Smoother::FindVertexConnectivityInfo( vtkIdType id ) //uses ids within mesh, compares to originalID
+{
+    vtkIdType vertex_index=0;
+    for( std::vector<VertexConnectivityType>::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
+    {
+        if(it->originalID==id)
+            break;
+    }    
+    
+    return vertex_index;
 }
