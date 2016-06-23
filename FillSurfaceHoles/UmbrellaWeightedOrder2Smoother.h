@@ -62,8 +62,12 @@ protected:
     void CalculateConnectivity(); //updates m_C
     void ClassifyVertex(VertexConnectivityType& v);
     
-    void CalculateU( MatrixUType& U );
-    void CalculateU2( MatrixUType& U2 );
+    //Fills U and weights
+    void CalculateU( MatrixUType& U, Eigen::SparseMatrix<double>& weights ); 
+    //uses U and weights and fills U2
+    void CalculateU2( MatrixUType& U2, const MatrixUType& U, const Eigen::SparseMatrix<double>& weights );
+    
+    void UpdateMeshPoints( const MatrixUType& U2 );
     
 private:
     vtkPolyData *m_originalMesh;
