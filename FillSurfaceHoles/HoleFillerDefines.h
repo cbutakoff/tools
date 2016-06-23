@@ -35,7 +35,7 @@ typedef struct __edge {
 
 
 typedef std::complex<double> AreaAngleMeasureType;
-typedef std::list<TriangleCellType> HoleCoverType; //to allow random deletion
+typedef std::vector<TriangleCellType> HoleCoverType; 
 typedef std::vector<HoleCoverType> ArrayOfCoversType;
 
 typedef Eigen::Vector3d VectorType;

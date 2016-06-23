@@ -9,6 +9,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include "CoverRefiner.h"
 #include "HoleFillerDefines.h"
 
+#include <vtkPolyDataWriter.h>
+
 #include <stack>
 
 
@@ -110,6 +112,11 @@ void CoverRefiner::Update()
         
         HoleCoverType new_cover;
         
+//        std::cout<<"Cover size: "<<m_coverFaces->size()<<std::endl;
+
+        //SaveIsolatedCover("1.vtk");
+        
+        //for(HoleCoverType::iterator coverIt = m_coverFaces->begin(); coverIt!=m_coverFaces->end(); coverIt++)    
         for(HoleCoverType::iterator coverIt = m_coverFaces->begin(); coverIt!=m_coverFaces->end(); coverIt++)    
         {
             
@@ -121,7 +128,8 @@ void CoverRefiner::Update()
             VectorType Vc;
             double Svc;
             
-            //            std::cout<<"Splitting verifying: "<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
+//            std::cout<<"Cover size: "<<m_coverFaces->size()<<std::endl;
+//            std::cout<<"Splitting verifying: "<<idVi<<" "<<idVj<<" "<<idVk<<std::endl;
             if( IsTriangleSplitRequired(idVi, idVj, idVk, Vc, Svc) )
             {  //create new triangles
                 //erase old triangle
@@ -143,6 +151,10 @@ void CoverRefiner::Update()
                 new_cover.push_back(tri1);
                 new_cover.push_back(tri2);
                 new_cover.push_back(tri3);
+
+//                std::cout<<"Inserting: "<<tri1.id[0]<<" "<<tri1.id[1]<<" "<<tri1.id[2]<<std::endl;                
+//                std::cout<<"Inserting: "<<tri2.id[0]<<" "<<tri2.id[1]<<" "<<tri2.id[2]<<std::endl;                
+//                std::cout<<"Inserting: "<<tri3.id[0]<<" "<<tri3.id[1]<<" "<<tri3.id[2]<<std::endl;                
 
                 CheckForDuplicateTriangles();
                 
@@ -179,17 +191,17 @@ void CoverRefiner::Update()
                     conn.coeffRef(std::min(tri2.id[i], tri2.id[(i+1)%3]), std::max(tri2.id[i], tri2.id[(i+1)%3])) = 2;
                     conn.coeffRef(std::min(tri3.id[i], tri3.id[(i+1)%3]), std::max(tri3.id[i], tri3.id[(i+1)%3])) = 2;
                 }
-                std::cout<<"Stored"<<std::endl;
+//                std::cout<<"Stored"<<std::endl;
                 //                std::cout<<conn<<std::endl;
                 
                 //relax edges (vi,vj), (vi,vk), (vj,vk)
-                EdgeType edge; edge.v0 = idVi; edge.v1 = idVj; 
-                EdgeType candidateEdge;
-                
-                std::cout<<"relaxing after split"<<std::endl;
-                if( FindConnectedVertices(edge, candidateEdge) )
-                    RelaxEdgeIfPossible(edge, candidateEdge, conn);
-                std::cout<<"relaxed after split"<<std::endl;
+//                EdgeType edge; edge.v0 = idVi; edge.v1 = idVj; 
+//                EdgeType candidateEdge;
+//                
+//                std::cout<<"relaxing after split"<<std::endl;
+//                if( FindConnectedVertices(&new_cover, edge, candidateEdge) )
+//                    RelaxEdgeIfPossible(&new_cover, edge, candidateEdge, conn);
+//                std::cout<<"relaxed after split"<<std::endl;
                 
                 TriangleSplitted = true;
                 
@@ -198,17 +210,41 @@ void CoverRefiner::Update()
             else
             {
                 TriangleCellType tri1; tri1.id[0]=idVi; tri1.id[1]=idVj; tri1.id[2]=idVk;
+//                std::cout<<"Inserting: "<<tri1.id[0]<<" "<<tri1.id[1]<<" "<<tri1.id[2]<<std::endl;                
                 new_cover.push_back(tri1);
             }
             
         }
         
+//        std::cout<<"Old faces: "<<m_coverFaces->size()<<std::endl;
+//        for(HoleCoverType::const_iterator iit1 = m_coverFaces->begin(); iit1!=m_coverFaces->end(); iit1++)
+//                std::cout<<(*iit1).id[0]<<" "<<(*iit1).id[1]<<" "<<(*iit1).id[2]<<std::endl;                
+//            
+//        std::cout<<"New faces: "<<new_cover.size()<<std::endl;
+//        for(HoleCoverType::const_iterator iit1 = new_cover.begin(); iit1!=new_cover.end(); iit1++)
+//                std::cout<<(*iit1).id[0]<<" "<<(*iit1).id[1]<<" "<<(*iit1).id[2]<<std::endl;                
+            
+
         m_coverFaces->clear();
-        (*m_coverFaces) = new_cover;
+        //m_coverFaces->resize(new_cover.size());
+        for(HoleCoverType::const_iterator iit1 = new_cover.begin(); iit1!=new_cover.end(); iit1++)
+        {
+            TriangleCellType tri1; tri1.id[0]=(*iit1).id[0]; tri1.id[1]=(*iit1).id[1]; tri1.id[2]=(*iit1).id[2];
+//            std::cout<<"Saving :"<<tri1.id[0]<<" "<<tri1.id[1]<<" "<<tri1.id[2]<<std::endl; 
+            m_coverFaces->push_back( tri1 );                
+        }
         
+        //(*m_coverFaces) = new_cover;
         
-        std::cout<<"Cover size: "<<m_coverFaces->size()<<std::endl;
-        std::cout<<"Sigmas size: "<<m_sigmas.size()<<std::endl;
+//        std::cout<<"After assignment: "<<m_coverFaces->size()<<std::endl;
+//        for(HoleCoverType::const_iterator iit1 = m_coverFaces->begin(); iit1!=m_coverFaces->end(); iit1++)
+//                std::cout<<(*iit1).id[0]<<" "<<(*iit1).id[1]<<" "<<(*iit1).id[2]<<std::endl;                
+//        
+        
+        //SaveIsolatedCover("2.vtk");
+        
+//        std::cout<<"Cover size: "<<m_coverFaces->size()<<std::endl;
+//        std::cout<<"Sigmas size: "<<m_sigmas.size()<<std::endl;
         //std::cout<<"Connectivity: "<<conn.rows()<<", "<<conn.cols()<<", "<<conn.size()<<std::endl;
         
         //------------------------------------------
@@ -225,9 +261,15 @@ void CoverRefiner::Update()
         //  Step 4:    
         //   
         //  Relax all cover edges
-        std::cout<<"relaxing started"<<std::endl;
+//        std::cout<<"relaxing started"<<std::endl;
         while( RelaxAllCoverEdges(conn) ) {};
-        std::cout<<"relaxing complete"<<std::endl;
+
+//        std::cout<<"After relaxing: "<<m_coverFaces->size()<<std::endl;
+//        for(HoleCoverType::const_iterator iit1 = m_coverFaces->begin(); iit1!=m_coverFaces->end(); iit1++)
+//                std::cout<<(*iit1).id[0]<<" "<<(*iit1).id[1]<<" "<<(*iit1).id[2]<<std::endl;                
+
+
+//        std::cout<<"relaxing complete"<<std::endl;
         
     }    
     
@@ -351,13 +393,13 @@ bool CoverRefiner::RelaxAllCoverEdges(ConnectivityMatrixType& conn)  {
         
         //Using the upper triangular connectivity matrix find the 2 vertices that are connected to the edge
         EdgeType candidateEdge;
-        if( FindConnectedVertices(edge, candidateEdge) )
+        if( FindConnectedVertices(m_coverFaces, edge, candidateEdge) )
         {
             
             //verify if swap is needed, first check the edge length criterion, then circumference
 //            std::cout<<"edge "<<edge.v0<<" "<<edge.v1<<std::endl;
 //            std::cout<<"cand "<<candidateEdge.v0<<" "<<candidateEdge.v1<<std::endl;
-            swap_performed = RelaxEdgeIfPossible(edge, candidateEdge, conn);
+            swap_performed = RelaxEdgeIfPossible(m_coverFaces, edge, candidateEdge, conn);
             
         }
     }
@@ -369,7 +411,7 @@ bool CoverRefiner::RelaxAllCoverEdges(ConnectivityMatrixType& conn)  {
 
 
 //conn - upper triangular connectivity matrix
-bool CoverRefiner::FindConnectedVertices(const EdgeType& edge, 
+bool CoverRefiner::FindConnectedVertices(HoleCoverType *coverFaces, const EdgeType& edge, 
         EdgeType& intersectingEdge)  {
 
     std::vector<vtkIdType> ids;
@@ -378,7 +420,7 @@ bool CoverRefiner::FindConnectedVertices(const EdgeType& edge,
 //    std::cout<<"Edge orthogonal to ("<<edge.v0<<" "<<edge.v1<<")"<<std::endl;
     
     //iterate through the triangles and find the 2 sharing the edge
-    for( HoleCoverType::const_iterator it = m_coverFaces->begin(); it!=m_coverFaces->end(); it++ )
+    for( HoleCoverType::const_iterator it = coverFaces->begin(); it!=coverFaces->end(); it++ )
     {
         int mask[] = {0,0,0}; //0 - vertex not used, 1 - vertex used
         
@@ -449,7 +491,7 @@ bool CoverRefiner::FindConnectedVertices(const EdgeType& edge,
 
 
 //static int cover_id = 0; //for debugging output
-bool CoverRefiner::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge,
+bool CoverRefiner::RelaxEdgeIfPossible(HoleCoverType *coverFaces, const EdgeType& edge, const EdgeType& candidateEdge,
         ConnectivityMatrixType& conn)  {
     VectorType edgeV0, edgeV1, candV0, candV1; 
     
@@ -476,16 +518,17 @@ bool CoverRefiner::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& can
         if( IsPointInCircle(edgeV0, edgeV1, candV0, candV1) ) //do the swap
         {
             //do the swap here. Erase old triangles
-            HoleCoverType::iterator it1;
-            HoleCoverType::iterator it2;
-            it1 = FindTriangleByPointIds(edge.v0, edge.v1, candidateEdge.v0);
-            it2 = FindTriangleByPointIds(edge.v0, edge.v1, candidateEdge.v1);
+            
+            vtkIdType tri1_id = FindTriangleByPointIds(edge.v0, edge.v1, candidateEdge.v0);
+            vtkIdType tri2_id = FindTriangleByPointIds(edge.v0, edge.v1, candidateEdge.v1);
 
 //            std::cout<<"Iterator for triangle: "<<edge.v0<<", "<<edge.v1<<", "<<candidateEdge.v0<<" = "<<(*it1).id[0]<<" "<<(*it1).id[1]<<" "<<(*it1).id[2]<<std::endl;
 //            std::cout<<"Iterator for triangle: "<<edge.v0<<", "<<edge.v1<<", "<<candidateEdge.v1<<" "<<(*it2).id[0]<<" "<<(*it2).id[1]<<" "<<(*it2).id[2]<<std::endl;
             
             TriangleCellType newtriangle1;
             TriangleCellType newtriangle2;
+            
+            HoleCoverType new_cover;
             
             //identify vertex order and create new triangles
             //forward order 
@@ -494,11 +537,12 @@ bool CoverRefiner::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& can
             {
 //                std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
 //                std::cout<<"Checking: "<<(*it1).id[i]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[(i+2)%3]<<std::endl;
-                if( ( (*it1).id[i]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[(i+2)%3]==candidateEdge.v0) )
+                if( (coverFaces->at(tri1_id).id[i]==edge.v0 && coverFaces->at(tri1_id).id[(i+1)%3]==edge.v1 && coverFaces->at(tri1_id).id[(i+2)%3]==candidateEdge.v0) )
                 {
                     newtriangle1.id[0] = candidateEdge.v0;
                     newtriangle1.id[1] = edge.v0;
                     newtriangle1.id[2] = candidateEdge.v1;
+                    
                     newtriangle2.id[0] = candidateEdge.v1;
                     newtriangle2.id[1] = edge.v1;
                     newtriangle2.id[2] = candidateEdge.v0;
@@ -513,7 +557,7 @@ bool CoverRefiner::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& can
                 {
 //                    std::cout<<"Triangle: "<<edge.v0<<" "<<edge.v1<<" "<<candidateEdge.v0<<std::endl;
 //                    std::cout<<"Checking: "<<(*it1).id[(i+2)%3]<<" "<<(*it1).id[(i+1)%3]<<" "<<(*it1).id[i]<<std::endl;
-                    if( ( (*it1).id[(i+2)%3]==edge.v0 && (*it1).id[(i+1)%3]==edge.v1 && (*it1).id[i]==candidateEdge.v0) )
+                    if( ( coverFaces->at(tri1_id).id[(i+2)%3]==edge.v0 && coverFaces->at(tri1_id).id[(i+1)%3]==edge.v1 && coverFaces->at(tri1_id).id[i]==candidateEdge.v0) )
                     {
                         newtriangle1.id[0] = candidateEdge.v1;
                         newtriangle1.id[1] = edge.v0;
@@ -527,17 +571,29 @@ bool CoverRefiner::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& can
                 }
             }
             
+            for(vtkIdType i=0; i<coverFaces->size(); i++)
+            {
+                if( i!=tri1_id && i!=tri2_id )
+                {
+                    TriangleCellType tri;
+                    tri.id[0] = coverFaces->at(i).id[0];
+                    tri.id[1] = coverFaces->at(i).id[1];
+                    tri.id[2] = coverFaces->at(i).id[2];
+                    new_cover.push_back(tri);
+                }
+            }
+            
             if(triangles_created)
             {
                 //create triangles
-                m_coverFaces->erase(it1); //erase the second triangle
-                m_coverFaces->erase(it2);
+                //m_coverFaces->at(tri1_id).erased = true; //erase the second triangle
+                //m_coverFaces->at(tri2_id).erased = true;
                 
                 //add the new triangles
-                m_coverFaces->push_back(newtriangle1);
-                m_coverFaces->push_back(newtriangle2);
+                new_cover.push_back(newtriangle1);
+                new_cover.push_back(newtriangle2);
                 
-                CheckForDuplicateTriangles();
+                //CheckForDuplicateTriangles();
 
                     
 //                std::cout<<"Added triangles"<<std::endl;
@@ -551,8 +607,22 @@ bool CoverRefiner::RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& can
                 
                 swap_performed = true;
             }
+            
+            coverFaces->clear();
+            //m_coverFaces->resize(new_cover.size());
+            for(HoleCoverType::const_iterator iit1 = new_cover.begin(); iit1!=new_cover.end(); iit1++)
+            {
+                TriangleCellType tri1; tri1.id[0]=(*iit1).id[0]; tri1.id[1]=(*iit1).id[1]; tri1.id[2]=(*iit1).id[2];
+//                std::cout<<"Saving :"<<tri1.id[0]<<" "<<tri1.id[1]<<" "<<tri1.id[2]<<std::endl; 
+                coverFaces->push_back( tri1 );                
+            }
+
+            CheckForDuplicateTriangles();
         }
     }
+    
+    
+    
     
     return swap_performed;
 }
@@ -721,9 +791,10 @@ bool CoverRefiner::IsPointInCircle(const VectorType& pt0,
 
 
 
-HoleCoverType::iterator CoverRefiner::FindTriangleByPointIds( 
-        vtkIdType id0, vtkIdType id1, vtkIdType id2)  {   
-    HoleCoverType::iterator retval;
+vtkIdType CoverRefiner::FindTriangleByPointIds( 
+        vtkIdType id0, vtkIdType id1, vtkIdType id2)  { 
+    
+    vtkIdType retval;
     
     std::vector<vtkIdType> argumentIDs;
     argumentIDs.push_back(id0);
@@ -735,12 +806,12 @@ HoleCoverType::iterator CoverRefiner::FindTriangleByPointIds(
 
 //    std::cout<<"To find: "<<argumentIDs[0]<<" "<<argumentIDs[1]<<" "<<argumentIDs[2]<<std::endl;
     
-    for(retval = m_coverFaces->begin(); retval!=m_coverFaces->end(); retval++)
+    for(retval = 0; retval<m_coverFaces->size(); retval++)
     {
         IDs.clear();
-        IDs.push_back((*retval).id[0]);
-        IDs.push_back((*retval).id[1]);
-        IDs.push_back((*retval).id[2]);
+        IDs.push_back(m_coverFaces->at(retval).id[0]);
+        IDs.push_back(m_coverFaces->at(retval).id[1]);
+        IDs.push_back(m_coverFaces->at(retval).id[2]);
         std::sort(IDs.begin(), IDs.end());
 
 //        std::cout<<"Comparing to: "<<IDs[0]<<" "<<IDs[1]<<" "<<IDs[2]<<std::endl;
@@ -758,3 +829,26 @@ HoleCoverType::iterator CoverRefiner::FindTriangleByPointIds(
     return retval;
 }
 
+
+
+
+
+void CoverRefiner::SaveIsolatedCover(const char* filename)  {
+    vtkSmartPointer<vtkCellArray> coverCells = vtkSmartPointer<vtkCellArray>::New();
+    for( HoleCoverType::const_iterator it = m_coverFaces->begin(); it!=m_coverFaces->end(); ++it )
+    {
+        coverCells->InsertNextCell(3);
+        coverCells->InsertCellPoint((*it).id[0]);
+        coverCells->InsertCellPoint((*it).id[1]);
+        coverCells->InsertCellPoint((*it).id[2]);
+    }
+    
+    vtkSmartPointer<vtkPolyData> pd = vtkSmartPointer<vtkPolyData>::New();
+    pd->SetPoints(m_coverVertices);
+    pd->SetPolys(coverCells);
+    
+    vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
+    wr->SetFileName(filename);
+    wr->SetInputData(pd);
+    wr->Write();
+}

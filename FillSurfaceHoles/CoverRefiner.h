@@ -44,14 +44,21 @@ protected:
     
     void GetVertexNeighbors(vtkPolyData *mesh, vtkIdType vertexId, std::set<vtkIdType>& connectedVertices);
     bool RelaxAllCoverEdges(ConnectivityMatrixType& conn);    
-    bool FindConnectedVertices(const EdgeType& edge, EdgeType& intersectingEdge);
-    bool RelaxEdgeIfPossible(const EdgeType& edge, const EdgeType& candidateEdge, ConnectivityMatrixType& conn);
+
+    bool FindConnectedVertices(HoleCoverType *coverFaces, const EdgeType& edge, EdgeType& intersectingEdge);
+    
+    bool RelaxEdgeIfPossible(HoleCoverType *coverFaces, const EdgeType& edge, const EdgeType& candidateEdge, ConnectivityMatrixType& conn);
+
     bool CheckForDuplicateTriangles();
     bool IsTriangleSplitRequired(const vtkIdType idVi, const vtkIdType idVj, const vtkIdType idVk, VectorType& Vc, double& Svc);
     
     //check if ptcheck is inside a circle defined by the 3 points
     bool IsPointInCircle(const VectorType& pt0, const VectorType& pt1, const VectorType& pt2, const VectorType& ptcheck) const;
-    HoleCoverType::iterator FindTriangleByPointIds( vtkIdType id0, vtkIdType id1, vtkIdType id2);     
+    vtkIdType FindTriangleByPointIds( vtkIdType id0, vtkIdType id1, vtkIdType id2);     
+    
+    void SaveIsolatedCover(const char* filename);
+
+
 private:
     HoleCoverType *m_coverFaces;
     const VertexIDArrayType *m_boundaryIds;

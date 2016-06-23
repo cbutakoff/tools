@@ -67,11 +67,11 @@ void SurfaceHoleFiller::Update()
     for (int i = 0; i < hole_boundaries.size(); i++) {
         std::cout << "Filling hole " << i << "/" << hole_boundaries.size() << std::endl;
 
-                std::cout<<"Boundary "<<i<<std::endl;
-                for(int j=0; j<hole_boundaries[i].size(); j++)
-                {
-                    std::cout<<hole_boundaries[i][j].v0<<" "<<hole_boundaries[i][j].v1<<std::endl;
-                }
+//                std::cout<<"Boundary "<<i<<std::endl;
+//                for(int j=0; j<hole_boundaries[i].size(); j++)
+//                {
+//                    std::cout<<hole_boundaries[i][j].v0<<" "<<hole_boundaries[i][j].v1<<std::endl;
+//                }
 
         HoleCoverType cover;
 
@@ -86,9 +86,9 @@ void SurfaceHoleFiller::Update()
             std::cout<<"Some exception"<<std::endl;
         }
         
-        std::cout<<"Initial cover"<<std::endl;
-        for(HoleCoverType::iterator it = cover.begin(); it!=cover.end(); it++)
-            std::cout<<(*it).id[0]<<" "<<(*it).id[1]<<" "<<(*it).id[2]<<std::endl;
+//        std::cout<<"Initial cover"<<std::endl;
+//        for(HoleCoverType::iterator it = cover.begin(); it!=cover.end(); it++)
+//            std::cout<<(*it).id[0]<<" "<<(*it).id[1]<<" "<<(*it).id[2]<<std::endl;
         
         //updates the mesh inside
         RefineCover(m_outputMesh, hole_boundaries.at(i), cover);
@@ -692,7 +692,8 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
     VertexIDArrayType local_boundary;
     for(vtkIdType id = 0; id<boundaryVertexIDs.size(); id++)
         local_boundary.push_back(id);
-    SaveIsolatedCover(localCover, coverVertices, "beforeRefine.vtk");
+    
+//    SaveIsolatedCover(localCover, coverVertices, "beforeRefine.vtk");
             
     
     try
@@ -710,7 +711,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
         throw;
     }
     
-    SaveIsolatedCover(localCover, coverVertices, "afterRefine.vtk");
+//    SaveIsolatedCover(localCover, coverVertices, "afterRefine.vtk");
     
    
     
