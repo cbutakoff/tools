@@ -27,12 +27,14 @@ Example image (left - DT, right - red blob):
 
 
 ##FillSurfaceHoles
-Implementation similar to ReMesh. Detects and fills holes on the surface. Currently under construction. Current version implements P. Liepa "Filling Holes in Meshes" without smoothing. Already has subdivision. Smoothing to be added soon. Here's a sample result
+Implementation similar to ReMesh. Detects and fills holes on the surface. Currently under construction. Current version implements P. Liepa "Filling Holes in Meshes" without smoothing. Here's a sample result. The smoothing does not seem to be great. Also has some suboptimal array handling and needs a revision.
 
 ![Hole Filling Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/HoleFilling.gif)
 
 Todo:
-- Add smoothing
+- Reduce the amount of array copying
+- Improve smoothing
+
 
 
 ##LVMeshFromMRI
