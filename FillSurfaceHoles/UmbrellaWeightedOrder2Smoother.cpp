@@ -71,10 +71,7 @@ void UmbrellaWeightedOrder2Smoother::Update()
     //start iterative updater
     bool converged = false;
     
-    Eigen::VectorXd U(m_C.size());
-    Eigen::VectorXd U2(m_C.size());
-    U.fill(-1); //initialize. Some values will not be initialized, so checking will be needed
-    U2.fill(-1);
+    MatrixUType U, U2;
     
     int iter = 0;
     
@@ -83,12 +80,12 @@ void UmbrellaWeightedOrder2Smoother::Update()
         //std::cout<<"Smoothing iter "<<iter<<std::endl;
         
         //calculate U for inner and boundary vertices
-        MatrixUType U, U2;
         Eigen::SparseMatrix<double> weights;
         CalculateU(U, weights);
         
         //calculate U^2 only for interior vertices
         CalculateU2(U2, U, weights);
+
         
         //update only the interior vertices
         const double diff = UpdateMeshPoints(U2);
