@@ -12,15 +12,47 @@ PURPOSE.  See the above copyright notice for more information.
 
 
 
-double UmbrellaWeightedOrder2Smoother::TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2) const
+double UmbrellaWeightedOrder2Smoother::CalculateEdgeWeight(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const
 {
-    return 1/( (v1-v2).norm() );
+    double value = -1;
+    switch( m_weightingType )
+    {
+        case vwCotangent:
+            value = EdgeWeightCotangent(v_third, v1_edge, v2_edge);
+            break;
+        case vwInvEdgeLength:
+            value = EdgeWeightInvEdgeLength(v_third, v1_edge, v2_edge);
+            break;
+        default:
+            std::cout<<"Undefined vertex weighting type";
+            throw "Undefined vertex weighting type";
+    }
+}
+
+double UmbrellaWeightedOrder2Smoother::EdgeWeightCotangent(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const
+{
+    const VectorType v13 = (v2_edge-v_third).normalized();
+    const VectorType v12 = (v1_edge-v_third).normalized();
+    const double angle = std::acos(v13.dot(v12));
+    const double w23 = 1/std::tan(angle);
+    return w23;
 }
 
 
 
 
-void UmbrellaWeightedOrder2Smoother::GetVertexNeighbors( vtkIdType vertexId, VertexIDArrayType& neighbors)  {
+double UmbrellaWeightedOrder2Smoother::EdgeWeightInvEdgeLength(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const
+{
+    const double w23 = 1/( (v1_edge-v2_edge).norm() );
+}
+
+
+
+
+
+
+
+void UmbrellaWeightedOrder2Smoother::GetVertexNeighbors( vtkIdType vertexId, VertexIDArrayType& neighbors) const {
     
     std::set<vtkIdType> connectedVertices;
     
@@ -68,45 +100,18 @@ void UmbrellaWeightedOrder2Smoother::Update()
 
     CalculateConnectivity();
     
-    //start iterative updater
-    bool converged = false;
+    SparseMatrixDoubleType W;
     
-    MatrixUType U, U2;
-    
-    int iter = 0;
-    
-    while (!converged)
-    {
-        //std::cout<<"Smoothing iter "<<iter<<std::endl;
-        
-        //calculate U for inner and boundary vertices
-        Eigen::SparseMatrix<double> weights;
-        CalculateU(U, weights);
-        
-        //calculate U^2 only for interior vertices
-        CalculateU2(U2, U, weights);
+    CalculateEdgeWeightMatrix(W);
 
-        
-        //update only the interior vertices
-        const double diff = UpdateMeshPoints(U2);
-        
+    char filename[100];
+    sprintf(filename,"mesh%03d.vtk",idx++);
+    m_originalMesh->BuildCells();
 
-        char filename[100];
-        sprintf(filename,"mesh%03d.vtk",idx++);
-        m_originalMesh->BuildCells();
-        vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
-        wr->SetFileName(filename);
-        wr->SetInputData(m_originalMesh);
-        wr->Write();
+    wr->SetFileName(filename);
+    wr->SetInputData(m_originalMesh);
+    wr->Write();
 
-        iter++;
-        
-        if( diff<m_tolerance || iter>=m_maxIter )
-        {
-            converged = true;
-        }
-        
-    }
 }
 
 
@@ -161,136 +166,205 @@ void UmbrellaWeightedOrder2Smoother::CalculateConnectivity()
 }
 
 
+//
+//void UmbrellaWeightedOrder2Smoother::CalculateU(MatrixUType& U, Eigen::SparseMatrix<double>& weights)
+//{
+//    weights.resize(m_originalMesh->GetNumberOfPoints(), m_originalMesh->GetNumberOfPoints());
+//    U.resize(Eigen::NoChange, m_C.size());
+//    
+//    vtkIdType vertex_index=0;    
+//    for( VertexConnectivityArrayType::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
+//    {
+//        Eigen::VectorXd w(it->connectedVertices.size()); //weights
+//
+//        Eigen::Vector3d v;
+//        m_originalMesh->GetPoint( it->originalID, v.data() );
+//        
+//        //iterate over all the neighbors and calculate weights
+//        vtkIdType neighb_index=0;
+//        Eigen::Vector3d vi;
+//
+//        Eigen::Vector3d Un; Un.fill(0);
+//        
+//        for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
+//                neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
+//        {
+//            const vtkIdType neighb_id = (*neighb_it);
+//            m_originalMesh->GetPoint( neighb_id, vi.data() );
+//
+//            w(neighb_index) = TriangleWeightScaleDependent(v,vi);
+//            
+//            //save only upper triangular matrix
+////            std::cout<<"Adding connectivity : "<<it->originalID<<", "<<neighb_id<<std::endl;
+//            weights.coeffRef(std::min(it->originalID, neighb_id), std::max(it->originalID, neighb_id)) = w(neighb_index);
+//            
+//            Un += vi*w(neighb_index);
+//        }
+//        
+//        const double Wt = w.sum();
+//        
+//        U.col(vertex_index) = -v + Un/Wt;
+//    }
+//}
 
-void UmbrellaWeightedOrder2Smoother::CalculateU(MatrixUType& U, Eigen::SparseMatrix<double>& weights)
+//
+//void UmbrellaWeightedOrder2Smoother::CalculateU2(MatrixUType& U2, const MatrixUType& U, const Eigen::SparseMatrix<double>& weights)
+//{
+//    U2.resize(Eigen::NoChange, m_C.size());
+//
+//        
+//    vtkIdType vertex_index=0;
+//    for( VertexConnectivityArrayType::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
+//    {
+//        Eigen::VectorXd w(it->connectedVertices.size()); //weights
+//
+//        Eigen::Vector3d Uv = U.col(vertex_index);
+//        
+//        
+//        //iterate over all the neighbors and calculate weights
+//        vtkIdType neighb_index=0;
+//        Eigen::Vector3d Uvi;
+//
+//        Eigen::Vector3d Un; Un.fill(0);
+//        
+//        for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
+//                neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
+//        {
+//            const vtkIdType neighb_id = (*neighb_it);
+//
+//            Uvi = U.col(neighb_index);
+//            w(neighb_index) = weights.coeff( std::min(it->originalID, neighb_id), std::max(it->originalID, neighb_id) );
+//            
+//            Un += Uvi*w(neighb_index);
+//        }
+//        
+//        const double Wt = w.sum();
+//        
+//        U2.col(vertex_index) = -Uv + Un/Wt;
+//    }    
+//}
+//
+
+//
+//double UmbrellaWeightedOrder2Smoother::UpdateMeshPoints( const MatrixUType& U2 )
+//{
+//    double vertex_difference = 0; //how much the update displaced the vertices
+//
+//    vtkIdType vertex_index=0;
+//    
+//    for( VertexConnectivityArrayType::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
+//    {
+//        if(it->vertexClass==vcInterior)
+//        {
+//            Eigen::Vector3d Pi;
+//            m_originalMesh->GetPoint( it->originalID, Pi.data() );
+//            
+//            //iterate over all the neighbors and calculate valences
+//            vtkIdType neighb_index=0;
+//            double Vsum = 0; //valence factor
+//            for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
+//                    neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
+//            {
+//                const vtkIdType neighb_id = (*neighb_it);
+//                
+//                //find neighb_id in m_C and get its valence
+//                vtkIdType neighb_C_id = FindVertexConnectivityInfo(neighb_id);
+//                Vsum += 1/m_C.at(neighb_C_id).connectedVertices.size();
+//                
+//            }
+//            
+//            const double V = 1 + Vsum/it->connectedVertices.size();
+//            
+//            Eigen::Vector3d Pi_new = Pi - U2.col(vertex_index)/V;
+//            m_originalMesh->GetPoints()->SetPoint( it->originalID, Pi_new.data() );
+//            
+//            vertex_difference += (Pi-Pi_new).norm();
+//        }
+//    }
+//    
+//    return vertex_difference;
+//}
+//
+
+
+
+vtkIdType UmbrellaWeightedOrder2Smoother::FindVertexConnectivityLocalID( vtkIdType id ) //uses ids within mesh, compares to originalID
 {
-    weights.resize(m_originalMesh->GetNumberOfPoints(), m_originalMesh->GetNumberOfPoints());
-    U.resize(Eigen::NoChange, m_C.size());
-    
-    vtkIdType vertex_index=0;    
-    for( std::vector<VertexConnectivityType>::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
-    {
-        Eigen::VectorXd w(it->connectedVertices.size()); //weights
-
-        Eigen::Vector3d v;
-        m_originalMesh->GetPoint( it->originalID, v.data() );
-        
-        //iterate over all the neighbors and calculate weights
-        vtkIdType neighb_index=0;
-        Eigen::Vector3d vi;
-
-        Eigen::Vector3d Un; Un.fill(0);
-        
-        for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
-                neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
-        {
-            const vtkIdType neighb_id = (*neighb_it);
-            m_originalMesh->GetPoint( neighb_id, vi.data() );
-
-            w(neighb_index) = TriangleWeightScaleDependent(v,vi);
-            
-            //save only upper triangular matrix
-//            std::cout<<"Adding connectivity : "<<it->originalID<<", "<<neighb_id<<std::endl;
-            weights.coeffRef(std::min(it->originalID, neighb_id), std::max(it->originalID, neighb_id)) = w(neighb_index);
-            
-            Un += vi*w(neighb_index);
-        }
-        
-        const double Wt = w.sum();
-        
-        U.col(vertex_index) = -v + Un/Wt;
-    }
-}
-
-
-void UmbrellaWeightedOrder2Smoother::CalculateU2(MatrixUType& U2, const MatrixUType& U, const Eigen::SparseMatrix<double>& weights)
-{
-    U2.resize(Eigen::NoChange, m_C.size());
-
-        
     vtkIdType vertex_index=0;
-    for( std::vector<VertexConnectivityType>::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
-    {
-        Eigen::VectorXd w(it->connectedVertices.size()); //weights
-
-        Eigen::Vector3d Uv = U.col(vertex_index);
-        
-        
-        //iterate over all the neighbors and calculate weights
-        vtkIdType neighb_index=0;
-        Eigen::Vector3d Uvi;
-
-        Eigen::Vector3d Un; Un.fill(0);
-        
-        for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
-                neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
-        {
-            const vtkIdType neighb_id = (*neighb_it);
-
-            Uvi = U.col(neighb_index);
-            w(neighb_index) = weights.coeff( std::min(it->originalID, neighb_id), std::max(it->originalID, neighb_id) );
-            
-            Un += Uvi*w(neighb_index);
-        }
-        
-        const double Wt = w.sum();
-        
-        U2.col(vertex_index) = -Uv + Un/Wt;
-    }    
-}
-
-
-
-double UmbrellaWeightedOrder2Smoother::UpdateMeshPoints( const MatrixUType& U2 )
-{
-    double vertex_difference = 0; //how much the update displaced the vertices
-
-    vtkIdType vertex_index=0;
-    
-    for( std::vector<VertexConnectivityType>::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
-    {
-        if(it->vertexClass==vcInterior)
-        {
-            Eigen::Vector3d Pi;
-            m_originalMesh->GetPoint( it->originalID, Pi.data() );
-            
-            //iterate over all the neighbors and calculate valences
-            vtkIdType neighb_index=0;
-            double Vsum = 0; //valence factor
-            for( VertexIDArrayType::const_iterator neighb_it = it->connectedVertices.begin();
-                    neighb_it != it->connectedVertices.end(); neighb_it++, neighb_index++)
-            {
-                const vtkIdType neighb_id = (*neighb_it);
-                
-                //find neighb_id in m_C and get its valence
-                vtkIdType neighb_C_id = FindVertexConnectivityInfo(neighb_id);
-                Vsum += 1/m_C.at(neighb_C_id).connectedVertices.size();
-                
-            }
-            
-            const double V = 1 + Vsum/it->connectedVertices.size();
-            
-            Eigen::Vector3d Pi_new = Pi - U2.col(vertex_index)/V;
-            m_originalMesh->GetPoints()->SetPoint( it->originalID, Pi_new.data() );
-            
-            vertex_difference += (Pi-Pi_new).norm();
-        }
-    }
-    
-    return vertex_difference;
-}
-
-
-
-
-vtkIdType UmbrellaWeightedOrder2Smoother::FindVertexConnectivityInfo( vtkIdType id ) //uses ids within mesh, compares to originalID
-{
-    vtkIdType vertex_index=0;
-    for( std::vector<VertexConnectivityType>::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
+    for( VertexConnectivityArrayType::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
     {
         if(it->originalID==id)
             break;
     }    
     
     return vertex_index;
+}
+
+
+
+void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( SparseMatrixDoubleType& W ) const
+{
+    const vtkIdType n_pts = m_originalMesh->GetNumberOfPoints();
+    
+    //Create cotan weight n x n matrix 
+    W.resize(n_pts, n_pts);
+    
+    //for every vertex
+    for( VertexIDArrayType::const_iterator vert_it = m_coverVertexIDs->begin();
+            vert_it!=m_coverVertexIDs->end(); vert_it++)
+    {
+        const vtkIdType v1id = (*vert_it);
+        
+        //get connectivity
+        const vtkIdType vertex_ID_in_C = FindVertexConnectivityLocalID(v1id);
+        VertexIDArrayType &neighbors = m_C.at(vertex_ID_in_C).connectedVertices;
+
+        //for every edge find the 2 triangles
+        
+        //for each triangle calculate weight
+        
+    }
+    
+    
+    //for every triangle calculate cot of every angle and fill the matrix W
+//    
+//    { //Create a scope for triplet list (to release it afterwards)
+//        typedef Eigen::Triplet<double> T;
+//        std::vector<T> tripletList;
+//
+//        VectorType v1, v2, v3;
+//        for( HoleCoverType::const_iterator it = m_coverFaces->begin(); it!=m_coverFaces->end(); it++)
+//        {
+//            const TriangleCellType& tri = *it;
+//            for(int j=0; j<3; j++)
+//            {
+//                const int id1 = tri.id[j];
+//                const int id2 = tri.id[(j+1)%3];
+//                const int id3 = tri.id[(j+2)%3];
+//                m_coverVertices->GetPoint(id1, v1.data());
+//                m_coverVertices->GetPoint(id2, v2.data());
+//                m_coverVertices->GetPoint(id3, v3.data());
+//
+//                //angle between v[3],v[1] and v[1],v[2]
+////                const VectorType v13 = (v3-v1).normalized();
+////                const VectorType v12 = (v2-v1).normalized();
+////                const double angle = std::acos(v13.dot(v12));
+////                const double w23 = 1/std::tan(angle);
+//    //            W.coeffRef(id2,id3) += w23;
+//    //            W.coeffRef(id3,id2) += w23;
+//                
+//#ifdef USE_COTANGENT_WEIGHTS                
+//                const double w23 = TriangleWeightCotangent(v1, v2, v3);
+//#else
+//                const double w23 = TriangleWeightScaleDependent(v1, v2, v3);
+//#endif
+//
+//                tripletList.push_back(T(id2, id3, 23));
+//                tripletList.push_back(T(id3, id2, w23));
+//            }
+//        }
+//
+//        //fill W from triplets
+//        W.setFromTriplets(tripletList.begin(), tripletList.end());
+//    }m_C
 }

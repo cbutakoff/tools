@@ -26,7 +26,6 @@ PURPOSE.  See the above copyright notice for more information.
 
 
 //uncomment to use cotangent weights during smoothing instead of scale-dependent
-//#define USE_COTANGENT_WEIGHTS
 
 
 //updates the input mesh
@@ -34,6 +33,8 @@ class UmbrellaWeightedOrder2Smoother
 {
 public:
     typedef std::vector<vtkIdType> VertexIDArrayType;
+    
+    typedef enum {vwCotangent, vwInvEdgeLength} VertexWeightType;
     
     void SetInputMesh(vtkPolyData *mesh) {m_originalMesh = mesh;};
     void SetCoverVertexIds(VertexIDArrayType* ids) {m_coverVertexIDs = ids;};
@@ -47,7 +48,8 @@ public:
     void Update();
     
     
-    UmbrellaWeightedOrder2Smoother():m_originalMesh(NULL), m_coverVertexIDs(NULL), m_maxIter(50), m_tolerance(1e-6) {};
+    UmbrellaWeightedOrder2Smoother():m_originalMesh(NULL), m_coverVertexIDs(NULL), m_maxIter(50), m_tolerance(1e-6),
+        m_weightingType(vwInvEdgeLength) {};
     
     
 protected:
@@ -62,31 +64,43 @@ protected:
     
     
     typedef Eigen::Matrix<double, 3, Eigen::Dynamic> MatrixUType;
+    typedef Eigen::SparseMatrix<double> SparseMatrixDoubleType;
     
-    double TriangleWeightScaleDependent(const Eigen::VectorXd& v1, const Eigen::VectorXd& v2) const;    
-    void GetVertexNeighbors(vtkIdType vertexId, VertexIDArrayType& neighbors);
+    //calculate the weight for the edge v1v2
+    double CalculateEdgeWeight(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
+    double EdgeWeightCotangent(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
+    double EdgeWeightInvEdgeLength(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
+
+
+    void GetVertexNeighbors(vtkIdType vertexId, VertexIDArrayType& neighbors) const;
     
     void CalculateConnectivity(); //updates m_C
     void ClassifyVertex(VertexConnectivityType& v);
     
     //Fills U and weights
-    void CalculateU( MatrixUType& U, Eigen::SparseMatrix<double>& weights ); 
+//    void CalculateU( MatrixUType& U, Eigen::SparseMatrix<double>& weights ); 
     //uses U and weights and fills U2
-    void CalculateU2( MatrixUType& U2, const MatrixUType& U, const Eigen::SparseMatrix<double>& weights );
+//    void CalculateU2( MatrixUType& U2, const MatrixUType& U, const Eigen::SparseMatrix<double>& weights );
     
-    double UpdateMeshPoints( const MatrixUType& U2 );
+//    double UpdateMeshPoints( const MatrixUType& U2 );
     
-    vtkIdType FindVertexConnectivityInfo( vtkIdType id ); //uses ids within mesh, compares to originalID
+    vtkIdType FindVertexConnectivityLocalID( vtkIdType id ); //uses ids within mesh, compares to originalID
+    
+    void CalculateEdgeWeightMatrix( SparseMatrixDoubleType& W ) const;
+    
     
 private:
+    typedef std::vector<VertexConnectivityType> VertexConnectivityArrayType; 
+    
     vtkPolyData *m_originalMesh;
-    VertexIDArrayType* m_coverVertexIDs;
+    VertexIDArrayType* m_coverVertexIDs; //IDs within the original mesh
     
     double m_tolerance;
     int m_maxIter;
 
+    VertexWeightType m_weightingType;
     
-    std::vector<VertexConnectivityType> m_C;
+    VertexConnectivityArrayType m_C; //stores IDs within the original mesh
 };
 
 
