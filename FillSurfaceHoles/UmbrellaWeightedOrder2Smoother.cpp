@@ -12,6 +12,17 @@ PURPOSE.  See the above copyright notice for more information.
 
 
 
+double UmbrellaWeightedOrder2Smoother::CalculateEdgeWeight(vtkIdType v_third, vtkIdType v1_edge, vtkIdType v2_edge) const
+{
+    Eigen::VectorXd v_third_p, v1_edge_p, v2_edge_p;
+    m_originalMesh->GetPoint( v_third, v_third_p.data() );
+    m_originalMesh->GetPoint( v1_edge, v1_edge_p.data() );
+    m_originalMesh->GetPoint( v2_edge, v2_edge_p.data() );
+    
+    return CalculateEdgeWeight( v_third_p, v1_edge_p, v2_edge_p );
+}
+
+
 double UmbrellaWeightedOrder2Smoother::CalculateEdgeWeight(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const
 {
     double value = -1;
@@ -104,6 +115,8 @@ void UmbrellaWeightedOrder2Smoother::Update()
     
     CalculateEdgeWeightMatrix(W);
 
+    std::cout<<W<<std::endl;
+    
     char filename[100];
     sprintf(filename,"mesh%03d.vtk",idx++);
     m_originalMesh->BuildCells();
@@ -288,7 +301,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateConnectivity()
 
 
 
-vtkIdType UmbrellaWeightedOrder2Smoother::FindVertexConnectivityLocalID( vtkIdType id ) //uses ids within mesh, compares to originalID
+vtkIdType UmbrellaWeightedOrder2Smoother::FindVertexConnectivityLocalID( vtkIdType id ) const//uses ids within mesh, compares to originalID
 {
     vtkIdType vertex_index=0;
     for( VertexConnectivityArrayType::const_iterator it=m_C.begin(); it!=m_C.end(); it++, vertex_index++ )
@@ -316,55 +329,62 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( SparseMatrixDoub
         const vtkIdType v1id = (*vert_it);
         
         //get connectivity
-        const vtkIdType vertex_ID_in_C = FindVertexConnectivityLocalID(v1id);
-        VertexIDArrayType &neighbors = m_C.at(vertex_ID_in_C).connectedVertices;
+        const vtkIdType v1id_in_C = FindVertexConnectivityLocalID( v1id );
+        const VertexIDArrayType &v1_neighbors = m_C.at(v1id_in_C).connectedVertices;
 
         //for every edge find the 2 triangles
-        
-        //for each triangle calculate weight
-        
+        for( VertexIDArrayType::const_iterator neighb_it = v1_neighbors.begin(); neighb_it!=v1_neighbors.end(); neighb_it++ )
+        {
+            const vtkIdType v2id = (*neighb_it);
+            //edge formed by v1id and v2id
+            //find triangles by finding the vertices shared by both
+            
+            //get neighbors of v2id
+            const vtkIdType v2id_in_C = FindVertexConnectivityLocalID(v2id);
+            const VertexIDArrayType &v2_neighbors = m_C.at(v2id_in_C).connectedVertices;
+
+            std::cout<<"W("<<v1id<<", "<<v2id<<")="<<W.coeff(v1id, v2id)<<std::endl<<std::flush;
+            if( W.coeff(v1id, v2id)==0 ) //to avoid recalculating the weight
+            {
+                //get intersection of  v1_neighbors and v2_neighbors
+                VertexIDArrayType common_vertex_ids;
+                if( IntersectVectors(v1_neighbors, v2_neighbors, common_vertex_ids) )
+                {
+                    for( VertexIDArrayType::const_iterator common_v_it = common_vertex_ids.begin();
+                            common_v_it != common_vertex_ids.end(); common_v_it++)
+                    {
+                        const vtkIdType V_common_id = (*common_v_it);
+
+                        const double w = CalculateEdgeWeight(V_common_id, v1id, v2id);
+                        W.coeffRef( v1id, v2id ) += w;
+                        W.coeffRef( v2id, v1id ) += w;
+                    }
+                }
+            }
+                   
+        }                
+    }    
+}
+
+
+
+
+
+
+bool UmbrellaWeightedOrder2Smoother::IntersectVectors( const VertexIDArrayType& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const
+{
+    std::set<VertexIDArrayType::value_type> t1;
+
+    t1.insert<VertexIDArrayType::const_iterator> (a.begin(), a.end());
+    
+    c.clear();
+    c.reserve( a.size() );
+    for( VertexIDArrayType::const_iterator b_it = b.begin(); b_it<b.end(); b_it++ )
+    {
+        std::set<VertexIDArrayType::value_type>::iterator found_id_it = t1.find( (*b_it) );
+        if( found_id_it != t1.end() )
+            c.push_back( (*found_id_it) );
     }
     
-    
-    //for every triangle calculate cot of every angle and fill the matrix W
-//    
-//    { //Create a scope for triplet list (to release it afterwards)
-//        typedef Eigen::Triplet<double> T;
-//        std::vector<T> tripletList;
-//
-//        VectorType v1, v2, v3;
-//        for( HoleCoverType::const_iterator it = m_coverFaces->begin(); it!=m_coverFaces->end(); it++)
-//        {
-//            const TriangleCellType& tri = *it;
-//            for(int j=0; j<3; j++)
-//            {
-//                const int id1 = tri.id[j];
-//                const int id2 = tri.id[(j+1)%3];
-//                const int id3 = tri.id[(j+2)%3];
-//                m_coverVertices->GetPoint(id1, v1.data());
-//                m_coverVertices->GetPoint(id2, v2.data());
-//                m_coverVertices->GetPoint(id3, v3.data());
-//
-//                //angle between v[3],v[1] and v[1],v[2]
-////                const VectorType v13 = (v3-v1).normalized();
-////                const VectorType v12 = (v2-v1).normalized();
-////                const double angle = std::acos(v13.dot(v12));
-////                const double w23 = 1/std::tan(angle);
-//    //            W.coeffRef(id2,id3) += w23;
-//    //            W.coeffRef(id3,id2) += w23;
-//                
-//#ifdef USE_COTANGENT_WEIGHTS                
-//                const double w23 = TriangleWeightCotangent(v1, v2, v3);
-//#else
-//                const double w23 = TriangleWeightScaleDependent(v1, v2, v3);
-//#endif
-//
-//                tripletList.push_back(T(id2, id3, 23));
-//                tripletList.push_back(T(id3, id2, w23));
-//            }
-//        }
-//
-//        //fill W from triplets
-//        W.setFromTriplets(tripletList.begin(), tripletList.end());
-//    }m_C
+    return c.size()>0;
 }

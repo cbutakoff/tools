@@ -52,6 +52,8 @@ public:
         m_weightingType(vwInvEdgeLength) {};
     
     
+    bool IntersectVectors( const VertexIDArrayType& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const;
+        
 protected:
     typedef enum {vcInterior, vcBoundary, vcExterior} VertexClassType;
  
@@ -68,6 +70,7 @@ protected:
     
     //calculate the weight for the edge v1v2
     double CalculateEdgeWeight(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
+    double CalculateEdgeWeight(vtkIdType v_third, vtkIdType v1_edge, vtkIdType v2_edge) const;
     double EdgeWeightCotangent(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
     double EdgeWeightInvEdgeLength(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
 
@@ -84,7 +87,7 @@ protected:
     
 //    double UpdateMeshPoints( const MatrixUType& U2 );
     
-    vtkIdType FindVertexConnectivityLocalID( vtkIdType id ); //uses ids within mesh, compares to originalID
+    vtkIdType FindVertexConnectivityLocalID( vtkIdType id ) const; //uses ids within mesh, compares to originalID
     
     void CalculateEdgeWeightMatrix( SparseMatrixDoubleType& W ) const;
     
