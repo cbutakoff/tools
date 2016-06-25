@@ -115,7 +115,7 @@ private:
 
     VertexWeightType m_weightingType;
     SparseMatrixDoubleType m_W; //matrix of edge weights
-    Eigen::VectorXd m_WS; //columnwise sum of weights
+    SparseMatrixDoubleType m_WS; //columnwise sum of weights, nx1
     
     VertexConnectivityArrayType m_C; //stores IDs within the original mesh
 };

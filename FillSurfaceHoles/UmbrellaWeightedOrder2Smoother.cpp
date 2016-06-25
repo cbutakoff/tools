@@ -115,6 +115,7 @@ void UmbrellaWeightedOrder2Smoother::Update()
     CalculateEdgeWeightMatrix();
     std::cout<<m_W<<std::endl;
     CalculateWeightSums();
+    std::cout<<m_WS<<std::endl;
     
 
 
@@ -576,12 +577,13 @@ void UmbrellaWeightedOrder2Smoother::FormSystemOfEquationsRow( const VertexConne
     for(VertexIDArrayType::const_iterator vkn_it = vk_nbhood.begin(); vkn_it != vk_nbhood.end(); vkn_it++ )
     {
         //i - index of (*vkn_it) in m_C
-        const vtkIdType i = FindVertexConnectivityLocalID( (*vkn_it) );
-        const VertexConnectivityType &vi = m_C.at(*vkn_it);
+        const vtkIdType viID = (*vkn_it);
+        const vtkIdType i = FindVertexConnectivityLocalID( viID );
+        const VertexConnectivityType &vi = m_C.at(viID);
         
-        std::cout<<"W(k,i): "<<m_W.coeff(k,i)<<std::endl;
-        std::cout<<"W(k): "<<m_WS(k)<<std::endl;
-        AddUviToSystemOfEquationsRow(k, vi, m_W.coeff(k,i)/m_WS(k), A);
+        std::cout<<"W(k,i): "<<m_W.coeff(vk.originalID, viID)<<std::endl;
+        std::cout<<"W(k): "<<m_WS.coeff(vk.originalID,1)<<std::endl;
+        AddUviToSystemOfEquationsRow(k, vi, m_W.coeff(vk.originalID, viID)/m_WS.coeff(vk.originalID,1), A);
     }
 }
 
@@ -599,10 +601,11 @@ void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row
 
     for(VertexIDArrayType::const_iterator Vin_it = Vi_nbhood.begin(); Vin_it != Vi_nbhood.end(); Vin_it++ )
     {
-        const vtkIdType j = FindVertexConnectivityLocalID( (*Vin_it) );
+        const vtkIdType Vj_id = (*Vin_it);
+        const vtkIdType j = FindVertexConnectivityLocalID( Vj_id );
         
         std::cout<<"j = "<<j<<std::endl;
-        A.coeffRef(row,j) += weight*m_W.coeff(i,j)/m_WS(i);        
+        A.coeffRef(row,j) += weight*m_W.coeff(vi.originalID, Vj_id)/m_WS.coeff(vi.originalID,1);        
     }
 }
 
@@ -610,13 +613,11 @@ void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row
 
 void UmbrellaWeightedOrder2Smoother::CalculateWeightSums( )
 {
-    m_WS.resize(m_W.outerSize());    
+    m_WS.resize(m_W.outerSize(),1);    
     
     for (Eigen::Index k = 0; k < m_W.outerSize(); ++k){
-        m_WS(k) = 0;
         for (SparseDoubleMatrixType::InnerIterator it(m_W, k); it; ++it) {
-            m_WS(k) += it.value();
-            std::cout<<it.value()<<" "<<std::endl;
+            m_WS.coeffRef(k, 1) += it.value();
         }
     }
 }
