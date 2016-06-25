@@ -72,7 +72,7 @@ protected:
     double CalculateEdgeWeight(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
     double CalculateEdgeWeight(vtkIdType v_third, vtkIdType v1_edge, vtkIdType v2_edge) const;
     double EdgeWeightCotangent(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
-    double EdgeWeightInvEdgeLength(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
+    double EdgeWeightInvEdgeLength(const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const;
 
 
     void GetVertexNeighbors(vtkIdType vertexId, VertexIDArrayType& neighbors) const;
@@ -91,6 +91,7 @@ protected:
     
     void CalculateEdgeWeightMatrix( SparseMatrixDoubleType& W ) const;
     
+    bool FindThirdVertexIds(vtkIdType p1, vtkIdType p2, VertexIDArrayType& third_v) const;
     
 private:
     typedef std::vector<VertexConnectivityType> VertexConnectivityArrayType; 

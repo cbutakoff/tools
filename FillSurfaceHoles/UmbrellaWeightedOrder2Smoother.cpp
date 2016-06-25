@@ -9,12 +9,13 @@ PURPOSE.  See the above copyright notice for more information.
 #include "UmbrellaWeightedOrder2Smoother.h"
 #include <vtkSmartPointer.h>
 #include <vtkPolyDataWriter.h>
+#include <vtkPolyData.h>
 
 
 
 double UmbrellaWeightedOrder2Smoother::CalculateEdgeWeight(vtkIdType v_third, vtkIdType v1_edge, vtkIdType v2_edge) const
 {
-    Eigen::VectorXd v_third_p, v1_edge_p, v2_edge_p;
+    Eigen::Vector3d v_third_p, v1_edge_p, v2_edge_p;
     m_originalMesh->GetPoint( v_third, v_third_p.data() );
     m_originalMesh->GetPoint( v1_edge, v1_edge_p.data() );
     m_originalMesh->GetPoint( v2_edge, v2_edge_p.data() );
@@ -32,7 +33,7 @@ double UmbrellaWeightedOrder2Smoother::CalculateEdgeWeight(const Eigen::VectorXd
             value = EdgeWeightCotangent(v_third, v1_edge, v2_edge);
             break;
         case vwInvEdgeLength:
-            value = EdgeWeightInvEdgeLength(v_third, v1_edge, v2_edge);
+            value = EdgeWeightInvEdgeLength(v1_edge, v2_edge);
             break;
         default:
             std::cout<<"Undefined vertex weighting type";
@@ -52,7 +53,7 @@ double UmbrellaWeightedOrder2Smoother::EdgeWeightCotangent(const Eigen::VectorXd
 
 
 
-double UmbrellaWeightedOrder2Smoother::EdgeWeightInvEdgeLength(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const
+double UmbrellaWeightedOrder2Smoother::EdgeWeightInvEdgeLength(const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const
 {
     const double w23 = 1/( (v1_edge-v2_edge).norm() );
 }
@@ -170,6 +171,8 @@ void UmbrellaWeightedOrder2Smoother::CalculateConnectivity()
         VertexConnectivityType vc; 
         vc.vertexClass = vcExterior; //default
         vc.originalID = (*it); 
+        
+//        std::cout<<"Getting neighbors for v "<<(*it)<<std::endl<<std::flush;
         GetVertexNeighbors( (*it), vc.connectedVertices );
         ClassifyVertex( vc );
         
@@ -301,6 +304,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateConnectivity()
 
 
 
+//returns m_C.size() on failure
 vtkIdType UmbrellaWeightedOrder2Smoother::FindVertexConnectivityLocalID( vtkIdType id ) const//uses ids within mesh, compares to originalID
 {
     vtkIdType vertex_index=0;
@@ -339,16 +343,13 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( SparseMatrixDoub
             //edge formed by v1id and v2id
             //find triangles by finding the vertices shared by both
             
-            //get neighbors of v2id
-            const vtkIdType v2id_in_C = FindVertexConnectivityLocalID(v2id);
-            const VertexIDArrayType &v2_neighbors = m_C.at(v2id_in_C).connectedVertices;
 
             std::cout<<"W("<<v1id<<", "<<v2id<<")="<<W.coeff(v1id, v2id)<<std::endl<<std::flush;
             if( W.coeff(v1id, v2id)==0 ) //to avoid recalculating the weight
             {
                 //get intersection of  v1_neighbors and v2_neighbors
                 VertexIDArrayType common_vertex_ids;
-                if( IntersectVectors(v1_neighbors, v2_neighbors, common_vertex_ids) )
+                if( FindThirdVertexIds(v1id, v2id, common_vertex_ids) )
                 {
                     for( VertexIDArrayType::const_iterator common_v_it = common_vertex_ids.begin();
                             common_v_it != common_vertex_ids.end(); common_v_it++)
@@ -361,6 +362,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( SparseMatrixDoub
                     }
                 }
             }
+            
                    
         }                
     }    
@@ -387,4 +389,46 @@ bool UmbrellaWeightedOrder2Smoother::IntersectVectors( const VertexIDArrayType& 
     }
     
     return c.size()>0;
+}
+
+
+
+
+
+bool UmbrellaWeightedOrder2Smoother::FindThirdVertexIds(vtkIdType p1, vtkIdType p2, VertexIDArrayType& third_v) const {
+    vtkSmartPointer<vtkIdList> n = vtkSmartPointer<vtkIdList>::New();
+    m_originalMesh->GetPointCells(p1, n);
+         
+    third_v.clear();
+
+    for (vtkIdType i = 0; i < n->GetNumberOfIds(); i++) {
+        const vtkIdType cell_id = n->GetId(i);
+        vtkIdList* ptids = m_originalMesh->GetCell(cell_id)->GetPointIds();
+
+        for (vtkIdType j = 0; j < ptids->GetNumberOfIds(); j++) {
+            if (p2 == ptids->GetId(j)) //found the cell sharing 2 points
+            {
+                //found a cell with 2 matching points
+                for (vtkIdType i = 0; i < ptids->GetNumberOfIds(); i++) {
+                    const vtkIdType thirdid = ptids->GetId(i);
+                    if (thirdid != p1 && thirdid != p2)
+                        third_v.push_back( thirdid );
+                }
+
+
+            }
+        }
+
+    }
+
+    
+    if(third_v.size()>2)
+    {
+        std::cout<<"The edge "<<p1<<", "<<p2<<" has more than 2 neighbors"<<std::endl;
+        throw;
+    }
+    assert( third_v.size()<3 );
+    
+
+    return third_v.size()>0;
 }
