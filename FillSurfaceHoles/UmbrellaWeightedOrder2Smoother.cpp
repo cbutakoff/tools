@@ -102,20 +102,33 @@ void UmbrellaWeightedOrder2Smoother::GetVertexNeighbors( vtkIdType vertexId, Ver
     }
 }
 
-static int idx = 0;
+//static int idx = 0;
 void UmbrellaWeightedOrder2Smoother::Update()
 {
-    vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
-    wr->SetFileName("input_mesh.vtk");
-    wr->SetInputData(m_originalMesh);
-    wr->Write();
+//    vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
+//    wr->SetFileName("input_mesh.vtk");
+//    wr->SetInputData(m_originalMesh);
+//    wr->Write();
 
+    switch(m_weightingType)
+    {
+        case vwCotangent:
+            std::cout<<"Using cotangent edge weights"<<std::endl;
+            break;
+        case vwInvEdgeLength:
+            std::cout<<"Using inverse edge length edge weights"<<std::endl;
+            break;
+        default:
+            std::cout<<"Unknown edge weighting"<<std::endl;
+            throw;                   
+    }
+    
     CalculateConnectivity();
         
     CalculateEdgeWeightMatrix();
-    std::cout<<m_W<<std::endl;
+//    std::cout<<m_W<<std::endl;
     CalculateWeightSums();
-    std::cout<<m_WS<<std::endl;
+//    std::cout<<m_WS<<std::endl;
     
 
 
@@ -133,14 +146,14 @@ void UmbrellaWeightedOrder2Smoother::Update()
             if( (*C_it).vertexClass != vcInterior ) //add 1 at the vertex position, these vertices are fixed
             {            
                 A.coeffRef(vert_index,vert_index) = 1;
-            }
-            else
-            {
+
                 //add right hand side
                 Eigen::RowVector3d v;
                 m_originalMesh->GetPoint( (*C_it).originalID, v.data() );
                 B.row(vert_index) = v;
-
+            }
+            else
+            {
                 //add left hand side
                 FormSystemOfEquationsRow( (*C_it), A );
 
@@ -165,13 +178,13 @@ void UmbrellaWeightedOrder2Smoother::Update()
     CreateOutput(X);
 
     
-    char filename[100];
-    sprintf(filename,"mesh%03d.vtk",idx++);
-        m_originalMesh->BuildCells();
-
-    wr->SetFileName(filename);
-    wr->SetInputData(m_originalMesh);
-    wr->Write();
+//    char filename[100];
+//    sprintf(filename,"mesh%03d.vtk",idx++);
+//        m_originalMesh->BuildCells();
+//
+//    wr->SetFileName(filename);
+//    wr->SetInputData(m_originalMesh);
+//    wr->Write();
 
 }
 
@@ -435,7 +448,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( )
                             const vtkIdType V_common_id = (*common_v_it);
 
                             const double w = CalculateEdgeWeight(V_common_id, v1id, v2id);
-                            std::cout<<"Adding weight for "<<v1id<<", "<<v2id <<std::endl;
+//                            std::cout<<"Adding weight for "<<v1id<<", "<<v2id <<std::endl;
                             m_W.coeffRef( v1id, v2id ) += w;
                             m_W.coeffRef( v2id, v1id ) += w;
                         }
@@ -589,8 +602,8 @@ void UmbrellaWeightedOrder2Smoother::FormSystemOfEquationsRow( const VertexConne
         {
             const VertexConnectivityType &vi = m_C.at(i);
 
-            std::cout<<"W(k,i): "<<m_W.coeff(vk.originalID, viID)<<std::endl;
-            std::cout<<"W(k): "<<m_WS.coeff(vk.originalID,0)<<std::endl;
+//            std::cout<<"W(k,i): "<<m_W.coeff(vk.originalID, viID)<<std::endl;
+//            std::cout<<"W(k): "<<m_WS.coeff(vk.originalID,0)<<std::endl;
             AddUviToSystemOfEquationsRow(k, vi, m_W.coeff(vk.originalID, viID)/m_WS.coeff(vk.originalID,0), A);
         }
     }
@@ -603,8 +616,8 @@ void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row
     
     if( i<m_C.size() )
     {
-        std::cout<<"filling row "<<row<<std::endl;
-        std::cout<<"i = "<<i<<std::endl;
+//        std::cout<<"filling row "<<row<<std::endl;
+//        std::cout<<"i = "<<i<<std::endl;
         A.coeffRef(row, i) += -1*weight;
 
         //for j over neighborhood of vi
@@ -617,9 +630,9 @@ void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row
 
             if( j<m_C.size() ) //if found
             {
-                std::cout<<"j = "<<j<<" W(ij)="<<m_W.coeff(vi.originalID, Vj_id)<<" W(i)="<<m_WS.coeff(vi.originalID,0)<<std::endl;
-                std::cout<<"A("<<row<<", "<<j<<")="<<std::flush;
-                std::cout<<A.coeffRef(row,j)<<std::endl;
+//                std::cout<<"j = "<<j<<" W(ij)="<<m_W.coeff(vi.originalID, Vj_id)<<" W(i)="<<m_WS.coeff(vi.originalID,0)<<std::endl;
+//                std::cout<<"A("<<row<<", "<<j<<")="<<std::flush;
+//                std::cout<<A.coeffRef(row,j)<<std::endl;
                 A.coeffRef(row,j) += weight*m_W.coeff(vi.originalID, Vj_id)/m_WS.coeff(vi.originalID,0);        
             }
         }

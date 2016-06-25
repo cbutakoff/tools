@@ -775,6 +775,7 @@ void SurfaceHoleFiller::RefineCover(vtkPolyData* mesh, const HoleBoundaryType& o
         UmbrellaWeightedOrder2Smoother smoother;
         smoother.SetInputMesh(m_outputMesh);
         smoother.SetCoverVertexIds(&boundaryVertexIDs);
+        smoother.SetEdgeWeightingType(m_weightingType);
         smoother.Update();
     }
 

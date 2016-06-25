@@ -34,28 +34,23 @@ class UmbrellaWeightedOrder2Smoother
 public:
     typedef std::vector<vtkIdType> VertexIDArrayType;
     
-    typedef enum {vwCotangent, vwInvEdgeLength} VertexWeightType;
+    typedef enum  {vwCotangent, vwInvEdgeLength} EdgeWeightType;
     
     void SetInputMesh(vtkPolyData *mesh) {m_originalMesh = mesh;};
     void SetCoverVertexIds(VertexIDArrayType* ids) {m_coverVertexIDs = ids;};
     
-    void SetTolerance( double eps ) {m_tolerance = eps; };
-    double GetTolerance() {return m_tolerance; };
-    
-    void SetMaxIter( int i ) {m_maxIter = i; };
-    int GetMaxIter() {return m_maxIter; };
+    EdgeWeightType GetEdgeWeightingType() const {return m_weightingType; };
+    void SetEdgeWeightingType(EdgeWeightType wt) {m_weightingType=wt; };
+    void EdgeWeightingTypeCotangent() {m_weightingType=vwCotangent; };
+    void EdgeWeightingTypeInvEdgeLength() {m_weightingType=vwInvEdgeLength; };
     
     void Update();
     
     
-    UmbrellaWeightedOrder2Smoother():m_originalMesh(NULL), m_coverVertexIDs(NULL), m_maxIter(50), m_tolerance(1e-6),
-        m_weightingType(vwInvEdgeLength) {};
+    UmbrellaWeightedOrder2Smoother():m_originalMesh(NULL), m_coverVertexIDs(NULL),
+        m_weightingType(vwCotangent) {};
     
     
-    bool IntersectVectors( const VertexIDArrayType& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const;
-    
-    //calculates set a-b. 
-    bool SetDifference( const std::set<vtkIdType>& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const;
         
 protected:
     typedef enum {vcInterior, vcBoundary, vcExterior} VertexClassType;
@@ -104,6 +99,12 @@ protected:
     //extract the coordinates of the inner vertices and copy into the mesh
     void CreateOutput( Eigen::MatrixXd X );
     
+
+    bool IntersectVectors( const VertexIDArrayType& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const;
+    
+    //calculates set a-b. 
+    bool SetDifference( const std::set<vtkIdType>& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const;
+
 private:
     typedef std::vector<VertexConnectivityType> VertexConnectivityArrayType; 
     
@@ -113,7 +114,7 @@ private:
     double m_tolerance;
     int m_maxIter;
 
-    VertexWeightType m_weightingType;
+    EdgeWeightType m_weightingType;
     SparseMatrixDoubleType m_W; //matrix of edge weights
     SparseMatrixDoubleType m_WS; //columnwise sum of weights, nx1
     

@@ -13,6 +13,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyDataReader.h>
 #include <vtkPolyDataWriter.h>
 
+#include "UmbrellaWeightedOrder2Smoother.h"
+
 
 //======================================================================
 //
@@ -25,7 +27,9 @@ PURPOSE.  See the above copyright notice for more information.
 
 int main(int argc, char **argv) {
     std::cout << "Hole filling based on Eurographics Symposium on Geometry Processing(2003), Filling Holes in Meshes, Peter Liepa" << std::endl;
-    std::cout << "usage: FillSurfaceHoles -i mesh.vtk -o mesh.vtk -method [Barequet|Liepa_flat|Liepa_smooth]" << std::endl;
+    std::cout << "usage: FillSurfaceHoles -i mesh.vtk -o mesh.vtk -smooth [none|cot|edgelen]" << std::endl;
+    std::cout << "Default: smoothing on, cotangent weights" << std::endl;
+    std::cout << "Smoothing: cotangent - standard cotangent weights, angle preserving, edgelen - inverse edge length, god knows why it's good, but authors say that in some cases it's nicer" << std::endl;
     std::cout << "version 1.0" << std::endl;
     std::cout << "-------------------------------------------------------------------" << std::endl;
 
@@ -36,22 +40,22 @@ int main(int argc, char **argv) {
     char *in_filename = NULL;
     char *out_filename = NULL;
 
-    enum AlgorithmType {
-        Liepa_flat, Liepa_smooth
-    };
-    AlgorithmType filling_algorithm = Liepa_flat;
+    bool do_smoothing = true;
+    UmbrellaWeightedOrder2Smoother::VertexWeightType smoothing_type = UmbrellaWeightedOrder2Smoother::vwCotangent;
 
     for (int c = 1; c < argc; c++) {
         if (strcmp(argv[c], "-i") == 0) {
             in_filename = argv[++c];
         } else if (strcmp(argv[c], "-o") == 0) {
             out_filename = argv[++c];
-        } else if (strcmp(argv[c], "-method") == 0) {
+        } else if (strcmp(argv[c], "-smooth") == 0) {
             const char* methodtype = argv[++c];
-            if (strcmp(methodtype, "Liepa_flat") == 0)
-                filling_algorithm = Liepa_flat;
-            if (strcmp(methodtype, "Liepa_smooth") == 0)
-                filling_algorithm = Liepa_smooth;
+            if (strcmp(methodtype, "none") == 0)
+                do_smoothing = false;
+            if (strcmp(methodtype, "cot") == 0)
+                smoothing_type = SurfaceHoleFiller::vwCotangent;
+            if (strcmp(methodtype, "edgelen") == 0)
+                smoothing_type = SurfaceHoleFiller::vwInvEdgeLength;
             else
                 std::cout << "Unknown filling algorithm, using default." << std::endl;
         }
@@ -73,7 +77,8 @@ int main(int argc, char **argv) {
 
     SurfaceHoleFiller hole_filler;
     hole_filler.SetInput(rdr->GetOutput());
-    hole_filler.SmoothingOn();
+    hole_filler.SetSmoothing(do_smoothing);
+    hole_filler.EdgeWeightingTypeCotangent();
     hole_filler.Update();
 
     //save the result
