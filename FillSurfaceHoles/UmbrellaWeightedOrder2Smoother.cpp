@@ -128,23 +128,24 @@ void UmbrellaWeightedOrder2Smoother::Update()
     for( VertexConnectivityArrayType::const_iterator C_it = m_C.begin(); C_it!=m_C.end(); C_it++ )
     {
         const vtkIdType vert_index = FindVertexConnectivityLocalID( (*C_it).originalID );
-        
-        if( (*C_it).vertexClass != vcInterior ) //add 1 at the vertex position, these vertices are fixed
-        {            
-            A.coeffRef(vert_index,vert_index) = 1;
-        }
-        else
+        if( vert_index<m_C.size() )
         {
-            //add right hand side
-            Eigen::RowVector3d v;
-            m_originalMesh->GetPoint( (*C_it).originalID, v.data() );
-            B.row(vert_index) = v;
-            
-            //add left hand side
-            FormSystemOfEquationsRow( (*C_it), A );
-            
+            if( (*C_it).vertexClass != vcInterior ) //add 1 at the vertex position, these vertices are fixed
+            {            
+                A.coeffRef(vert_index,vert_index) = 1;
+            }
+            else
+            {
+                //add right hand side
+                Eigen::RowVector3d v;
+                m_originalMesh->GetPoint( (*C_it).originalID, v.data() );
+                B.row(vert_index) = v;
+
+                //add left hand side
+                FormSystemOfEquationsRow( (*C_it), A );
+
+            }
         }
-        
     }
     
     
@@ -166,7 +167,7 @@ void UmbrellaWeightedOrder2Smoother::Update()
     
     char filename[100];
     sprintf(filename,"mesh%03d.vtk",idx++);
-    m_originalMesh->BuildCells();
+        m_originalMesh->BuildCells();
 
     wr->SetFileName(filename);
     wr->SetInputData(m_originalMesh);
@@ -408,37 +409,42 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( )
         
         //get connectivity
         const vtkIdType v1id_in_C = FindVertexConnectivityLocalID( v1id );
-        const VertexIDArrayType &v1_neighbors = m_C.at(v1id_in_C).connectedVertices;
-
-        //for every edge find the 2 triangles
-        for( VertexIDArrayType::const_iterator neighb_it = v1_neighbors.begin(); neighb_it!=v1_neighbors.end(); neighb_it++ )
+        
+        if( v1id_in_C<m_C.size() )
         {
-            const vtkIdType v2id = (*neighb_it);
-            //edge formed by v1id and v2id
-            //find triangles by finding the vertices shared by both
-            
+            const VertexIDArrayType &v1_neighbors = m_C.at(v1id_in_C).connectedVertices;
 
-//            std::cout<<"W("<<v1id<<", "<<v2id<<")="<<m_W.coeff(v1id, v2id)<<std::endl<<std::flush;
-            if( m_W.coeff(v1id, v2id)==0 ) //to avoid recalculating the weight
+            //for every edge find the 2 triangles
+            for( VertexIDArrayType::const_iterator neighb_it = v1_neighbors.begin(); neighb_it!=v1_neighbors.end(); neighb_it++ )
             {
+                const vtkIdType v2id = (*neighb_it);
+                //edge formed by v1id and v2id
+                //find triangles by finding the vertices shared by both
 
-                VertexIDArrayType common_vertex_ids;
-                if( FindThirdVertexIds(v1id, v2id, common_vertex_ids) )
+
+    //            std::cout<<"W("<<v1id<<", "<<v2id<<")="<<m_W.coeff(v1id, v2id)<<std::endl<<std::flush;
+                if( m_W.coeff(v1id, v2id)==0 ) //to avoid recalculating the weight
                 {
-                    for( VertexIDArrayType::const_iterator common_v_it = common_vertex_ids.begin();
-                            common_v_it != common_vertex_ids.end(); common_v_it++)
-                    {
-                        const vtkIdType V_common_id = (*common_v_it);
 
-                        const double w = CalculateEdgeWeight(V_common_id, v1id, v2id);
-                        m_W.coeffRef( v1id, v2id ) += w;
-                        m_W.coeffRef( v2id, v1id ) += w;
+                    VertexIDArrayType common_vertex_ids;
+                    if( FindThirdVertexIds(v1id, v2id, common_vertex_ids) )
+                    {
+                        for( VertexIDArrayType::const_iterator common_v_it = common_vertex_ids.begin();
+                                common_v_it != common_vertex_ids.end(); common_v_it++)
+                        {
+                            const vtkIdType V_common_id = (*common_v_it);
+
+                            const double w = CalculateEdgeWeight(V_common_id, v1id, v2id);
+                            std::cout<<"Adding weight for "<<v1id<<", "<<v2id <<std::endl;
+                            m_W.coeffRef( v1id, v2id ) += w;
+                            m_W.coeffRef( v2id, v1id ) += w;
+                        }
                     }
                 }
-            }
-            
-                   
-        }                
+
+
+            }                
+        }
     }    
     
     
@@ -579,11 +585,14 @@ void UmbrellaWeightedOrder2Smoother::FormSystemOfEquationsRow( const VertexConne
         //i - index of (*vkn_it) in m_C
         const vtkIdType viID = (*vkn_it);
         const vtkIdType i = FindVertexConnectivityLocalID( viID );
-        const VertexConnectivityType &vi = m_C.at(viID);
-        
-        std::cout<<"W(k,i): "<<m_W.coeff(vk.originalID, viID)<<std::endl;
-        std::cout<<"W(k): "<<m_WS.coeff(vk.originalID,1)<<std::endl;
-        AddUviToSystemOfEquationsRow(k, vi, m_W.coeff(vk.originalID, viID)/m_WS.coeff(vk.originalID,1), A);
+        if(i<m_C.size())
+        {
+            const VertexConnectivityType &vi = m_C.at(i);
+
+            std::cout<<"W(k,i): "<<m_W.coeff(vk.originalID, viID)<<std::endl;
+            std::cout<<"W(k): "<<m_WS.coeff(vk.originalID,0)<<std::endl;
+            AddUviToSystemOfEquationsRow(k, vi, m_W.coeff(vk.originalID, viID)/m_WS.coeff(vk.originalID,0), A);
+        }
     }
 }
 
@@ -592,20 +601,28 @@ void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row
     //adds U(vi) = -vi + 1/W(vi) sum[ W(vi,vj) vj ] over neighborhood j
     const vtkIdType i = FindVertexConnectivityLocalID( vi.originalID );
     
-    std::cout<<"filling row "<<row<<std::endl;
-    std::cout<<"i = "<<i<<std::endl;
-    A.coeffRef(row, i) += -1*weight;
-            
-    //for j over neighborhood of vi
-    const VertexIDArrayType& Vi_nbhood = vi.connectedVertices;
-
-    for(VertexIDArrayType::const_iterator Vin_it = Vi_nbhood.begin(); Vin_it != Vi_nbhood.end(); Vin_it++ )
+    if( i<m_C.size() )
     {
-        const vtkIdType Vj_id = (*Vin_it);
-        const vtkIdType j = FindVertexConnectivityLocalID( Vj_id );
-        
-        std::cout<<"j = "<<j<<std::endl;
-        A.coeffRef(row,j) += weight*m_W.coeff(vi.originalID, Vj_id)/m_WS.coeff(vi.originalID,1);        
+        std::cout<<"filling row "<<row<<std::endl;
+        std::cout<<"i = "<<i<<std::endl;
+        A.coeffRef(row, i) += -1*weight;
+
+        //for j over neighborhood of vi
+        const VertexIDArrayType& Vi_nbhood = vi.connectedVertices;
+
+        for(VertexIDArrayType::const_iterator Vin_it = Vi_nbhood.begin(); Vin_it != Vi_nbhood.end(); Vin_it++ )
+        {
+            const vtkIdType Vj_id = (*Vin_it);
+            const vtkIdType j = FindVertexConnectivityLocalID( Vj_id );
+
+            if( j<m_C.size() ) //if found
+            {
+                std::cout<<"j = "<<j<<" W(ij)="<<m_W.coeff(vi.originalID, Vj_id)<<" W(i)="<<m_WS.coeff(vi.originalID,0)<<std::endl;
+                std::cout<<"A("<<row<<", "<<j<<")="<<std::flush;
+                std::cout<<A.coeffRef(row,j)<<std::endl;
+                A.coeffRef(row,j) += weight*m_W.coeff(vi.originalID, Vj_id)/m_WS.coeff(vi.originalID,0);        
+            }
+        }
     }
 }
 
@@ -617,7 +634,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateWeightSums( )
     
     for (Eigen::Index k = 0; k < m_W.outerSize(); ++k){
         for (SparseDoubleMatrixType::InnerIterator it(m_W, k); it; ++it) {
-            m_WS.coeffRef(k, 1) += it.value();
+            m_WS.coeffRef(k, 0) += it.value();
         }
     }
 }
