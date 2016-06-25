@@ -53,6 +53,9 @@ public:
     
     
     bool IntersectVectors( const VertexIDArrayType& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const;
+    
+    //calculates set a-b. 
+    bool SetDifference( const std::set<vtkIdType>& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const;
         
 protected:
     typedef enum {vcInterior, vcBoundary, vcExterior} VertexClassType;
@@ -89,10 +92,15 @@ protected:
     
     vtkIdType FindVertexConnectivityLocalID( vtkIdType id ) const; //uses ids within mesh, compares to originalID
     
-    void CalculateEdgeWeightMatrix( SparseMatrixDoubleType& W ) const;
+    void CalculateEdgeWeightMatrix( );
+    void CalculateWeightSums();
     
     bool FindThirdVertexIds(vtkIdType p1, vtkIdType p2, VertexIDArrayType& third_v) const;
     
+    void FormSystemOfEquationsRow( const VertexConnectivityType& vc, SparseDoubleMatrixType& A ) const;
+
+    void AddUviToSystemOfEquationsRow( vtkIdType row, const VertexConnectivityType& vi, double weight, SparseDoubleMatrixType& A  ) const;
+
 private:
     typedef std::vector<VertexConnectivityType> VertexConnectivityArrayType; 
     
@@ -103,6 +111,8 @@ private:
     int m_maxIter;
 
     VertexWeightType m_weightingType;
+    SparseMatrixDoubleType m_W; //matrix of edge weights
+    Eigen::VectorXd m_WS; //columnwise sum of weights
     
     VertexConnectivityArrayType m_C; //stores IDs within the original mesh
 };

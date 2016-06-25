@@ -111,12 +111,35 @@ void UmbrellaWeightedOrder2Smoother::Update()
     wr->Write();
 
     CalculateConnectivity();
-    
-    SparseMatrixDoubleType W;
-    
-    CalculateEdgeWeightMatrix(W);
+        
+    CalculateEdgeWeightMatrix();
+    CalculateWeightSums();
 
-    std::cout<<W<<std::endl;
+
+    //start forming the system of equations
+    SparseDoubleMatrixType A(m_C.size(), m_C.size());
+    Eigen::Matrix<double, Eigen::Dynamic, 3> B; //right hand side
+    B.fill(0);
+    
+    for( VertexConnectivityArrayType::const_iterator C_it = m_C.begin(); C_it!=m_C.end(); C_it++ )
+    {
+        if( (*C_it).vertexClass != vcInterior ) //add 1 at the vertex position, these vertices are fixed
+        {
+            A.coeffRef(vert_index,vert_index) = 1;
+        }
+        else
+        {
+            //add right hand side
+            Eigen::RowVector3d v;
+            m_originalMesh->GetPoint( (*C_it).originalID, v.data() );
+            B.row(vert_index) = v;
+            
+            //add left hand side
+            FormSystemOfEquationsRow( (*C_it), A );
+            
+        }
+        
+    }
     
     char filename[100];
     sprintf(filename,"mesh%03d.vtk",idx++);
@@ -164,7 +187,11 @@ void UmbrellaWeightedOrder2Smoother::CalculateConnectivity()
 {
     //go over all cover vertices
     m_C.clear();
-    
+
+    //also add 1-ring around the edge
+    std::set<vtkIdType> edge_neighborhood;
+
+
     for( VertexIDArrayType::const_iterator it = m_coverVertexIDs->begin(); it!=m_coverVertexIDs->end(); it++ )
     {
         //get neighbors for this vertex
@@ -175,10 +202,34 @@ void UmbrellaWeightedOrder2Smoother::CalculateConnectivity()
 //        std::cout<<"Getting neighbors for v "<<(*it)<<std::endl<<std::flush;
         GetVertexNeighbors( (*it), vc.connectedVertices );
         ClassifyVertex( vc );
+
+        //add the neighborhood of every edge vertex
+        if( vc.vertexClass == vcBoundary )
+            edge_neighborhood.insert<VertexIDArrayType::iterator> ( vc.connectedVertices.begin(), vc.connectedVertices.end() );
         
         m_C.push_back(vc);
     }
 
+    
+    //Calculate the 1 ring
+    VertexIDArrayType edge1ring;
+    edge1ring.reserve(edge_neighborhood.size());
+    
+    SetDifference(edge_neighborhood, *m_coverVertexIDs, edge1ring);
+    for( VertexIDArrayType::const_iterator it = edge1ring.begin(); it!=edge1ring.end(); it++ )
+    {
+        //get neighbors for this vertex
+        VertexConnectivityType vc; 
+        vc.vertexClass = vcExterior; //1-ring = exterior
+        vc.originalID = (*it); 
+        
+//        std::cout<<"Getting neighbors for v "<<(*it)<<std::endl<<std::flush;
+        GetVertexNeighbors( (*it), vc.connectedVertices );
+        
+        m_C.push_back(vc);
+    }
+    
+    
 }
 
 
@@ -319,12 +370,12 @@ vtkIdType UmbrellaWeightedOrder2Smoother::FindVertexConnectivityLocalID( vtkIdTy
 
 
 
-void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( SparseMatrixDoubleType& W ) const
+void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( ) 
 {
     const vtkIdType n_pts = m_originalMesh->GetNumberOfPoints();
     
     //Create cotan weight n x n matrix 
-    W.resize(n_pts, n_pts);
+    m_W.resize(n_pts, n_pts);
     
     //for every vertex
     for( VertexIDArrayType::const_iterator vert_it = m_coverVertexIDs->begin();
@@ -344,10 +395,10 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( SparseMatrixDoub
             //find triangles by finding the vertices shared by both
             
 
-            std::cout<<"W("<<v1id<<", "<<v2id<<")="<<W.coeff(v1id, v2id)<<std::endl<<std::flush;
-            if( W.coeff(v1id, v2id)==0 ) //to avoid recalculating the weight
+            std::cout<<"W("<<v1id<<", "<<v2id<<")="<<m_W.coeff(v1id, v2id)<<std::endl<<std::flush;
+            if( m_W.coeff(v1id, v2id)==0 ) //to avoid recalculating the weight
             {
-                //get intersection of  v1_neighbors and v2_neighbors
+
                 VertexIDArrayType common_vertex_ids;
                 if( FindThirdVertexIds(v1id, v2id, common_vertex_ids) )
                 {
@@ -357,8 +408,8 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( SparseMatrixDoub
                         const vtkIdType V_common_id = (*common_v_it);
 
                         const double w = CalculateEdgeWeight(V_common_id, v1id, v2id);
-                        W.coeffRef( v1id, v2id ) += w;
-                        W.coeffRef( v2id, v1id ) += w;
+                        m_W.coeffRef( v1id, v2id ) += w;
+                        m_W.coeffRef( v2id, v1id ) += w;
                     }
                 }
             }
@@ -366,6 +417,8 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( SparseMatrixDoub
                    
         }                
     }    
+    
+    
 }
 
 
@@ -377,13 +430,29 @@ bool UmbrellaWeightedOrder2Smoother::IntersectVectors( const VertexIDArrayType& 
 {
     std::set<VertexIDArrayType::value_type> t1;
 
-    t1.insert<VertexIDArrayType::const_iterator> (a.begin(), a.end());
+    const VertexIDArrayType* l; //longest
+    const VertexIDArrayType* s; //shortest
+    
+    if(a.size()<b.size()) 
+    {
+        l = &b;
+        s = &a;
+    }
+    else
+    {
+        l = &a;
+        s = &b;        
+    }
+        
+        
+        
+    t1.insert<VertexIDArrayType::const_iterator> (s->begin(), s->end());
     
     c.clear();
-    c.reserve( a.size() );
-    for( VertexIDArrayType::const_iterator b_it = b.begin(); b_it<b.end(); b_it++ )
+    c.reserve( s->size() );
+    for( VertexIDArrayType::const_iterator l_it = l->begin(); l_it<l->end(); l_it++ )
     {
-        std::set<VertexIDArrayType::value_type>::iterator found_id_it = t1.find( (*b_it) );
+        std::set<VertexIDArrayType::value_type>::iterator found_id_it = t1.find( (*l_it) );
         if( found_id_it != t1.end() )
             c.push_back( (*found_id_it) );
     }
@@ -431,4 +500,77 @@ bool UmbrellaWeightedOrder2Smoother::FindThirdVertexIds(vtkIdType p1, vtkIdType 
     
 
     return third_v.size()>0;
+}
+
+
+
+
+bool UmbrellaWeightedOrder2Smoother::SetDifference( const std::set<vtkIdType>& a, const VertexIDArrayType& b, VertexIDArrayType& c ) const
+{
+    c.clear();
+    
+    for( std::set<vtkIdType>::const_iterator a_it = a.begin(); a_it!=a.end(); a_it++ )
+    {
+        VertexIDArrayType::const_iterator b_it;
+        for( b_it = b.begin(); b_it!=b.end(); b_it++ )
+        {
+            if( (*a_it) == (*b_it) ) break;
+        }
+        if( b_it==b.end() ) //not found, add to c
+        {
+            c.push_back((*a_it));
+        }
+    }
+    
+    return c.size()>0;
+}
+
+
+
+void UmbrellaWeightedOrder2Smoother::FormSystemOfEquationsRow( const VertexConnectivityType& vk, SparseDoubleMatrixType& A  ) const
+{
+    //ok, this is a bt of a mess
+    //W - uses original ids (ids inside the mesh)
+    //but to build the system of equations we need to use ids within m_C
+    
+    //put in -U(vk) + 1/W(vk)*sum[ W(vk,vi) U(vi) ]
+    //with U(vi) = -vi + 1/W(vi) sum[ W(vi,vj) vj ] over neighborhood j
+    assert(m_W.cols()>0);
+    assert(m_WS.cols()>0);
+    
+    
+    //we are doing this for Vk. k = index of vk in m_C
+    //all i-s must be converted to indices within m_C
+    
+    //start by inserting -U(vk)
+    //we need to get the neighborhood of vk and insert the coefficient of each neighbor
+    const vtkIdType k = FindVertexConnectivityLocalID( vk.originalID );
+    const VertexIDArrayType& vk_nbhood = vk.connectedVertices;
+    
+    AddUviToSystemOfEquationsRow(k, vk_nbhood, -1, A);
+    
+    for(VertexIDArrayType::const_iterator vkn_it = vk_nbhood.begin(); vkn_it != vk_nbhood.end(); vkn_it++ )
+    {
+        //i - index of (*vkn_it) in m_C
+        const vtkIdType i = FindVertexConnectivityLocalID( (*vkn_it) );
+    }
+}
+
+void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row, const VertexConnectivityType& vi, double weight, SparseDoubleMatrixType& A  ) const
+{
+    
+}
+
+
+
+void UmbrellaWeightedOrder2Smoother::CalculateWeightSums( )
+{
+    m_WS.resize(m_W.outerSize());    
+    
+    for (Eigen::Index k = 0; k < m.outerSize(); ++k){
+        m_WS(k) = 0;
+        for (SparseDoubleMatrixType::InnerIterator it(m, k); it; ++it) {
+            m_WS(k) += it.value();
+        }
+    }
 }
