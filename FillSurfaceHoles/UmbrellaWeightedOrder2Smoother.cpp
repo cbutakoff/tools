@@ -113,12 +113,15 @@ void UmbrellaWeightedOrder2Smoother::Update()
     CalculateConnectivity();
         
     CalculateEdgeWeightMatrix();
+    std::cout<<m_W<<std::endl;
     CalculateWeightSums();
+    
 
 
     //start forming the system of equations
     SparseDoubleMatrixType A(m_C.size(), m_C.size());
     Eigen::Matrix<double, Eigen::Dynamic, 3> B; //right hand side
+    B.resize(m_C.size(), Eigen::NoChange);
     B.fill(0);
     
     for( VertexConnectivityArrayType::const_iterator C_it = m_C.begin(); C_it!=m_C.end(); C_it++ )
@@ -414,7 +417,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateEdgeWeightMatrix( )
             //find triangles by finding the vertices shared by both
             
 
-            std::cout<<"W("<<v1id<<", "<<v2id<<")="<<m_W.coeff(v1id, v2id)<<std::endl<<std::flush;
+//            std::cout<<"W("<<v1id<<", "<<v2id<<")="<<m_W.coeff(v1id, v2id)<<std::endl<<std::flush;
             if( m_W.coeff(v1id, v2id)==0 ) //to avoid recalculating the weight
             {
 
@@ -548,6 +551,8 @@ bool UmbrellaWeightedOrder2Smoother::SetDifference( const std::set<vtkIdType>& a
 
 void UmbrellaWeightedOrder2Smoother::FormSystemOfEquationsRow( const VertexConnectivityType& vk, SparseDoubleMatrixType& A  ) const
 {
+      //!!!!m_W has ORIGINAL MESH IDS.
+    
     //ok, this is a bt of a mess
     //W - uses original ids (ids inside the mesh)
     //but to build the system of equations we need to use ids within m_C
@@ -573,7 +578,10 @@ void UmbrellaWeightedOrder2Smoother::FormSystemOfEquationsRow( const VertexConne
         //i - index of (*vkn_it) in m_C
         const vtkIdType i = FindVertexConnectivityLocalID( (*vkn_it) );
         const VertexConnectivityType &vi = m_C.at(*vkn_it);
-        AddUviToSystemOfEquationsRow(i, vi, m_W.coeff(k,i)/m_WS(k), A);
+        
+        std::cout<<"W(k,i): "<<m_W.coeff(k,i)<<std::endl;
+        std::cout<<"W(k): "<<m_WS(k)<<std::endl;
+        AddUviToSystemOfEquationsRow(k, vi, m_W.coeff(k,i)/m_WS(k), A);
     }
 }
 
@@ -582,6 +590,8 @@ void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row
     //adds U(vi) = -vi + 1/W(vi) sum[ W(vi,vj) vj ] over neighborhood j
     const vtkIdType i = FindVertexConnectivityLocalID( vi.originalID );
     
+    std::cout<<"filling row "<<row<<std::endl;
+    std::cout<<"i = "<<i<<std::endl;
     A.coeffRef(row, i) += -1*weight;
             
     //for j over neighborhood of vi
@@ -591,6 +601,7 @@ void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row
     {
         const vtkIdType j = FindVertexConnectivityLocalID( (*Vin_it) );
         
+        std::cout<<"j = "<<j<<std::endl;
         A.coeffRef(row,j) += weight*m_W.coeff(i,j)/m_WS(i);        
     }
 }
@@ -605,6 +616,7 @@ void UmbrellaWeightedOrder2Smoother::CalculateWeightSums( )
         m_WS(k) = 0;
         for (SparseDoubleMatrixType::InnerIterator it(m_W, k); it; ++it) {
             m_WS(k) += it.value();
+            std::cout<<it.value()<<" "<<std::endl;
         }
     }
 }
