@@ -101,6 +101,9 @@ protected:
 
     void AddUviToSystemOfEquationsRow( vtkIdType row, const VertexConnectivityType& vi, double weight, SparseDoubleMatrixType& A  ) const;
 
+    //extract the coordinates of the inner vertices and copy into the mesh
+    void CreateOutput( Eigen::MatrixXd X );
+    
 private:
     typedef std::vector<VertexConnectivityType> VertexConnectivityArrayType; 
     

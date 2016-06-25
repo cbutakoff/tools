@@ -123,8 +123,10 @@ void UmbrellaWeightedOrder2Smoother::Update()
     
     for( VertexConnectivityArrayType::const_iterator C_it = m_C.begin(); C_it!=m_C.end(); C_it++ )
     {
+        const vtkIdType vert_index = FindVertexConnectivityLocalID( (*C_it).originalID );
+        
         if( (*C_it).vertexClass != vcInterior ) //add 1 at the vertex position, these vertices are fixed
-        {
+        {            
             A.coeffRef(vert_index,vert_index) = 1;
         }
         else
@@ -140,6 +142,23 @@ void UmbrellaWeightedOrder2Smoother::Update()
         }
         
     }
+    
+    
+    Eigen::BiCGSTAB < Eigen::SparseMatrix<double> > cg;
+    cg.compute(A);
+    Eigen::MatrixXd X = cg.solve(B);
+    std::cout << "Solving sparse system using BiCGSTAB" << std::endl;
+    std::cout << "#iterations:     " << cg.iterations() << std::endl;
+    std::cout << "estimated error: " << cg.error() << std::endl;     
+    
+    
+    std::ofstream file("matrix.txt");
+    file << A ;
+    std::ofstream file1("b.txt");
+    file1 << B ;   
+    
+    CreateOutput(X);
+
     
     char filename[100];
     sprintf(filename,"mesh%03d.vtk",idx++);
@@ -547,18 +566,33 @@ void UmbrellaWeightedOrder2Smoother::FormSystemOfEquationsRow( const VertexConne
     const vtkIdType k = FindVertexConnectivityLocalID( vk.originalID );
     const VertexIDArrayType& vk_nbhood = vk.connectedVertices;
     
-    AddUviToSystemOfEquationsRow(k, vk_nbhood, -1, A);
+    AddUviToSystemOfEquationsRow(k, vk, -1, A);
     
     for(VertexIDArrayType::const_iterator vkn_it = vk_nbhood.begin(); vkn_it != vk_nbhood.end(); vkn_it++ )
     {
         //i - index of (*vkn_it) in m_C
         const vtkIdType i = FindVertexConnectivityLocalID( (*vkn_it) );
+        const VertexConnectivityType &vi = m_C.at(*vkn_it);
+        AddUviToSystemOfEquationsRow(i, vi, m_W.coeff(k,i)/m_WS(k), A);
     }
 }
 
 void UmbrellaWeightedOrder2Smoother::AddUviToSystemOfEquationsRow( vtkIdType row, const VertexConnectivityType& vi, double weight, SparseDoubleMatrixType& A  ) const
 {
+    //adds U(vi) = -vi + 1/W(vi) sum[ W(vi,vj) vj ] over neighborhood j
+    const vtkIdType i = FindVertexConnectivityLocalID( vi.originalID );
     
+    A.coeffRef(row, i) += -1*weight;
+            
+    //for j over neighborhood of vi
+    const VertexIDArrayType& Vi_nbhood = vi.connectedVertices;
+
+    for(VertexIDArrayType::const_iterator Vin_it = Vi_nbhood.begin(); Vin_it != Vi_nbhood.end(); Vin_it++ )
+    {
+        const vtkIdType j = FindVertexConnectivityLocalID( (*Vin_it) );
+        
+        A.coeffRef(row,j) += weight*m_W.coeff(i,j)/m_WS(i);        
+    }
 }
 
 
@@ -567,10 +601,25 @@ void UmbrellaWeightedOrder2Smoother::CalculateWeightSums( )
 {
     m_WS.resize(m_W.outerSize());    
     
-    for (Eigen::Index k = 0; k < m.outerSize(); ++k){
+    for (Eigen::Index k = 0; k < m_W.outerSize(); ++k){
         m_WS(k) = 0;
-        for (SparseDoubleMatrixType::InnerIterator it(m, k); it; ++it) {
+        for (SparseDoubleMatrixType::InnerIterator it(m_W, k); it; ++it) {
             m_WS(k) += it.value();
         }
     }
+}
+
+
+
+void UmbrellaWeightedOrder2Smoother::CreateOutput( Eigen::MatrixXd X )
+{
+    Eigen::RowVector3d v;
+    for( Eigen::Index i=0; i<X.rows(); i++)
+    {
+        v = X.row(i);
+        const vtkIdType originalID = m_C.at(i).originalID;
+        m_originalMesh->GetPoints()->SetPoint( originalID, v.data() );
+    }
+    
+    m_originalMesh->BuildCells();
 }
