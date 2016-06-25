@@ -19,9 +19,6 @@ PURPOSE.  See the above copyright notice for more information.
 class SurfaceHoleFiller
 {
 public:
-    typedef UmbrellaWeightedOrder2Smoother SmootherType;
-    //typedef UmbrellaWeightedOrder2Smoother::EdgeWeightType VertexWeightType; 
-
     void SetInput(vtkPolyData* mesh) { m_inputMesh = mesh; };
 
     void SmoothingOn() {m_performCoverSMoothing=true;};
@@ -32,21 +29,23 @@ public:
     void Update();
 
 
-    void EdgeWeightingTypeCotangent() {m_weightingType=SmootherType::vwCotangent; };
-    void EdgeWeightingTypeInvEdgeLength() {m_weightingType=SmootherType::vwInvEdgeLength; };
+    int GetEdgeWeightingType() const {return m_weightingType; };
+    void SetEdgeWeightingType(int wt) {m_weightingType=wt; };
+    void EdgeWeightingTypeCotangent() {m_weightingType=EDGE_WEIGHT_COTANGENT; };
+    void EdgeWeightingTypeInvEdgeLength() {m_weightingType=EDGE_WEIGHT_InvEdgeLength; };
 
     
     
     vtkPolyData* GetOutput() {return m_outputMesh; };
     
     SurfaceHoleFiller():m_performCoverSMoothing(true), 
-            m_weightingType(UmbrellaWeightedOrder2Smoother::vwCotangent){};
+            m_weightingType(EDGE_WEIGHT_COTANGENT){};
 protected:
     
 private:
     bool m_performCoverSMoothing;    
    
-    UmbrellaWeightedOrder2Smoother::EdgeWeightType m_weightingType;
+    int m_weightingType;
     
     vtkSmartPointer<vtkPolyData> m_inputMesh;
     vtkSmartPointer<vtkPolyData> m_outputMesh;

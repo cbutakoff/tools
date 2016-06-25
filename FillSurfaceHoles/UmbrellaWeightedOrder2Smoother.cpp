@@ -29,10 +29,10 @@ double UmbrellaWeightedOrder2Smoother::CalculateEdgeWeight(const Eigen::VectorXd
     double value = -1;
     switch( m_weightingType )
     {
-        case vwCotangent:
+        case EDGE_WEIGHT_COTANGENT:
             value = EdgeWeightCotangent(v_third, v1_edge, v2_edge);
             break;
-        case vwInvEdgeLength:
+        case EDGE_WEIGHT_InvEdgeLength:
             value = EdgeWeightInvEdgeLength(v1_edge, v2_edge);
             break;
         default:
@@ -112,10 +112,10 @@ void UmbrellaWeightedOrder2Smoother::Update()
 
     switch(m_weightingType)
     {
-        case vwCotangent:
+        case EDGE_WEIGHT_COTANGENT:
             std::cout<<"Using cotangent edge weights"<<std::endl;
             break;
-        case vwInvEdgeLength:
+        case EDGE_WEIGHT_InvEdgeLength:
             std::cout<<"Using inverse edge length edge weights"<<std::endl;
             break;
         default:
@@ -170,10 +170,10 @@ void UmbrellaWeightedOrder2Smoother::Update()
     std::cout << "estimated error: " << cg.error() << std::endl;     
     
     
-    std::ofstream file("matrix.txt");
-    file << A ;
-    std::ofstream file1("b.txt");
-    file1 << B ;   
+//    std::ofstream file("matrix.txt");
+//    file << A ;
+//    std::ofstream file1("b.txt");
+//    file1 << B ;   
     
     CreateOutput(X);
 

@@ -13,7 +13,6 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyDataReader.h>
 #include <vtkPolyDataWriter.h>
 
-#include "UmbrellaWeightedOrder2Smoother.h"
 
 
 //======================================================================
@@ -41,8 +40,9 @@ int main(int argc, char **argv) {
     char *out_filename = NULL;
 
     bool do_smoothing = true;
-    UmbrellaWeightedOrder2Smoother::VertexWeightType smoothing_type = UmbrellaWeightedOrder2Smoother::vwCotangent;
-
+    int smoothing_type = EDGE_WEIGHT_COTANGENT;
+    
+    
     for (int c = 1; c < argc; c++) {
         if (strcmp(argv[c], "-i") == 0) {
             in_filename = argv[++c];
@@ -53,9 +53,9 @@ int main(int argc, char **argv) {
             if (strcmp(methodtype, "none") == 0)
                 do_smoothing = false;
             if (strcmp(methodtype, "cot") == 0)
-                smoothing_type = SurfaceHoleFiller::vwCotangent;
+                smoothing_type = EDGE_WEIGHT_COTANGENT;
             if (strcmp(methodtype, "edgelen") == 0)
-                smoothing_type = SurfaceHoleFiller::vwInvEdgeLength;
+                smoothing_type = EDGE_WEIGHT_InvEdgeLength;
             else
                 std::cout << "Unknown filling algorithm, using default." << std::endl;
         }
@@ -78,8 +78,9 @@ int main(int argc, char **argv) {
     SurfaceHoleFiller hole_filler;
     hole_filler.SetInput(rdr->GetOutput());
     hole_filler.SetSmoothing(do_smoothing);
-    hole_filler.EdgeWeightingTypeCotangent();
+    hole_filler.SetEdgeWeightingType(smoothing_type);
     hole_filler.Update();
+    
 
     //save the result
     vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();

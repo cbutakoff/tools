@@ -23,6 +23,8 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include "HoleFillerDefines.h"
 
+#define EDGE_WEIGHT_COTANGENT 100
+#define EDGE_WEIGHT_InvEdgeLength 200
 
 
 //uncomment to use cotangent weights during smoothing instead of scale-dependent
@@ -33,22 +35,20 @@ class UmbrellaWeightedOrder2Smoother
 {
 public:
     typedef std::vector<vtkIdType> VertexIDArrayType;
-    
-    typedef enum  {vwCotangent, vwInvEdgeLength} EdgeWeightType;
-    
+        
     void SetInputMesh(vtkPolyData *mesh) {m_originalMesh = mesh;};
     void SetCoverVertexIds(VertexIDArrayType* ids) {m_coverVertexIDs = ids;};
     
-    EdgeWeightType GetEdgeWeightingType() const {return m_weightingType; };
-    void SetEdgeWeightingType(EdgeWeightType wt) {m_weightingType=wt; };
-    void EdgeWeightingTypeCotangent() {m_weightingType=vwCotangent; };
-    void EdgeWeightingTypeInvEdgeLength() {m_weightingType=vwInvEdgeLength; };
+    int GetEdgeWeightingType() const {return m_weightingType; };
+    void SetEdgeWeightingType(int wt) {m_weightingType=wt; };
+    void EdgeWeightingTypeCotangent() {m_weightingType=EDGE_WEIGHT_COTANGENT; };
+    void EdgeWeightingTypeInvEdgeLength() {m_weightingType=EDGE_WEIGHT_InvEdgeLength; };
     
     void Update();
     
     
     UmbrellaWeightedOrder2Smoother():m_originalMesh(NULL), m_coverVertexIDs(NULL),
-        m_weightingType(vwCotangent) {};
+        m_weightingType(EDGE_WEIGHT_COTANGENT) {};
     
     
         
@@ -114,7 +114,7 @@ private:
     double m_tolerance;
     int m_maxIter;
 
-    EdgeWeightType m_weightingType;
+    int m_weightingType;
     SparseMatrixDoubleType m_W; //matrix of edge weights
     SparseMatrixDoubleType m_WS; //columnwise sum of weights, nx1
     
