@@ -27,7 +27,7 @@ Example image (left - DT, right - red blob):
 
 
 ##FillSurfaceHoles
-Implementation similar to ReMesh. Detects and fills holes on the surface. Implements P. Liepa "Filling Holes in Meshes" without smoothing. Has 3 smoothing modes: none, inverse edge lengths and cotangent weights. Here's a sample result. 
+Implementation similar to ReMesh. Detects and fills holes on the surface. Implements P. Liepa "Filling Holes in Meshes". Has 3 smoothing modes: none, inverse edge lengths and cotangent weights. Here's a sample result. 
 
 ![Hole Filling Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/HoleFilling.gif)
 
