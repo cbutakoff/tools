@@ -18,18 +18,17 @@ endif()
 
 
 include_directories(Common)
-SET(MYCOMMON_FILES ../Common/CommonTools.h ../Common/CommonTools.cpp)
+SET(MYCOMMON_FILES ${tools_SOURCE_DIR}/Common/CommonTools.h ${tools_SOURCE_DIR}/Common/CommonTools.cpp)
 
 set(MYPROJECTS
 BasicMeshOperations
 cgal
 FillSurfaceHoles
 IrisTools
-#layer_Generation_code
 LVMeshFromMRI
-#VolumetricLVMesh
 DistTransform
 Testing
+LaplaceBasedVolMesh
 ) 
 
 foreach(program ${MYPROJECTS})
