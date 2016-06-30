@@ -69,6 +69,12 @@ Todo:
 - Test
 
 
+#Zerike Decomposition
+2D Zernike Decomposition/Reconstruction of an image using multi-precision arithmetics. Optimized for running on a cluster. Programmed together with Arnau Vallve: https://www.linkedin.com/in/arnauvallve
+
+![Volumetric Meshing Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/zernike2d.jpg)
+
+
 
 ##Matlab
 - A landmarking tool for 2D images (Matlab).
