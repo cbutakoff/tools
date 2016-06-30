@@ -58,7 +58,8 @@ Todo:
 ##LaplaceBasedVolMesh 
 Generates a volumetric mesh of any structure with two boundaries.
 The elements are wedges aligned radially.
-This was ported from VTK 5.x and needs testing. Examples can be seen in the following figures
+This was ported from VTK 5.x and needs testing. Examples can be seen in the following figures.
+
 Please cite B. Paun, B. Bijnens, T. Iles, P. A. Iaizzo, C. Butakoff, "Patient Independent Representation of the Detailed
 Cardiac Ventricular Anatomy", Medical Image Analysis, Accepted 2016.
 
