@@ -10,7 +10,8 @@ The collection is in a bit of a disarray and documentation need to be improved.
 ##VolumetricLVMesh 
 Generates a volumetric mesh of cardiac Left Ventricle (half-ellipsoid like). 
 The elements are wedges aligned radially. Might have some additional requirements.
-To be verified. This was ported from VTK 5.x and needs testing. An example mesh with associate local coordinates can be seen in the following figure
+To be verified. This was ported from VTK 5.x and needs testing. An example mesh with associate local coordinates can be seen in the following figure.
+
 Please cite B. Paun, B. Bijnens, T. Iles, P. A. Iaizzo, C. Butakoff, "Patient Independent Representation of the Detailed
 Cardiac Ventricular Anatomy", Medical Image Analysis, Accepted 2016.
 
