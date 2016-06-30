@@ -1,5 +1,5 @@
 #2D Zernike Decomposition/Reconstruction of an image
-Programmed together with Arnau Vallve: https://www.linkedin.com/in/arnauvallve
+Programmed together with Arnau Vallve (https://www.linkedin.com/in/arnauvallve) using boost multiprecision arithmetics.
 
 Has 3 executables:
 - genarate_inputs - prepares parameters for calculating each Zernike polynomial
