@@ -38,7 +38,7 @@ Creates a smoother mesh using splines longitudinally from short axis contours in
 This was ported from VTK 5.x and needs testing. There's also a python script in [Python/mri_mesh_from_contours](https://github.com/cbutakoff/tools/blob/master/Python/mri_mesh_from_contours). 
 The input shape are the landmarks in 3D. One of them is the reference point (which is either the first or the last or has a special ID). 
 Also it is possible that the IDs are used to differentiate between endocardiumn and epicardium. Check the code.
-Example reconstrautcion:
+Example reconstruction:
 
 ![Remesh Image](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/mriremesh.gif)
 
