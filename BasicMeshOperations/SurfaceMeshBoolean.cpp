@@ -11,6 +11,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyDataWriter.h>
 #include <vtkBooleanOperationPolyDataFilter.h>
 #include <vtkPolyData.h>
+#include <vtkCleanPolyData.h>
 
 int main(int argc, char* argv[])
 {
@@ -69,10 +70,15 @@ int main(int argc, char* argv[])
 
     booleanOperation->Update();
     
+    vtkSmartPointer<vtkCleanPolyData> cleaner = vtkSmartPointer<vtkCleanPolyData>::New();
+    cleaner->SetInputData(booleanOperation->GetOutput());
+    cleaner->Update();
+    
+    
     vtkSmartPointer<vtkPolyDataWriter> writer =
       vtkSmartPointer<vtkPolyDataWriter>::New();
     writer->SetFileName(outshape);
-    writer->SetInputData(booleanOperation->GetOutput());
+    writer->SetInputData(cleaner->GetOutput());
     writer->Write();
     
     
