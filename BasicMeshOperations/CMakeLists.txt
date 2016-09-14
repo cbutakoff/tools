@@ -46,6 +46,7 @@ PassLabels2TetMesh
 set(VTK_PROGRAMS 
 ProjectImage2Mesh
 ensight2vtk
+SurfaceMeshBoolean
 )
 
 
