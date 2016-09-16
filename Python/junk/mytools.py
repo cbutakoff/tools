@@ -1,8 +1,7 @@
-import vtk
 import numpy as np
 from scipy import sparse
 import scipy.sparse.linalg as linalg_sp
-
+import vtk
 
 def CreatePolyData( pts, faces ):
     """
@@ -33,7 +32,7 @@ def CreatePolyData( pts, faces ):
     new_mesh = vtk.vtkPolyData()
     new_mesh.SetPoints( points )
     new_mesh.SetPolys( cells )
-    new_mesh.Update()
+    new_mesh.BuildCells()	
     
     return new_mesh
 
@@ -54,7 +53,7 @@ def ImportVTKPoints( pts, mesh ):
         points.SetPoint( j, pts[j,0], pts[j,1], pts[j,2] )
         
     mesh.SetPoints( points )
-    mesh.Update()
+    mesh.BuildCells()	
     
     #return mesh
 
@@ -85,7 +84,7 @@ def VTKPoints2PolyData( pts ):
     mesh.SetPoints(points)
     mesh.SetVerts(vertices)
 
-    mesh.Update()
+    mesh.BuildCells()	
     
     return mesh
 
@@ -119,7 +118,7 @@ def SaveVTKPolyData( mesh, filename ):
     """
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName( filename )
-    writer.SetInput( mesh )
+    writer.SetInputData( mesh )
     writer.SetFileTypeToBinary()
     writer.Update()
 
@@ -302,7 +301,7 @@ def CloseSurface( shape, output ):
     Return nothing.
     """
     fe = vtk.vtkFeatureEdges()
-    fe.SetInput( shape )
+    fe.SetInputData( shape )
     fe.BoundaryEdgesOn()
     fe.NonManifoldEdgesOff()
     fe.FeatureEdgesOff()
@@ -310,7 +309,7 @@ def CloseSurface( shape, output ):
     fe.Update()
 
     connect = vtk.vtkPolyDataConnectivityFilter()
-    connect.SetInput(fe.GetOutput())
+    connect.SetInputData(fe.GetOutput())
     connect.Update()
 
     ncontours = connect.GetNumberOfExtractedRegions()
@@ -335,7 +334,7 @@ def CloseSurface( shape, output ):
 
 
     cleaner = vtk.vtkCleanPolyData()
-    cleaner.SetInput(append.GetOutput())
+    cleaner.SetInputData(append.GetOutput())
     cleaner.Update()
 
     output.DeepCopy(cleaner.GetOutput())
@@ -358,7 +357,7 @@ def GenerateHoleCover(edges, cover):
     points = vtk.vtkPoints()
 
     sur_filt = vtk.vtkCleanPolyData()
-    sur_filt.SetInput( edges )
+    sur_filt.SetInputData( edges )
     sur_filt.Update()
 
     points.DeepCopy(sur_filt.GetOutput().GetPoints())

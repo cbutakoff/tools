@@ -41,6 +41,7 @@ S2SError
 MarchingCubes
 CheckTetraMesh
 PassLabels2TetMesh
+CreateSurfaceMeshEnvelope
 )
 
 set(VTK_PROGRAMS 
