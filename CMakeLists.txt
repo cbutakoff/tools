@@ -29,6 +29,7 @@ LVMeshFromMRI
 DistTransform
 Testing
 LaplaceBasedVolMesh
+ImageFeatures
 ) 
 
 foreach(program ${MYPROJECTS})

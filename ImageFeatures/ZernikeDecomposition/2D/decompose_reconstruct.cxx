@@ -29,7 +29,7 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/serialization/complex.hpp>
 
-#include "../defs.h"
+#include "defs.h"
 
 // GLOBAL TYPE DEFINITIONS
 
