@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 2.8)
+
+PROJECT(LocalIntensity)
+
+FIND_PACKAGE(ITK REQUIRED)
+FIND_PACKAGE(VTK 7 REQUIRED)
+
+INCLUDE(${ITK_USE_FILE})
+INCLUDE(${VTK_USE_FILE})
+
+
+ADD_EXECUTABLE(SampleLocalIntensity SampleLocalIntensity.cpp)
+TARGET_LINK_LIBRARIES(SampleLocalIntensity ${ITK_LIBRARIES} ${VTK_LIBRARIES})
+
+
