@@ -1,4 +1,5 @@
 add_subdirectory(HOG3D)
 add_subdirectory(ZernikeDecomposition)
 add_subdirectory(LocalIntensity)
+add_subdirectory(LocalStatistics)
 
