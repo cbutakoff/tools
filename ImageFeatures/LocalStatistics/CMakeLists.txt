@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 2.8)
+
+PROJECT(LocalIntensity)
+
+FIND_PACKAGE(ITK REQUIRED)
+FIND_PACKAGE(VTK 7 REQUIRED)
+FIND_PACKAGE(Armadillo REQUIRED)
+
+include_directories(${ARMADILLO_INCLUDES})
+INCLUDE(${ITK_USE_FILE})
+INCLUDE(${VTK_USE_FILE})
+
+
+
+ADD_EXECUTABLE(SampleLocalStatistics SampleLocalStatistics.cpp)
+TARGET_LINK_LIBRARIES(SampleLocalStatistics ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${ARMADILLO_LIBRARIES})
+
+
