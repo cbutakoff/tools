@@ -1,4 +1,4 @@
-//sample voxels in a box around each mesh point
+//sample voxel statistics in a box around each mesh point
 #include <itkImageFileReader.h>
 #include <itkGradientRecursiveGaussianImageFilter.h>
 #include <itkImageFileWriter.h>
@@ -20,8 +20,9 @@
 
 //#define DEBUG_MESSAGES_HOG 
 
+
 template <typename TImage>
-void SampleGradHistogram(double *pt, double radius, typename TImage::Pointer image, arma::ivec& samples);
+void SampleStatistics(double *pt, double radius, typename TImage::Pointer image, arma::vec& features);
 
 
 //edrivativeFilter->GetOutput()->SetRequestedRegion(smallRegion);
@@ -29,7 +30,7 @@ void SampleGradHistogram(double *pt, double radius, typename TImage::Pointer ima
 
 int main(int argc, char **argv) {
     
-    std::cout<<"Usage: GetHOG3D image.vtk mesh.vtp label_array_name output_hog.csv output_label.csv radius"<<std::endl;
+    std::cout<<"Usage: SampleLocalStatistics image.vtk mesh.vtp label_array_name output_features.csv output_label.csv"<<std::endl;
     
 //    const char* inputImageFileName = "/home/costa/Dropbox/code/HOG3D/bin/01D-LGE-320.vtk";
 //    const char* inputMeshFileName = "/home/costa/Dropbox/code/HOG3D/bin/01D_320_autolabels.vtp";
@@ -46,19 +47,18 @@ int main(int argc, char **argv) {
     const char* inputImageFileName = argv[c++];
     const char* inputMeshFileName =  argv[c++];
     const char* labelArrayName =  argv[c++];
-    const char* outputHogFileName =  argv[c++];
+    const char* outputFeaturesFileName =  argv[c++];
     const char* outputLabelsFileName =  argv[c++];
-    float radius = atof(argv[c++]);
+    //float radius = atof(argv[c++]);
     
     
 
     
    
-    const int ngrad_bins = 8; //number of gradient orientation bins
     
     //define some region of interest around the point
-    arma::vec radii;
-    radii << radius; //mm
+    arma::vec radii; //does not support more than 1 value for now
+    radii << 0.3 << 0.7 <<1.0 <<1.6<<3.5<<5.0; //mm
 
 
     //----------------------------------------------------
@@ -97,13 +97,7 @@ int main(int argc, char **argv) {
     rd->Update();
     vtkPolyData* mesh = rd->GetOutput();
     
-    //calculate normals
-    vtkSmartPointer<vtkPolyDataNormals> ng = vtkSmartPointer<vtkPolyDataNormals>::New();
-    ng->SetInputData(mesh);
-    ng->SplittingOff();
-    ng->Update();
     
-    vtkDataArray* pnormals = ng->GetOutput()->GetPointData()->GetNormals();
     //
     //
     //----------------------------------------------------
@@ -147,47 +141,48 @@ int main(int argc, char **argv) {
     
     
     
-    std::cout<<"Calculating HOGs"<<std::endl;
+    std::cout<<"Calculating Features"<<std::endl;
     
     //sample something to know the size of the neighborhood
     double pt[3];
     mesh->GetPoint(0, pt);    
-    arma::ivec samples;
-    SampleGradHistogram<ImageType>(pt, radii[0], imageReader->GetOutput(), samples);
+    arma::vec features;
     
     
-    arma::imat sample_matrix(mesh->GetNumberOfPoints(), samples.size());
-    const int nsamples = samples.size();
+    const int nfeatures = 4; //4 statistical features
+    arma::mat feature_matrix(mesh->GetNumberOfPoints(), nfeatures*radii.size()); 
     //
     
     
  
+
+   
     for(int j=0; j<radii.size(); j++)
     {
 
         std::cout<<"Radius "<<radii[j]<<std::endl;
-
-   
     
         for(int i=0; i<mesh->GetNumberOfPoints(); i++)
-         {
+        {
             if(i%1000==0)
                 std::cout<<"Point "<<i<<"/"<<mesh->GetNumberOfPoints()<<"\r"<<std::flush;
+
+
         
             double pt[3];
             mesh->GetPoint(i, pt);
 
 
 
-            SampleGradHistogram<ImageType>(pt, radii[j], imageReader->GetOutput(), samples);
+            SampleStatistics<ImageType>(pt, radii[j], imageReader->GetOutput(), features);
 
-            if(nsamples!=samples.size())
-                std::cout<<std::endl<<"Nonconstant number of samples (vertex "<<i<<"): "<<nsamples<<" vs "<<samples.size()<<std::endl<<std::flush;
+            if(nfeatures!=features.size())
+                std::cout<<std::endl<<"Nonconstant number of samples (vertex "<<i<<"): "<<nfeatures<<" vs "<<features.size()<<std::endl<<std::flush;
             
             //copy the histogram into the matrix
-            for(int k=0; k<samples.size(); k++)
+            for(int k=0; k<features.size(); k++)
             {
-                sample_matrix(i,k) = samples(k);
+                feature_matrix(i,k+j*nfeatures) = features(k);
             }
         }
         
@@ -200,7 +195,7 @@ int main(int argc, char **argv) {
     std::cout<<std::endl<<"Saving"<<std::endl;
              
     //save the matrix
-    sample_matrix.save(outputHogFileName, arma::arma_binary);
+    feature_matrix.save(outputFeaturesFileName, arma::arma_binary);
     
     //
     
@@ -210,8 +205,13 @@ int main(int argc, char **argv) {
 
 
 template <typename TImage>
-void SampleGradHistogram(double *pt, double radius, typename TImage::Pointer image, arma::ivec& samples)
+void SampleStatistics(double *pt, double radius, typename TImage::Pointer image, arma::vec& features)
 {
+    features.set_size(4); //just four features for now
+    features.zeros();
+    
+    
+    
     typedef TImage ImageType;
 
     int radius_pix[3]; //radius in voxels, to be calculated
@@ -265,25 +265,47 @@ void SampleGradHistogram(double *pt, double radius, typename TImage::Pointer ima
     std::cout << "Region: " << window << std::endl;
 #endif
 
-    samples.set_size(rgn_size[0]*rgn_size[1]*rgn_size[2]);
-    samples.zeros();
     
-//    itk::ImageRegionConstIterator<typename GradientFilterType::OutputImageType> imageIterator(gradient_filter->GetOutput(), window);
     itk::ImageRegionConstIterator<ImageType> imageIterator(image, window);
     imageIterator.GoToBegin();
+
+    const int nvoxels = rgn_size[0]*rgn_size[1]*rgn_size[2];
+    arma::vec voxels;
+    voxels.set_size(nvoxels);
+    voxels.zeros();
     
-    int i=0;
+    
+
+    long int i=0;
     while (!imageIterator.IsAtEnd()) {
         // Get the value of the current pixel
         typename ImageType::PixelType val = imageIterator.Get();
     
         //std::cout << val << std::endl;
             
-        samples[i++] = val;
-        
+
+        voxels[i++] = val;
         ++imageIterator;
     }
 
+    //do the statistics
+
+    const double mean = arma::mean(voxels);
+    const double std = arma::stddev(voxels);
     
+    double E3 = 0; //Accumulate expectation of (X-u)^3
+    double E4 = 0; //Accumulate expectation of (X-u)^4
+    
+    for(int i=0; i<voxels.size(); i++)
+    {
+        const double diff = voxels[i] - mean;
+        const double k = diff*diff*diff/nvoxels;
+        E3 += k; //cubed
+        E4 += diff*k; //4th power       
+    }
        
+    features[0] = mean;
+    features[1] = std;
+    features[2] = E3/(std*std*std); //skewness
+    features[3] = E3/(std*std*std*std); //kurtosis
 }
