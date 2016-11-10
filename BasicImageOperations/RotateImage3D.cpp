@@ -78,10 +78,12 @@ int main(int argc, char** argv) {
     InputImageType::SizeType lowerExtendRegion;
     lowerExtendRegion[0] = padding;
     lowerExtendRegion[1] = padding;
+    lowerExtendRegion[2] = padding;
 
     InputImageType::SizeType upperExtendRegion;
     upperExtendRegion[0] = padding;
     upperExtendRegion[1] = padding;
+    upperExtendRegion[2] = padding;
 
     InputImageType::PixelType constantPixel = 0;
 
