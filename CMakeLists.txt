@@ -22,6 +22,7 @@ SET(MYCOMMON_FILES ${tools_SOURCE_DIR}/Common/CommonTools.h ${tools_SOURCE_DIR}/
 
 set(MYPROJECTS
 BasicMeshOperations
+BasicImageOperations
 cgal
 FillSurfaceHoles
 IrisTools
