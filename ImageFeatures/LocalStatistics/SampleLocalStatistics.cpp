@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
     std::cout<<std::endl<<"Saving"<<std::endl;
              
     //save the matrix
-    feature_matrix.save(outputFeaturesFileName, arma::arma_binary);
+    feature_matrix.save(outputFeaturesFileName, arma::csv_ascii);
     
     //
     
