@@ -97,12 +97,9 @@ int main(int argc, char* argv[])
     
     
     std::cout<<"Saving"<<std::endl;
-    vtkSmartPointer<vtkPolyDataWriter> writer =
-      vtkSmartPointer<vtkPolyDataWriter>::New();
-    writer->SetFileName(outshape);
-    writer->SetInputData(cleaner->GetOutput());
-    writer->Write();
-    
+    CommonTools::SaveShapeToFile(cleaner->GetOutput(), outshape);
+
+   
     
     return 0;
 }
