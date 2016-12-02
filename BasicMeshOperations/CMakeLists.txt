@@ -42,6 +42,7 @@ MarchingCubes
 CheckTetraMesh
 PassLabels2TetMesh
 CreateSurfaceMeshEnvelope
+PassVolmeshLabels2Image
 )
 
 set(VTK_PROGRAMS 
