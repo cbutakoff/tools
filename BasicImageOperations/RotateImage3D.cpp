@@ -71,34 +71,11 @@ int main(int argc, char** argv) {
     FilterType::Pointer filter = FilterType::New();
 
 
-    //pad the image.
-    typedef itk::ConstantPadImageFilter <InputImageType, InputImageType>
-            ConstantPadImageFilterType;
-
-    InputImageType::SizeType lowerExtendRegion;
-    lowerExtendRegion[0] = padding;
-    lowerExtendRegion[1] = padding;
-    lowerExtendRegion[2] = padding;
-
-    InputImageType::SizeType upperExtendRegion;
-    upperExtendRegion[0] = padding;
-    upperExtendRegion[1] = padding;
-    upperExtendRegion[2] = padding;
-
-    InputImageType::PixelType constantPixel = 0;
+    reader->Update();
 
     
-    
-    ConstantPadImageFilterType::Pointer padFilter
-            = ConstantPadImageFilterType::New();
-    padFilter->SetInput(reader->GetOutput());
-    //padFilter->SetPadBound(outputRegion); // Calls SetPadLowerBound(region) and SetPadUpperBound(region)
-    padFilter->SetPadLowerBound(lowerExtendRegion);
-    padFilter->SetPadUpperBound(upperExtendRegion);
-    padFilter->SetConstant(constantPixel);
-    padFilter->Update();
 
-    const InputImageType * inputImage = padFilter->GetOutput();
+    const InputImageType * inputImage = reader->GetOutput();
 
 
     // Software Guide : EndCodeSnippet
@@ -108,7 +85,6 @@ int main(int argc, char** argv) {
     filter->SetInterpolator(interpolator);
     filter->SetDefaultPixelValue(0);
 
-    reader->Update();
 
 
     const InputImageType::SpacingType & spacing = inputImage->GetSpacing();
@@ -117,15 +93,28 @@ int main(int argc, char** argv) {
             inputImage->GetLargestPossibleRegion().GetSize();
 
 
+    InputImageType::PointType origin_new;
+    InputImageType::SizeType size_new;
+    
+    origin_new[0] = origin[0]-padding*spacing[0];
+    origin_new[1] = origin[1]-padding*spacing[1];
+    origin_new[2] = origin[2]-padding*spacing[2];
+    size_new[0] = size[0]+padding*2;
+    size_new[1] = size[1]+padding*2;
+    size_new[2] = size[2]+padding*2;
+    
     std::cout << "Origin: " << origin << std::endl;
     std::cout << "Size: " << size << std::endl;
 
-    filter->SetOutputOrigin(origin);
+   std::cout << "Output Origin: " << origin_new << std::endl;
+    std::cout << "Output Size: " << size_new << std::endl;    
+    
+    filter->SetOutputOrigin(origin_new);
     filter->SetOutputSpacing(spacing);
     filter->SetOutputDirection(inputImage->GetDirection());
-    filter->SetSize(size);
+    filter->SetSize(size_new);
 
-    filter->SetInput(padFilter->GetOutput());
+    filter->SetInput(inputImage);
     writer->SetInput(filter->GetOutput());
 
     //translate to the center
@@ -168,6 +157,9 @@ int main(int argc, char** argv) {
         std::cerr << excep << std::endl;
     }
 
+    
+
+    
     return EXIT_SUCCESS;
 }
 
