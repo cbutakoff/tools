@@ -58,6 +58,7 @@ PURPOSE.  See the above copyright notice for more information.
 	#include <stdlib.h>
 	#include <fstream>
 	#include <stdexcept>
+	#include <string>
 
 
 #include <vnl/vnl_matrix.h>
@@ -104,10 +105,8 @@ void CommonTools::SaveVtkShortArray( const char *filename, vtkShortArray* the_ar
 
 	if(!f)
 	{
-		std::ostringstream strError;
-		strError <<"Failed opening "<<filename<<std::endl;
-		std::cout << strError;
-		throw std::runtime_error( strError.str( ) );
+		std::cout << "Failed opening "<<filename<<std::endl;
+		throw std::runtime_error( "Failed opening file" );
 	}
 
 	char id[] = "RD10";
@@ -142,18 +141,14 @@ void CommonTools::LoadVtkShortArray( const char *filename, vtkShortArray* the_ar
 {
 	if( strlen(filename) == 0 )
 	{
-		std::ostringstream strError;
-		strError <<"Failed opening empty file";
-		std::cout << strError.str()<<std::endl;
+		std::cout << "Failed opening empty file"<<std::endl;
 		throw std::runtime_error( "Failed opening file" );
 	}
 
 	FILE* f = fopen(filename,"rb");
 	if( !f )
 	{
-		std::ostringstream strError;
-		strError <<"Failed opening "<<filename;
-		std::cout << strError.str()<<std::endl;
+		std::cout <<"Failed opening "<<filename<<std::endl;
 		throw std::runtime_error( "Failed opening file" );
 	}
 
@@ -165,9 +160,7 @@ void CommonTools::LoadVtkShortArray( const char *filename, vtkShortArray* the_ar
 	if( strcmp(id, "RD10")!=0 )
 	{
 		fclose(f);
-		std::ostringstream strError;
-		strError <<"Region definitions has incorrect version number"<<std::endl;
-		std::cout << strError;
+		std::cout <<"Region definitions has incorrect version number"<<std::endl;
 		throw std::runtime_error( "Region definitions has incorrect version number" );
 	}
 
@@ -190,10 +183,8 @@ void CommonTools::LoadVtkShortArray( const char *filename, vtkShortArray* the_ar
 	if( b!=size*static_cast<int>(sizeof(scalars[0])) )
 	{
 		fclose(f);
-		std::ostringstream strError;
-		strError << "Number of items read from region definition file is incorrect. "
+		std::cout  << "Number of items read from region definition file is incorrect. "
 			<<b<<" out of "<<size<<". Aborting."<<std::endl;
-		std::cout << strError;
 		throw std::runtime_error( "Number of items read from region definition file is incorrect" );
 	}
 
