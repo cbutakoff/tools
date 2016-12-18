@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
 
     //main program
     typedef unsigned char InputPixelType;
-    typedef unsigned char OutputPixelType;
+    typedef float OutputPixelType;
     typedef itk::Image< InputPixelType, Dimension > InputImageType;
     typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
     typedef itk::ImageFileReader< InputImageType > ReaderType;
