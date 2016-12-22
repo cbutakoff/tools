@@ -11,6 +11,7 @@
 #include <vtkUnstructuredGridWriter.h>
 #include <vtkCellCenters.h>
 #include <vtkSelectEnclosedPoints.h>
+#include <vtkPointData.h>
 
 #include "VTKCommonTools.h"
 
@@ -22,7 +23,7 @@ void ReadPolydata(vtkPolyData* out_shape, const char *fileName);
 
 int main(int argc, char** argv) {
     
-    if (argc != 6 ) {
+    if (argc != 5 ) {
         std::cout << " Usage: " << std::endl;
         std::cout << argv[0] << " vol_mesh.vtk surf_mesh.vtk output_vol_mesh.vtk elements.txt" << std::endl;
         std::cout << "surf_mesh.vtk must be a closed surface" << std::endl;
@@ -39,8 +40,8 @@ int main(int argc, char** argv) {
     vtkSmartPointer<vtkUnstructuredGrid> volume = vtkSmartPointer<vtkUnstructuredGrid>::New();
     ReadUnstructuredGrid(volume, input1);
     
-    vtkSmartPointer<vtkPolyData> surface = vtkSmartPointer<vtkPolyData>::New();
-    ReadPolydata(surface, input2);
+    vtkSmartPointer<vtkPolyData> surface = vtkSmartPointer<vtkPolyData>::Take(
+        CommonTools::LoadShapeFromFile( input2 ) );
     
     // -------------------------------------------------------------------------
     
@@ -66,10 +67,13 @@ int main(int argc, char** argv) {
     centers->SetInputData(volume);
     centers->Update();
     
+    
     vtkSmartPointer<vtkSelectEnclosedPoints> inside_slector = vtkSmartPointer<vtkSelectEnclosedPoints>::New();
     inside_slector->SetInputData(centers->GetOutput());
     inside_slector->SetSurfaceData(surface);
+    inside_slector->CheckSurfaceOn();    
     inside_slector->Update();
+
     
     
     for (int i = 0; i < volume->GetNumberOfCells(); i++)
@@ -77,6 +81,9 @@ int main(int argc, char** argv) {
         isIn->SetValue(i, inside_slector->IsInside(i));
     }
     
+    centers->GetOutput()->GetPointData()->AddArray(isIn);
+    CommonTools::SaveShapeToFile(centers->GetOutput(), "centers.vtk");
+
     file.close();
     
     WriteUnstructuredData(volume, output);
