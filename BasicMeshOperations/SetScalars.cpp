@@ -17,11 +17,10 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyDataReader.h>
 #include <vtkSTLReader.h>
 #include "vtkCellData.h"
-#include "CommonTools.h"
 #include "vtkSmartPointer.h"
 #include <vtkDataArray.h>
 #include <vtkFloatArray.h>
-#include "CommonTools.h"
+#include "VTKCommonTools.h"
 
 
 template <typename vtk_array_type>

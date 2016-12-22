@@ -44,11 +44,7 @@ PURPOSE.  See the above copyright notice for more information.
 	namespace CommonTools
 	{
 
-    	//! Valid volume formats io functions can handle 
-		enum VTKSurfaceMeshFormats { UnknownType, VTKPolyDataType, VTKXMLPolyDataType, STLType, PLYType };
-		
-    	//! Valid volume formats io functions can handle 
-		enum VTKVolumeMeshFormats { UnknownVolumeType, VTKUnstructuredGridType };
+
 		
 		/**
 		\brief Save a vtk short array using a specific format 
@@ -145,17 +141,7 @@ PURPOSE.  See the above copyright notice for more information.
 		void ScaleVolume(vtkUnstructuredGrid* volumein, vtkUnstructuredGrid* volumeout, float scale); 
 
 
-		//! Load polydata from file
-		vtkPolyData* LoadShapeFromFile(const char *shapeFileName);
-		//! Load unstructured grid from file
-		vtkUnstructuredGrid* LoadVolumeFromFile(const char *volumeFileName);
-		//! Save unstructured grid to file
-		void SaveVolumeToFile( vtkUnstructuredGrid *volumePt, const char *volumeFileName, const char *header);
-		//! Save polydata to file
-		void SaveShapeToFile(
-								vtkPolyData *shapePt, 
-								const char *shapeFileName,
-								const char *header=NULL );
+
 					
                 
 		//! Calculate mean and std
@@ -183,12 +169,7 @@ PURPOSE.  See the above copyright notice for more information.
 		//! Calculate surface-to-surface distance
 		void GetS2S(vtkPolyData *shapePt1, vtkPolyData *shapePt2, std::vector< vnl_vector<double> >& distances );
 
-        //! check if the file has valid extension for saving. To remove one day.
-		bool CheckSaveFileExtension(const char *shapeFileName);
-        //! identify volume data type
-		VTKVolumeMeshFormats GetTypeOfVTKVolumeData(const char *volumeFileName);
-        //! identify VTK data type
-		VTKSurfaceMeshFormats GetTypeOfVTKData(const char *shapeFileName);
+
 		
 		
 		/*! \brief Explicit solution to Laplace Eq. (c) Ruben Cardenes + Constantine Butakoff

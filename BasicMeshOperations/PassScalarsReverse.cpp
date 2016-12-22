@@ -22,7 +22,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkPolyData.h"
 #include "vtkSmartPointer.h"
 #include "vtkCell.h"
-#include "CommonTools.h"
+#include "VTKCommonTools.h"
 #include "vtkFloatArray.h"
 
 

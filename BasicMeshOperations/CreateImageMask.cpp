@@ -22,7 +22,7 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include "vtkTransform.h"
 #include "vtkTransformPolyDataFilter.h"
-#include "CommonTools.h"
+#include "VTKCommonTools.h"
 
 #include <stdlib.h>
 #include <stdio.h>

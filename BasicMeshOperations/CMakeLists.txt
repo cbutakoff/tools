@@ -26,29 +26,30 @@ INCLUDE(${ITK_USE_FILE})
 
 #these are all compiled the same way
 set(ITK_VTK_PROGRAMS 
-CreateImageMask
 ExtractShapeRegion
 ResampleImage
+nrrd2vtk
+Morphology3D
+chaste2vtk
+S2SError
+)
+
+set(VTK_PROGRAMS 
+CreateImageMask
+ProjectImage2Mesh
+ensight2vtk
+SurfaceMeshBoolean
+MarkVolmeshCellsInsideSurface
 VTKConvert
 SetScalars
 PassScalars
 PassScalarsReverse
 PassScalarsInterp
-chaste2vtk
-Morphology3D
-nrrd2vtk
-S2SError
 MarchingCubes
 CheckTetraMesh
 PassLabels2TetMesh
 CreateSurfaceMeshEnvelope
 PassVolmeshLabels2Image
-)
-
-set(VTK_PROGRAMS 
-ProjectImage2Mesh
-ensight2vtk
-SurfaceMeshBoolean
 )
 
 
@@ -58,7 +59,7 @@ foreach(program ${ITK_VTK_PROGRAMS})
 endforeach(program)
 
 foreach(program ${VTK_PROGRAMS})
-  add_executable(${program} ${program}.cpp)
+  add_executable(${program} ${MYVTKCOMMON_FILES} ${program}.cpp)
   target_link_libraries(${program} ${VTK_LIBRARIES})
 endforeach(program)
 

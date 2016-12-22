@@ -17,7 +17,6 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkFloatArray.h>
 #include <vtkPointData.h>
 #include <vtkLookupTable.h>
-#include "CommonTools.h"
 #include "vtkSmartPointer.h"
 #include <vector>
 #include "vtkCellLocator.h"
@@ -46,6 +45,10 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkImageCast.h"
 #include "vtkAssignAttribute.h"
 #include "vtkSplineFilter.h"
+
+
+#include "VTKCommonTools.h"
+#include "CommonTools.h"
 
 
 #define FIELD_DT 0
