@@ -58,6 +58,7 @@ PURPOSE.  See the above copyright notice for more information.
 	#include <fstream>
 	#include <stdexcept>
 	#include <string>
+#include <algorithm>
 
 
 
