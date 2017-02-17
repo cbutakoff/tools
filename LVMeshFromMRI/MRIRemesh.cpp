@@ -15,6 +15,7 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include <vtkSmartPointer.h>
 
+#include "VTKCommonTools.h"
 #include "CommonTools.h"
 
 

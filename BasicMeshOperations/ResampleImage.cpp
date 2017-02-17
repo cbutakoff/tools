@@ -24,6 +24,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkShortArray.h>
 #include <vtkCellData.h>
 
+#include "VTKCommonTools.h"
 #include "CommonTools.h"
 
 #include <stdlib.h>

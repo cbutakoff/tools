@@ -24,7 +24,6 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkFloatArray.h>
 #include <vtkPointData.h>
 #include <vtkLookupTable.h>
-#include "CommonTools.h"
 #include "vtkSmartPointer.h"
 #include <vector>
 #include "vtkCellLocator.h"
@@ -67,6 +66,11 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkImageNormalize.h"
 #include "vtkImageThreshold.h"
 #include "vtkPointLocator.h"
+
+
+#include "VTKCommonTools.h"
+#include "CommonTools.h"
+
 
 #ifdef USE_VMTK
 #include <vtkvmtkPolyDataSurfaceRemeshing.h>

@@ -14,6 +14,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyData.h>
 #include <vtkCleanPolyData.h>
 
+#include "VTKCommonTools.h"
 #include "CommonTools.h"
 
 #include <stdlib.h>

@@ -9,7 +9,7 @@ PURPOSE.  See the above copyright notice for more information.
 /*! \file
     \brief Convert vtk polydata between formats
  */
-#include "CommonTools.h"
+#include "VTKCommonTools.h"
 
 #include <vtkSmartPointer.h>
 #include <vtkPolyData.h>

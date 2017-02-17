@@ -20,7 +20,7 @@ vtkvmtkITK
 vtkvmtkComputationalGeometry
 vtkvmtkDifferentialGeometry
 vtkvmtkSegmentation
-vtkvmtkRendering
+#vtkvmtkRendering
 vtkvmtkContrib
 vtkvmtkMisc
 )

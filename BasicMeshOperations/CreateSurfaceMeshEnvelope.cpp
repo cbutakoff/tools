@@ -16,7 +16,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyData.h>
 #include <vtkCleanPolyData.h>
 #include <vtkPolyDataConnectivityFilter.h>
-#include <CommonTools.h>
+#include <VTKCommonTools.h>
 
 int main(int argc, char* argv[])
 {

@@ -21,6 +21,7 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include "vtkPolyData.h"
 #include "vtkCleanPolyData.h"
+#include "VTKCommonTools.h"
 #include "CommonTools.h"
 // here go your #includes
 #include <vtkPolyDataToImageStencil.h>

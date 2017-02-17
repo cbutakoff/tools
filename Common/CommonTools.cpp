@@ -44,7 +44,6 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyDataReader.h>
 #include <vtkXMLPolyDataReader.h>
 #include <vtkUnstructuredGridReader.h>
-#include <itksys/SystemTools.hxx>
 #include <vtkUnstructuredGridWriter.h>
 #include <vtkPLYWriter.h>
 #include <vtkSTLWriter.h>
@@ -58,6 +57,7 @@ PURPOSE.  See the above copyright notice for more information.
 	#include <stdlib.h>
 	#include <fstream>
 	#include <stdexcept>
+	#include <string>
 
 
 #include <vnl/vnl_matrix.h>
@@ -104,10 +104,8 @@ void CommonTools::SaveVtkShortArray( const char *filename, vtkShortArray* the_ar
 
 	if(!f)
 	{
-		std::ostringstream strError;
-		strError <<"Failed opening "<<filename<<std::endl;
-		std::cout << strError;
-		throw std::runtime_error( strError.str( ) );
+		std::cout << "Failed opening "<<filename<<std::endl;
+		throw std::runtime_error( "Failed opening file" );
 	}
 
 	char id[] = "RD10";
@@ -142,18 +140,14 @@ void CommonTools::LoadVtkShortArray( const char *filename, vtkShortArray* the_ar
 {
 	if( strlen(filename) == 0 )
 	{
-		std::ostringstream strError;
-		strError <<"Failed opening empty file";
-		std::cout << strError.str()<<std::endl;
+		std::cout << "Failed opening empty file"<<std::endl;
 		throw std::runtime_error( "Failed opening file" );
 	}
 
 	FILE* f = fopen(filename,"rb");
 	if( !f )
 	{
-		std::ostringstream strError;
-		strError <<"Failed opening "<<filename;
-		std::cout << strError.str()<<std::endl;
+		std::cout <<"Failed opening "<<filename<<std::endl;
 		throw std::runtime_error( "Failed opening file" );
 	}
 
@@ -165,9 +159,7 @@ void CommonTools::LoadVtkShortArray( const char *filename, vtkShortArray* the_ar
 	if( strcmp(id, "RD10")!=0 )
 	{
 		fclose(f);
-		std::ostringstream strError;
-		strError <<"Region definitions has incorrect version number"<<std::endl;
-		std::cout << strError;
+		std::cout <<"Region definitions has incorrect version number"<<std::endl;
 		throw std::runtime_error( "Region definitions has incorrect version number" );
 	}
 
@@ -190,10 +182,8 @@ void CommonTools::LoadVtkShortArray( const char *filename, vtkShortArray* the_ar
 	if( b!=size*static_cast<int>(sizeof(scalars[0])) )
 	{
 		fclose(f);
-		std::ostringstream strError;
-		strError << "Number of items read from region definition file is incorrect. "
+		std::cout  << "Number of items read from region definition file is incorrect. "
 			<<b<<" out of "<<size<<". Aborting."<<std::endl;
-		std::cout << strError;
 		throw std::runtime_error( "Number of items read from region definition file is incorrect" );
 	}
 
@@ -664,179 +654,7 @@ void CommonTools::ScaleVolume(vtkUnstructuredGrid* volumein, vtkUnstructuredGrid
 
 
 
-//------------------------------------------------------------------
-vtkPolyData* CommonTools::LoadShapeFromFile(const char *shapeFileName)
-//------------------------------------------------------------------
-{
-	vtkPolyData* shapePt = NULL;
-	CommonTools::VTKSurfaceMeshFormats	vtkSurfaceFormat;
-	vtkSurfaceFormat = GetTypeOfVTKData( shapeFileName );
 
-	switch( vtkSurfaceFormat )
-	{
-	case CommonTools::PLYType:
-		{
-			vtkSmartPointer<vtkPLYReader> reader = vtkSmartPointer<vtkPLYReader>::New();
-			reader -> SetFileName (shapeFileName);
-			reader -> Update();
-			if (reader->GetOutput())
-			{
-				shapePt = vtkPolyData::New();
-				shapePt -> ShallowCopy(reader->GetOutput());			
-			}
-		}
-		break;
-	case CommonTools::STLType:
-		{
-			vtkSmartPointer<vtkSTLReader> reader = vtkSmartPointer<vtkSTLReader>::New();
-			reader -> SetFileName (shapeFileName);
-			reader -> Update();
-			if (reader->GetOutput())
-			{
-				shapePt = vtkPolyData::New();
-				shapePt -> ShallowCopy(reader->GetOutput());			
-			}
-		}
-		break;
-	case CommonTools::VTKPolyDataType:
-		{
-			vtkSmartPointer<vtkPolyDataReader> reader = vtkSmartPointer<vtkPolyDataReader>::New();
-			reader -> SetFileName (shapeFileName);
-			reader -> Update();
-			if (reader->GetOutput())
-			{
-				shapePt = vtkPolyData::New();
-				shapePt -> ShallowCopy(reader->GetOutput());			
-			}
-		}
-		break;
-	case CommonTools::VTKXMLPolyDataType:
-		{
-			vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
-			reader -> SetFileName (shapeFileName);
-			reader -> Update();
-			if (reader->GetOutput())
-			{
-				shapePt = vtkPolyData::New();
-				shapePt -> ShallowCopy(reader->GetOutput());			
-			}
-		}
-	    break;	
-	
-	default:
-	    break;
-	}
-
-	return shapePt;
-}
-//------------------------------------------------------------------
-vtkUnstructuredGrid* CommonTools::LoadVolumeFromFile(const char *volumeFileName)
-//------------------------------------------------------------------
-{
-	vtkUnstructuredGrid* VolPt = NULL;
-	CommonTools::VTKVolumeMeshFormats	vtkVolumeFormat;
-	vtkVolumeFormat = GetTypeOfVTKVolumeData( volumeFileName );
-
-	switch( vtkVolumeFormat )
-	{
-		case CommonTools::VTKUnstructuredGridType:
-		{
-			vtkSmartPointer<vtkUnstructuredGridReader> reader = vtkSmartPointer<vtkUnstructuredGridReader>::New();
-			reader -> SetFileName (volumeFileName);
-			reader->ReadAllScalarsOn();
-			reader->ReadAllVectorsOn();
-			reader -> Update();
-			if (reader->GetOutput()->GetNumberOfPoints())
-			{
-				VolPt = vtkUnstructuredGrid::New();
-				VolPt -> ShallowCopy(reader->GetOutput());			
-			}
-		}
-		break;
-		default:
-	    break;
-	}
-
-	return VolPt;
-}
-
-//------------------------------------------------------------------
-void CommonTools::SaveVolumeToFile(
-								 vtkUnstructuredGrid *volumePt, 
-								 const char *volumeFileName,
-								 const char *header)
-//------------------------------------------------------------------
-{
-	std::string ext = itksys::SystemTools::GetFilenameLastExtension(volumeFileName);
-	ext = itksys::SystemTools::LowerCase(ext);
-	if ( ext == ".vtk" )
-	{
-		vtkSmartPointer<vtkUnstructuredGridWriter> writer = vtkSmartPointer<vtkUnstructuredGridWriter>::New();
-		writer -> SetFileTypeToBinary();
-		writer -> SetFileName (volumeFileName);
-		writer -> SetInputData (volumePt);
-		if ( header != NULL )
-		{
-			writer->SetHeader( header );
-		}
-		writer -> Write();
-	}
-}
-//
-
-
-//------------------------------------------------------------------
-void CommonTools::SaveShapeToFile(
-						vtkPolyData *shapePt, 
-						const char *shapeFileName,
-						const char *header )
-//------------------------------------------------------------------
-{
-	std::string ext = itksys::SystemTools::GetFilenameLastExtension(shapeFileName);
-	ext = itksys::SystemTools::LowerCase(ext);
-
-
-	if ( ext == ".ply" )
-	{
-		vtkSmartPointer<vtkPLYWriter> writer = vtkSmartPointer<vtkPLYWriter>::New();
-		writer -> SetFileName (shapeFileName);
-                writer -> SetFileTypeToBinary();
-		writer -> SetInputData (shapePt);
-		writer -> Write();
-	}
-	if ( ext == ".stl" )
-	{
-		vtkSmartPointer<vtkSTLWriter> writer = vtkSmartPointer<vtkSTLWriter>::New();
-		writer -> SetFileName (shapeFileName);
-                writer -> SetFileTypeToBinary();
-		writer -> SetInputData (shapePt);
-		writer -> Write();
-	}
-	if ( ext == ".vtk" )
-	{
-		vtkSmartPointer<vtkPolyDataWriter> writer = vtkSmartPointer<vtkPolyDataWriter>::New();
-		writer -> SetFileName (shapeFileName);
-                writer -> SetFileTypeToBinary();
-		writer -> SetInputData (shapePt);
-		writer -> Write();
-	}
-	if ( ext == ".vtp" )
-	{
-		vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-		writer -> SetFileName (shapeFileName);
-		writer -> SetInputData (shapePt);
-		writer -> SetDataModeToAscii();
-		writer -> Write();
-	}
-	if ( ext == ".iv" )
-	{
-		vtkSmartPointer<vtkIVWriter> writer = vtkSmartPointer<vtkIVWriter>::New();
-		writer -> SetFileName (shapeFileName);
-		writer -> SetInputData (shapePt);
-		writer -> Write();
-	}
-	
-}
 
 
 //------------------------------------------------------------------
@@ -1116,91 +934,6 @@ void CommonTools::GetS2S(vtkPolyData *shapePt1, vtkPolyData *shapePt2, std::vect
 }
 
 
-//-------------------------------------------------------------------------------
-CommonTools::VTKVolumeMeshFormats CommonTools::GetTypeOfVTKVolumeData(const char *volumeFileName)
-//-------------------------------------------------------------------------------
-{
-	CommonTools::VTKVolumeMeshFormats type = CommonTools::UnknownVolumeType;
-
-	std::string ext = itksys::SystemTools::GetFilenameLastExtension(volumeFileName);
-	ext = itksys::SystemTools::LowerCase(ext);
-
-	if ( ext == ".vtk" )
-	{
-		vtkSmartPointer<vtkDataReader> reader = vtkSmartPointer<vtkDataReader>::New();
-		reader->SetFileName (volumeFileName);
-		if(reader->IsFileUnstructuredGrid())
-			type = CommonTools::VTKUnstructuredGridType;
-	}
-	
-	return type;
-}
-
-//------------------------------------------------------------------
-bool CommonTools::CheckSaveFileExtension(const char *shapeFileName)
-//------------------------------------------------------------------
-{
-	bool bRes = false;
-
-	if ( strlen(shapeFileName) < 4 )
-	{
-		return false;
-	}
-
-	bRes |= strcmp(shapeFileName+strlen(shapeFileName)-4,".stl") == 0;
-	bRes |= strcmp(shapeFileName+strlen(shapeFileName)-4,".vtk") == 0;
-	bRes |= strcmp(shapeFileName+strlen(shapeFileName)-4,".vtp") == 0;
-	bRes |= strcmp(shapeFileName+strlen(shapeFileName)-3,".iv") == 0;
-
-	return bRes;
-}
-
-
-//-------------------------------------------------------------------------------
-CommonTools::VTKSurfaceMeshFormats CommonTools::GetTypeOfVTKData(const char *shapeFileName)
-//-------------------------------------------------------------------------------
-{
-	CommonTools::VTKSurfaceMeshFormats type = CommonTools::UnknownType;
-
-	std::string ext = itksys::SystemTools::GetFilenameLastExtension(shapeFileName);
-	ext = itksys::SystemTools::LowerCase(ext);
-
-	if ( ext == ".stl" )
-	{
-		vtkSmartPointer<vtkSTLReader> reader = vtkSmartPointer<vtkSTLReader>::New();
-		reader->SetFileName (shapeFileName);
-		reader->Update();
-		if(reader->GetOutput() != NULL)
-			type = CommonTools::STLType;
-	}
-	if ( ext == ".vtk" )
-	{
-		vtkSmartPointer<vtkDataReader> reader = vtkSmartPointer<vtkDataReader>::New();
-		reader->SetFileName (shapeFileName);
-		if(reader->IsFilePolyData())
-			type = CommonTools::VTKPolyDataType;
-		//if(reader->IsFileUnstructuredGrid())
-		  //  type = CommonTools::VTKUnstructuredGridType;
-	}
-	if ( ext == ".ply" )
-	{
-		//vtkSmartPointer<vtkDataReader> reader = vtkSmartPointer<vtkDataReader>::New();
-		//reader->SetFileName (shapeFileName);
-		//if(reader->IsFilePolyData())
-			type = CommonTools::PLYType;
-		//if(reader->IsFileUnstructuredGrid())
-		//  type = CommonTools::VTKUnstructuredGridType;
-	}
-	if ( ext == ".vtp" )
-	{
-		vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
-		reader->SetFileName (shapeFileName);
-		if(reader->GetOutput())
-			type = CommonTools::VTKXMLPolyDataType;
-	}
-
-	return type;
-}
 
 
 
