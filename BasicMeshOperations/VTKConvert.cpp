@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     }
     else if(strcmp(ext,"kbin")==0)
     {
-        std::cout<<"Processing volumetric mesh for bsc"<<std::endl;
+        std::cout<<"Converting UG vtk ascii to vtk bin"<<std::endl;
         SaveVolMeshVTK(inshape, outshape, scale);
     }
     else if(strcmp(ext,".off")==0)
