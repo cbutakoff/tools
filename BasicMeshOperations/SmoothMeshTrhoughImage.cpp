@@ -56,7 +56,7 @@ int main(int argc, char * argv[]) {
         std::cout << "-i <shape.vtk> \t\t- shape" << std::endl;
         std::cout << "-o <shape.vtk> \t\t- resulting shape" << std::endl;
         std::cout << "-v <float> \t\t- voxel size (def=2.5)" << std::endl;
-        std::cout << "-f <int> \t\t- Target number of faces (def=4000)" << std::endl;
+        std::cout << "-f <int> \t\t- Target number of faces (def=4000, negative - disables decimation)" << std::endl;
         std::cout << "-s <float> \t\t- smoothing sigma (def=3)" << std::endl;
         std::cout << "-m <float> \t\t- threshold for marching cubes in [0,1] (def=0.5)" << std::endl;
         std::cout << "-ta <float> \t\t - target area for vmtk remesh (only for layers, default 1, <0 - disable, requires admesh)" << std::endl;
