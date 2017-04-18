@@ -29,8 +29,10 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkCellData.h>
 #include <vtkFloatArray.h>
 #include <vtkShortArray.h>
+#include <vtkUnstructuredGridWriter.h>
 
 //------------------------------------------------------------------
+void SaveVolMeshVTK(const char* infile, const char* outfile_prefix, float scale);
 void SaveVolMeshTetgen(const char* infile, const char* outfile_prefix, float scale);
 void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale);
 void SaveSurfMeshOFF(const char* infile, const char* outfile_prefix, float scale);
@@ -44,6 +46,7 @@ int main(int argc, char *argv[]) {
         std::cout << "types determined from extension (.node - tetgen, .bsc - mesh for BSC)" << std::endl;
         std::cout << ".off - for surface meshes" << std::endl;
         std::cout << ".mesh - for vol meshes. One more parameter is needed with array name for groups (must exist for both points and cells)" << std::endl;
+        std::cout << ".vtkbin - for vol meshes. Saves as binary (to convert vtk asciii to vtk binary)" << std::endl;
         std::cout << "scale - scale factor to apply to points (e.g. 1)" << std::endl;
         return -1;
     }
@@ -65,6 +68,11 @@ int main(int argc, char *argv[]) {
     {
         std::cout<<"Processing volumetric mesh for bsc"<<std::endl;
         SaveVolMeshBSC(inshape, outshape, scale);
+    }
+    else if(strcmp(ext,"kbin")==0)
+    {
+        std::cout<<"Converting UG vtk ascii to vtk bin"<<std::endl;
+        SaveVolMeshVTK(inshape, outshape, scale);
     }
     else if(strcmp(ext,".off")==0)
     {
@@ -93,6 +101,31 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+
+
+void SaveVolMeshVTK(const char* infile, const char* outfile_prefix, float scale)
+{
+    std::string outfile_nodes(outfile_prefix);
+    std::string outfile; //output filename
+    outfile = outfile_nodes.substr(0,outfile_nodes.length()-3);
+    
+    std::cout<<outfile<<std::endl;
+    
+    vtkSmartPointer<vtkDataSetReader> reader = vtkSmartPointer<vtkDataSetReader>::New();
+    reader->SetFileName(infile);
+    reader->Update();
+    
+    vtkSmartPointer<vtkUnstructuredGridWriter> wr = vtkSmartPointer<vtkUnstructuredGridWriter>::New();
+    wr->SetInputData(reader->GetOutput());
+    wr->SetFileTypeToBinary();
+    wr->SetFileName(outfile.c_str());
+    wr->Write();
+}
+
+
+
+
 
 
 void SaveVolMeshTetgen(const char* infile, const char* outfile_prefix, float scale)
