@@ -34,6 +34,7 @@ DistTransform
 Testing
 LaplaceBasedVolMesh
 ImageFeatures
+TMap
 ) 
 
 foreach(program ${MYPROJECTS})

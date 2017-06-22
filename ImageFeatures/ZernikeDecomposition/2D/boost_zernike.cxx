@@ -23,6 +23,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/serialization/complex.hpp>
+#include <boost/format.hpp>
 
 #include "defs.h"
 
