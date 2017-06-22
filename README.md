@@ -68,6 +68,16 @@ Cardiac Ventricular Anatomy", Medical Image Analysis, Accepted 2016.
 Todo:
 - Test
 
+#Teichmuller Mapping (T-Map)
+Based on the paper "Teichmuller Mapping (T-Map) and Its Applications to Landmark Matching Registration", SIAM Journal on Imaging Sciences, Volume 7, Issue 1 
+- Only dirichlet boundary conditions supported
+- Only fixed boundary for now
+
+![Landmark constrained TMap](https://raw.githubusercontent.com/cbutakoff/tools/master/Pics/tmap.gif)
+
+Todo
+- Cleanup the code
+
 
 #Zerike Decomposition
 2D Zernike Decomposition/Reconstruction of an image using multi-precision arithmetics. Optimized for running on a cluster. Programmed together with Arnau Vallve: https://www.linkedin.com/in/arnauvallve
