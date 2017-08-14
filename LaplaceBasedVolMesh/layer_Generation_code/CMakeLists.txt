@@ -10,8 +10,10 @@ INCLUDE(${VTK_USE_FILE})
 INCLUDE(${ITK_USE_FILE})
 
 set(VMTK_INCLUDES "/usr/include/vmtk" CACHE FILEPATH "VMTK Includes")
+set(VMTK_LIBRARIES "/usr/include/vmtk" CACHE FILEPATH "VMTK Includes")
 include_directories(${VMTK_INCLUDES})
 
+link_directories(${VMTK_LIBRARIES})
 
 set(VMTK_LIBRARIES 
 vtkvmtkCommon
