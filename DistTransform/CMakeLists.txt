@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 PROJECT(DistanceTransformMesh)
 
-FIND_PACKAGE(VTK 7 REQUIRED)
+FIND_PACKAGE(VTK REQUIRED)
 
 FIND_PACKAGE(Armadillo REQUIRED)
 include_directories(${ARMADILLO_INCLUDES})
