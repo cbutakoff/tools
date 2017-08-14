@@ -2,7 +2,7 @@
  
 #PROJECT(IrisTools)
  
-find_package(VTK 7 REQUIRED)
+find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
  
 
