@@ -86,6 +86,7 @@ int main(int argc, char** argv)
     std::cout<<"Saving"<<std::endl;
     vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
     wr->SetFileName(outputshapefile);
+    wr->SetFileTypeToBinary();
     wr->SetInputData(mc->GetOutput());
     wr->Write();
            
