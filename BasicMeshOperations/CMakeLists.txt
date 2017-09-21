@@ -50,6 +50,7 @@ CheckTetraMesh
 PassLabels2TetMesh
 CreateSurfaceMeshEnvelope
 PassVolmeshLabels2Image
+CreatePixelatedTetMesh
 )
 
 
