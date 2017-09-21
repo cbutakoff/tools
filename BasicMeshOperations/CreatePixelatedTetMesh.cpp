@@ -42,7 +42,7 @@ PURPOSE.  See the above copyright notice for more information.
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
-        cout << "Usage: " << argv[0] << " InputVolume StartLabel EndLabel" << endl;
+        cout << "Usage: " << argv[0] << " InputVolume StartLabel EndLabel outprefix" << endl;
         return EXIT_FAILURE;
     }
 
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
         std::cout << "ERROR: endLabel is larger than " << VTK_SHORT_MAX << std::endl;
         return EXIT_FAILURE;
     }
-    std::string filePrefix = "Cubes";
+    std::string filePrefix( argv[4] );
 
     // Generate cubes from labels
     // 1) Read the meta file
