@@ -18,8 +18,17 @@ endif()
 
 
 include_directories(Common)
-SET(MYVTKCOMMON_FILES ${tools_SOURCE_DIR}/Common/VTKCommonTools.h ${tools_SOURCE_DIR}/Common/VTKCommonTools.cpp)
-SET(MYITKVTKCOMMON_FILES ${tools_SOURCE_DIR}/Common/CommonTools.h ${tools_SOURCE_DIR}/Common/CommonTools.cpp)
+SET(MYVTKCOMMON_FILES 
+${tools_SOURCE_DIR}/Common/VTKCommandLineProgress.h
+${tools_SOURCE_DIR}/Common/VTKCommandLineProgress.cpp
+${tools_SOURCE_DIR}/Common/VTKCommonTools.h 
+${tools_SOURCE_DIR}/Common/VTKCommonTools.cpp
+)
+
+SET(MYITKVTKCOMMON_FILES 
+${tools_SOURCE_DIR}/Common/CommonTools.h 
+${tools_SOURCE_DIR}/Common/CommonTools.cpp)
+
 SET(MYCOMMON_FILES ${MYVTKCOMMON_FILES} ${MYITKVTKCOMMON_FILES})
 
 

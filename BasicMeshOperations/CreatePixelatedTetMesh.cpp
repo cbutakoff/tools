@@ -20,17 +20,11 @@ PURPOSE.  See the above copyright notice for more information.
 //          not exist in the volume, it will be skipped.
 //
 //
-#include <vtkMetaImageReader.h>
 #include <vtkImageAccumulate.h>
-#include <vtkImageWrapPad.h>
 #include <vtkMaskFields.h>
 #include <vtkThreshold.h>
-#include <vtkTransformFilter.h>
-#include <vtkGeometryFilter.h>
-#include <vtkXMLPolyDataWriter.h>
 #include <vtkSmartPointer.h>
 
-#include <vtkTransform.h>
 #include <vtkImageData.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
@@ -41,78 +35,10 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkDataSetWriter.h>
 #include <vtkDataSetTriangleFilter.h>
 #include <vtkImageData.h>
+
+#include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
 
- 
-#include "vtkPolyDataAlgorithm.h"
-#include "vtkObjectFactory.h"
-#include "vtkStreamingDemandDrivenPipeline.h"
-#include "vtkInformationVector.h"
-#include "vtkInformation.h"
-#include "vtkDataObject.h"
-#include "vtkSmartPointer.h"
- 
-
-
-class vtkTestProgressReportFilter : public vtkPolyDataAlgorithm
-{
-public:
-  static vtkTestProgressReportFilter *New();
-  vtkTypeMacro(vtkTestProgressReportFilter,vtkAlgorithm);
- 
-protected:
-  vtkTestProgressReportFilter(){}
-  ~vtkTestProgressReportFilter() VTK_OVERRIDE {}
- 
-  int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *) VTK_OVERRIDE;
- 
-private:
-  vtkTestProgressReportFilter(const vtkTestProgressReportFilter&) VTK_DELETE_FUNCTION;
-  void operator=(const vtkTestProgressReportFilter&) VTK_DELETE_FUNCTION;
- 
-};
-
-
- 
-vtkStandardNewMacro(vtkTestProgressReportFilter);
- 
-int vtkTestProgressReportFilter::RequestData(
-  vtkInformation *vtkNotUsed(request),
-  vtkInformationVector **inputVector,
-  vtkInformationVector *outputVector)
-{
- 
-  // Get the info objects
-  vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
-  vtkInformation *outInfo = outputVector->GetInformationObject(0);
- 
- 
-  // Get the input and ouptut
-  vtkPolyData *input = vtkPolyData::SafeDownCast(
-    inInfo->Get(vtkDataObject::DATA_OBJECT()));
- 
-  vtkPolyData *output = vtkPolyData::SafeDownCast(
-    outInfo->Get(vtkDataObject::DATA_OBJECT()));
- 
-  for(vtkIdType i = 0; i < input->GetNumberOfPoints(); i++)
-  {
-    this->UpdateProgress(static_cast<double>(i)/input->GetNumberOfPoints());
-  }
- 
-  output->ShallowCopy(input);
- 
-  return 1;
-}
-
-
-
-
-
-
-void beholder(vtkObject* caller, long unsigned int eventId, void* clientData, void* callData) {
-    vtkTestProgressReportFilter* testFilter = static_cast<vtkTestProgressReportFilter*> (caller);
-    std::cout << caller->GetClassName()<<"> Progress: " << testFilter->GetProgress() << std::endl;
-}
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
@@ -121,9 +47,6 @@ int main(int argc, char *argv[]) {
     }
 
 
-    vtkSmartPointer<vtkCallbackCommand> progressCallback =
-            vtkSmartPointer<vtkCallbackCommand>::New();
-    progressCallback->SetCallback(beholder);
 
     // Create all of the classes we will need
     vtkSmartPointer<vtkDataSetReader> reader =
@@ -139,10 +62,15 @@ int main(int argc, char *argv[]) {
     vtkSmartPointer<vtkDataSetTriangleFilter> triangulator =
             vtkSmartPointer<vtkDataSetTriangleFilter>::New();
 
+    
 
-    reader->AddObserver(vtkCommand::ProgressEvent, progressCallback);
-    selector->AddObserver(vtkCommand::ProgressEvent, progressCallback);
-    triangulator->AddObserver(vtkCommand::ProgressEvent, progressCallback);
+    vtkSmartPointer<vtkCallbackCommand> progressCallback =
+            CommonTools::AssociateProgressFunction(reader);
+    CommonTools::AssociateProgressFunction(selector, progressCallback);
+    CommonTools::AssociateProgressFunction(triangulator, progressCallback);
+    CommonTools::AssociateProgressFunction(histogram, progressCallback);
+    CommonTools::AssociateProgressFunction(writer, progressCallback);
+    
 
 
     // Define all of the variables
@@ -165,7 +93,8 @@ int main(int argc, char *argv[]) {
     // 4) Output each cube model into a separate file
 
     reader->SetFileName(argv[1]);
-
+    reader->Update();
+    
     histogram->SetInputConnection(reader->GetOutputPort());
     histogram->SetComponentExtent(0, endLabel, 0, 0, 0, 0);
     histogram->SetComponentOrigin(0, 0, 0);
@@ -175,25 +104,15 @@ int main(int argc, char *argv[]) {
 
     // Copy the scalar point data of the volume into the scalar cell data
 
-    selector->SetInputConnection(reader->GetOutputPort());
+    selector->SetInputData(reader->GetOutput());
     selector->SetInputArrayToProcess(0, 0, 0,
             vtkDataObject::FIELD_ASSOCIATION_POINTS,
             vtkDataSetAttributes::SCALARS);
 
 
 
-    // Strip the scalars from the output
-    scalarsOff->SetInputConnection(selector->GetOutputPort());
-    scalarsOff->CopyAttributeOff(vtkMaskFields::POINT_DATA,
-            vtkDataSetAttributes::SCALARS);
-    scalarsOff->CopyAttributeOff(vtkMaskFields::CELL_DATA,
-            vtkDataSetAttributes::SCALARS);
 
 
-    triangulator->SetInputConnection(scalarsOff->GetOutputPort());
-
-    writer->SetInputConnection(triangulator->GetOutputPort());
-    writer->SetFileTypeToBinary();
 
     for (unsigned int i = startLabel; i <= endLabel; i++) {
         // see if the label exists, if not skip it
@@ -205,7 +124,24 @@ int main(int argc, char *argv[]) {
 
         // select the cells for a given label
         selector->ThresholdBetween(i, i);
-
+        selector->Update();
+        
+        // Strip the scalars from the output
+        scalarsOff->SetInputData(selector->GetOutput());
+        scalarsOff->CopyAttributeOff(vtkMaskFields::POINT_DATA,
+                vtkDataSetAttributes::SCALARS);
+        scalarsOff->CopyAttributeOff(vtkMaskFields::CELL_DATA,
+                vtkDataSetAttributes::SCALARS);
+        scalarsOff->Update();
+        
+        
+        triangulator->SetInputConnection(scalarsOff->GetOutputPort());
+        triangulator->Update();
+        
+        writer->SetInputData(triangulator->GetOutput());
+        writer->SetFileTypeToBinary();
+        
+        
         // output the polydata
         std::stringstream ss;
         ss << filePrefix << i << ".vtk";
@@ -213,7 +149,7 @@ int main(int argc, char *argv[]) {
 
         writer->SetFileName(ss.str().c_str());
         writer->Write();
-
+        std::cout<<"Writing finished"<<std::endl;
     }
     return EXIT_SUCCESS;
 } 
