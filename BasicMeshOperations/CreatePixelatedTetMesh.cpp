@@ -42,7 +42,7 @@ PURPOSE.  See the above copyright notice for more information.
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
-        cout << "Usage: " << argv[0] << " InputVolume StartLabel EndLabel outprefix" << endl;
+        cout << "Usage: " << argv[0] << " InputVolume StartLabel EndLabel outprefix tetra/hexa" << endl;
         return EXIT_FAILURE;
     }
 
@@ -85,6 +85,12 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     std::string filePrefix( argv[4] );
+
+
+
+    bool make_tetras = true;
+    if (strcmp(argv[5],"hexa")==0) make_tetras = false;
+
 
     // Generate cubes from labels
     // 1) Read the meta file
@@ -134,11 +140,18 @@ int main(int argc, char *argv[]) {
                 vtkDataSetAttributes::SCALARS);
         scalarsOff->Update();
         
+	if(make_tetras)
+	{       
+            triangulator->SetInputConnection(scalarsOff->GetOutputPort());
+            triangulator->Update();
         
-        triangulator->SetInputConnection(scalarsOff->GetOutputPort());
-        triangulator->Update();
-        
-        writer->SetInputData(triangulator->GetOutput());
+            writer->SetInputData(triangulator->GetOutput());
+	}
+	else
+	{       
+            writer->SetInputData(scalarsOff->GetOutput());
+	}
+
         writer->SetFileTypeToBinary();
         
         
