@@ -39,6 +39,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
 
+#include <vtkEnSightWriter.h>
+
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
@@ -57,8 +59,8 @@ int main(int argc, char *argv[]) {
             vtkSmartPointer<vtkMaskFields>::New();
     vtkSmartPointer<vtkThreshold> selector =
             vtkSmartPointer<vtkThreshold>::New();
-    vtkSmartPointer<vtkDataSetWriter> writer =
-            vtkSmartPointer<vtkDataSetWriter>::New();
+    vtkSmartPointer<vtkEnSightWriter> writer =
+            vtkSmartPointer<vtkEnSightWriter>::New();
     vtkSmartPointer<vtkDataSetTriangleFilter> triangulator =
             vtkSmartPointer<vtkDataSetTriangleFilter>::New();
 
@@ -139,15 +141,14 @@ int main(int argc, char *argv[]) {
         triangulator->Update();
         
         writer->SetInputData(triangulator->GetOutput());
-        writer->SetFileTypeToBinary();
         
         
         // output the polydata
         std::stringstream ss;
-        ss << filePrefix << i << ".vtk";
+        ss << filePrefix << i; // << ".vtk";
         cout << argv[0] << " writing " << ss.str() << endl;
 
-        writer->SetFileName(ss.str().c_str());
+        writer->SetBaseName(ss.str().c_str());
         writer->Write();
         std::cout<<"Writing finished"<<std::endl;
     }
