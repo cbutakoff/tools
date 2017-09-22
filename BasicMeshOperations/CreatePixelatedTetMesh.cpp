@@ -65,6 +65,7 @@ void SaveUnstructuredGrid(vtkUnstructuredGrid *data, const char* filename) {
     blockids[1] = 0;
     
     vtkSmartPointer<vtkEnSightWriter> ptr_ens = vtkSmartPointer<vtkEnSightWriter>::New();
+    CommonTools::AssociateProgressFunction(ptr_ens);
     ptr_ens->SetNumberOfBlocks(1);
     ptr_ens->SetBlockIDs(blockids);
     ptr_ens->SetTimeStep(0);
