@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         std::cout << "ERROR: endLabel is larger than " << VTK_SHORT_MAX << std::endl;
         return EXIT_FAILURE;
     }
-    std::string filePrefix = "Cubes";
+    std::string filePrefix (argv[4]);
 
 
 
