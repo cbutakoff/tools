@@ -39,42 +39,6 @@ PURPOSE.  See the above copyright notice for more information.
 #include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
 
-#include <vtkEnSightWriter.h>
-#include <vtkShortArray.h>
-
-void SaveUnstructuredGrid(vtkUnstructuredGrid *data, const char* filename) {
-
-    bool FoundCellData = false;
-
-    if (data->GetCellData()) {
-        if (data->GetCellData()->GetArray("BlockId")) {
-            FoundCellData = true;
-        }
-    }
-    if (FoundCellData == false) {
-        //Looks like we have to create it.. crap
-        vtkSmartPointer<vtkShortArray> bids = vtkSmartPointer<vtkShortArray>::New();
-        bids->SetName("BlockId");
-        for (vtkIdType i = 0; i < data->GetNumberOfCells(); i++)
-            bids->InsertNextValue(1);
-        data->GetCellData()->SetScalars(bids);
-    }
-
-    int blockids[2];
-    blockids[0] = 1;
-    blockids[1] = 0;
-    
-    vtkSmartPointer<vtkEnSightWriter> ptr_ens = vtkSmartPointer<vtkEnSightWriter>::New();
-    CommonTools::AssociateProgressFunction(ptr_ens);
-    ptr_ens->SetNumberOfBlocks(1);
-    ptr_ens->SetBlockIDs(blockids);
-    ptr_ens->SetTimeStep(0);
-    ptr_ens->SetInputData(data);
-    ptr_ens->SetFileName(filename);
-
-    ptr_ens->Write();
-    ptr_ens->WriteCaseFile(1);
-}
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
@@ -93,17 +57,20 @@ int main(int argc, char *argv[]) {
             vtkSmartPointer<vtkMaskFields>::New();
     vtkSmartPointer<vtkThreshold> selector =
             vtkSmartPointer<vtkThreshold>::New();
+    vtkSmartPointer<vtkDataSetWriter> writer =
+            vtkSmartPointer<vtkDataSetWriter>::New();
     vtkSmartPointer<vtkDataSetTriangleFilter> triangulator =
             vtkSmartPointer<vtkDataSetTriangleFilter>::New();
 
-
+    
 
     vtkSmartPointer<vtkCallbackCommand> progressCallback =
             CommonTools::AssociateProgressFunction(reader);
     CommonTools::AssociateProgressFunction(selector, progressCallback);
     CommonTools::AssociateProgressFunction(triangulator, progressCallback);
     CommonTools::AssociateProgressFunction(histogram, progressCallback);
-
+    CommonTools::AssociateProgressFunction(writer, progressCallback);
+    
 
 
     // Define all of the variables
@@ -117,12 +84,12 @@ int main(int argc, char *argv[]) {
         std::cout << "ERROR: endLabel is larger than " << VTK_SHORT_MAX << std::endl;
         return EXIT_FAILURE;
     }
-    std::string filePrefix (argv[4]);
+    std::string filePrefix( argv[4] );
 
 
 
     bool make_tetras = true;
-    if (strcmp(argv[5], "hexa") == 0) make_tetras = false;
+    if (strcmp(argv[5],"hexa")==0) make_tetras = false;
 
 
     // Generate cubes from labels
@@ -133,7 +100,7 @@ int main(int argc, char *argv[]) {
 
     reader->SetFileName(argv[1]);
     reader->Update();
-
+    
     histogram->SetInputConnection(reader->GetOutputPort());
     histogram->SetComponentExtent(0, endLabel, 0, 0, 0, 0);
     histogram->SetComponentOrigin(0, 0, 0);
@@ -164,7 +131,7 @@ int main(int argc, char *argv[]) {
         // select the cells for a given label
         selector->ThresholdBetween(i, i);
         selector->Update();
-
+        
         // Strip the scalars from the output
         scalarsOff->SetInputData(selector->GetOutput());
         scalarsOff->CopyAttributeOff(vtkMaskFields::POINT_DATA,
@@ -172,26 +139,30 @@ int main(int argc, char *argv[]) {
         scalarsOff->CopyAttributeOff(vtkMaskFields::CELL_DATA,
                 vtkDataSetAttributes::SCALARS);
         scalarsOff->Update();
-
-
-
-
-        // output the polydata
-        std::stringstream ss;
-        ss << filePrefix << i; // << ".vtk";
-        cout << argv[0] << " writing " << ss.str() << endl;
-
-
-        if (make_tetras) {
+        
+	if(make_tetras)
+	{       
             triangulator->SetInputConnection(scalarsOff->GetOutputPort());
             triangulator->Update();
+        
+            writer->SetInputData(triangulator->GetOutput());
+	}
+	else
+	{       
+            writer->SetInputData(scalarsOff->GetOutput());
+	}
 
-            SaveUnstructuredGrid( triangulator->GetOutput(), ss.str().c_str() ) ;
-        } else {
-            SaveUnstructuredGrid( vtkUnstructuredGrid::SafeDownCast(scalarsOff->GetOutput()), ss.str().c_str() ) ;
-        }
+        writer->SetFileTypeToBinary();
+        
+        
+        // output the polydata
+        std::stringstream ss;
+        ss << filePrefix << i << ".vtk";
+        cout << argv[0] << " writing " << ss.str() << endl;
 
-        std::cout << "Writing finished" << std::endl;
+        writer->SetFileName(ss.str().c_str());
+        writer->Write();
+        std::cout<<"Writing finished"<<std::endl;
     }
     return EXIT_SUCCESS;
-}
+} 
