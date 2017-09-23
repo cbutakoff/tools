@@ -27,9 +27,10 @@ void AddCoordinate(vtkUnstructuredGrid* mesh, vtkImageData* image, vtkFloatArray
 
 int main(int argc, char** argv)
 {
-    if(argc<2)
+    if(argc<5)
     {
         std::cout<<"Usage: AddFibers2Mesh mesh.vtk image_x.vtk image_y.vtk image_z.vtk out.vtk"<<std::endl;
+        exit(-1);
     }
 
     const char * arrayname = "Fibers";
