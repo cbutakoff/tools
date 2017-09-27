@@ -88,6 +88,7 @@ int main(int argc, char** argv)
     CommonTools::AssociateProgressFunction(wr);
     std::cout<<"Output filename: "<<outfilename<<std::endl;
     wr->SetFileName(outfilename);
+	wr->SetFileTypeToBinary()
     wr->SetInputData(mesh);
     wr->Write();
 }
