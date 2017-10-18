@@ -51,6 +51,7 @@ PassLabels2TetMesh
 CreateSurfaceMeshEnvelope
 PassVolmeshLabels2Image
 CreatePixelatedTetMesh
+AddFibers2Mesh
 )
 
 

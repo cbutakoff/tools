@@ -1,13 +1,3 @@
-/*=========================================================================
-Copyright (c) Constantine Butakoff
-All rights reserved.
-This software is distributed WITHOUT ANY WARRANTY; without even
-the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE.  See the above copyright notice for more information.
-=========================================================================*/
-
-
-
 //
 // GenerateCubesFromLabels
 //   Usage: GenerateCubesFromLabels InputVolume Startlabel Endlabel
@@ -144,13 +134,16 @@ int main(int argc, char *argv[]) {
 	{       
             triangulator->SetInputConnection(scalarsOff->GetOutputPort());
             triangulator->Update();
-        
+            
             writer->SetInputData(triangulator->GetOutput());
 	}
 	else
 	{       
             writer->SetInputData(scalarsOff->GetOutput());
 	}
+
+        std::cout<<"Writing "<<writer->GetInput()->GetNumberOfPoints()<<" points"<<std::endl;
+        std::cout<<"Writing "<<writer->GetInput()->GetNumberOfCells()<<" cells"<<std::endl;
 
         writer->SetFileTypeToBinary();
         
