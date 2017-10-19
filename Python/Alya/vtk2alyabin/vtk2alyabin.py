@@ -26,9 +26,10 @@ def write_f90_number(file, data):
     file.write(np.array([count*np.dtype(dtype).itemsize], dtype=np.int32)) #length
 
 def write_f90_string(file, data):
-    count = len(data)
+    data1 = data+b'12345678'
+    count = len(data1)
     file.write(np.array([count], dtype=np.int32)) #length
-    file.write(data+b'12345678')
+    file.write(data1)
     file.write(np.array([count], dtype=np.int32)) #length
 
 
@@ -55,7 +56,9 @@ with open(output_filename_mesh,"wb") as file:
 
 
     write_f90_string( file, b'LTYPE'.ljust(20) )
-    write_f90_number( file, np.ones(mesh.GetNumberOfCells(), dtype=alya_int)*element_type_id )
+    element_types = np.ones(mesh.GetNumberOfCells(), dtype=alya_int)*element_type_id;
+    print(f'Number of cells {element_types.shape}')
+    write_f90_number( file, element_types )
 
     write_f90_string( file, b'LNNOD'.ljust(20) )  #elemnt ids
     write_f90_number( file, np.arange(1, mesh.GetNumberOfCells()+1, dtype=alya_int) )
