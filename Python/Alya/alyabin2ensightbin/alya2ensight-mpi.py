@@ -313,7 +313,7 @@ def write_variable(varname, iteration, number_of_blocks):
     
     #variable ensight
     fmt = '%s.ensi.%s-'+f'%0{iterationid_number_of_digits}d';
-    with open( os.path.join(outputfolder, fmt % (project_name, varname, iteration+1)),'wb') as f:
+    with open( os.path.join(outputfolder, fmt % (project_name, varname, iteration)),'wb') as f:
         f.write(b'description line 1'.ljust(80))
         f.write(b'part'.ljust(80))
         f.write(np.array([1], dtype=ensight_id_type))   #int
@@ -600,6 +600,8 @@ else:
 
 comm.Barrier()
 if my_rank == 0:
+    print(variable_info)
+    
     case_file = f'{project_name}.ensi.case'
     with open(os.path.join(outputfolder, case_file), 'w') as f:
         f.write('# Converted from Alya\n')
@@ -617,26 +619,26 @@ if my_rank == 0:
         variables = variable_info.field.unique();
 
         for varname in variables:
-            df = variable_info[variable_info.field==varname].loc[0] #get one rectrod with this varibale
+            print(f'Varname {varname}\n')
+            df = variable_info[variable_info.field==varname].iloc[0] #get one record with this varibale
             line = f'{df.variabletype} per {df.association}: 1 {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
             f.write(line)
 
         #this should be the same for all variables as I'm saving only one time series
-        df_one_var =  variable_info[variable_info.field==variable_info.loc[0,'field']].sort_values(by='iteration');
+        df_one_var =  variable_info[variable_info.field==variables[0]].sort_values(by='iteration');
+        print(df_one_var)
 
 
-        number_of_timesteps = variable_info[variable_info.field==variable_info.loc[0,'field']].shape[0]
+        number_of_timesteps = df_one_var.shape[0]
+        print(f'Number of steps: {number_of_timesteps}')
 
-        filename_increment = 0
-        if df_one_var.shape[0]>1:
-            filename_increment = df_one_var.loc[1,'iteration']-df_one_var.loc[0,'iteration']
 
         f.write('\n')
         f.write('TIME\n')
-        f.write('time set: 1\n')
+        f.write(f'time set: 1\n')
         f.write(f'number of steps: {number_of_timesteps}\n')
-        f.write(f'filename start number: {df_one_var.iteration.min()+1}\n')
-        f.write(f'filename increment: {filename_increment}\n') 
+        f.write(f'filename numbers: \n')
+        f.write(str(df_one_var.time_int.as_matrix())[1:-1]+'\n')
         f.write('time values:\n')
         f.write(str(df_one_var.time_real.as_matrix())[1:-1]+'\n')
 
