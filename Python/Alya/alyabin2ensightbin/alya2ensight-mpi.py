@@ -670,29 +670,50 @@ if my_rank == 0:
 
         variables = variable_info.field.unique();
 
+        #define dataframe for each variable
+        #define timeline for each variable base on the number of timesteps
+        variable_info_per_variable = []
+        max_timeline_id = 1
+        timelines = {}; #each timeline will be identified only by the number of elements
+        c = 0
         for varname in variables:
+            df = variable_info[variable_info.field==varname]
+            ntimesteps = df.shape[0]
+            if ntimesteps in timelines:
+                timeline_id = timelines[ntimesteps]['timeline']
+            else:
+                timeline_id = max_timeline_id
+                timelines[ntimesteps] = {'timeline':timeline_id, 'array_loc':c}
+                max_timeline_id = max_timeline_id+1
+
+            variable_info_per_variable = variable_info_per_variable + \
+                [{'varname':varname, \
+                  'data':variable_info[variable_info.field==varname].sort_values(by='iteration'),\
+                  'timeline':timeline_id}]
+            c=c+1        
+    
+    
+        for var_data in variable_info_per_variable:
+            varname = var_data['varname']
+            timeline_id = var_data['timeline']
             print(f'Varname {varname}\n')
-            df = variable_info[variable_info.field==varname].iloc[0] #get one record with this varibale
-            line = f'{df.variabletype} per {df.association}: 1 {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
+            df = var_data['data'].iloc[0] #get one record with this varibale
+            line = f'{df.variabletype} per {df.association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
             f.write(line)
 
-        #this should be the same for all variables as I'm saving only one time series
-        df_one_var =  variable_info[variable_info.field==variables[0]].sort_values(by='iteration');
-        print(df_one_var)
-
-
-        number_of_timesteps = df_one_var.shape[0]
-        print(f'Number of steps: {number_of_timesteps}')
 
 
         f.write('\n')
         f.write('TIME\n')
-        f.write(f'time set: 1\n')
-        f.write(f'number of steps: {number_of_timesteps}\n')
-        f.write(f'filename numbers: \n')
-        f.write(str(df_one_var.time_int.as_matrix())[1:-1]+'\n')
-        f.write('time values:\n')
-        f.write(str(df_one_var.time_real.as_matrix())[1:-1]+'\n')
+        for timeset in timelines:
+            var_data = variable_info_per_variable[ timelines[timeset]['array_loc'] ]
+            f.write(f'time set: {var_data["timeline"]}\n')
+            number_of_timesteps = var_data['data'].shape[0]
+            f.write(f'number of steps: {number_of_timesteps}\n')
+            f.write(f'filename numbers: \n')
+            f.write(str(var_data['data'].time_int.as_matrix())[1:-1]+'\n')
+            f.write('time values:\n')
+            f.write(str(var_data['data'].time_real.as_matrix())[1:-1]+'\n')
 
 
 # In[33]:
