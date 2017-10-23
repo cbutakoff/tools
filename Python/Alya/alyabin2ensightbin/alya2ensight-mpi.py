@@ -261,6 +261,9 @@ def write_geometry(number_of_blocks):
     connectivity = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNODS.post.alyabin'),    \
                                    number_of_blocks, alya_id_type)
 
+    np.savetxt( 'connectivity.txt', connectivity['tuples'].astype(np.int32), fmt='%d' )
+    np.savetxt( 'inverse.txt', inverse_pt_correspondence.astype(np.int32), fmt='%d' )
+
     #elements have ids local to each block, tranform them to global ids
     a = connectivity['tuples_per_block'][0]
     npts =  point_coordinates['tuples_per_block'][0]
@@ -270,14 +273,39 @@ def write_geometry(number_of_blocks):
         a = b
         npts = npts + point_coordinates['tuples_per_block'][i]
         
-        
+
     #assume all elements are the same
     element_type = b'hexa8';
     if element_types['tuples'][0] == 37: #alya hex08 element
         element_type = b'hexa8';
     elif element_types['tuples'][0] == 30: #alya tet04 element
         element_type = b'tetra4';
-        
+    
+
+    #print(f'Id {connectivity["tuples"][0,0]} transforms to {inverse_pt_correspondence[connectivity["tuples"][0,:]]}'  )
+    #print('Element 0, original connectivity: ', connectivity['tuples'][0,:])
+    #print('Element 0, original points: ', point_coordinates['tuples'][connectivity['tuples'][0,:],:])
+    
+    point_coordinates1 = point_coordinates['tuples']
+
+    #print('Point 0: ', point_coordinates1[0,:])
+    #print('0 maps to ',inverse_pt_correspondence[0])
+
+    point_coordinates2 = np.zeros( (inverse_pt_correspondence.max()+1,3), dtype=ensight_float_type)
+    point_coordinates2[inverse_pt_correspondence,:] = point_coordinates1 
+    #print('Point ',inverse_pt_correspondence[0], ', ', point_coordinates2[inverse_pt_correspondence[0],:])
+    
+    point_coordinates = point_coordinates2 
+
+    connectivity = connectivity['tuples'];
+    for i in range(connectivity.shape[1]):
+        #here -1 to transform to python array, and +1 to ensight array indexing
+        connectivity[:,i] = inverse_pt_correspondence[connectivity[:,i]-1]+1                 
+    
+    print('Element 0, transformed connectivity: ', connectivity[0,:])
+    print('Element 0, transformed points: ', point_coordinates[connectivity[0,:],:])
+
+    
     #geometry ensight
     with open(os.path.join(outputfolder,f'{project_name}.ensi.geo'),'wb') as f:
         f.write(b'C Binary'.ljust(80))
@@ -290,18 +318,18 @@ def write_geometry(number_of_blocks):
         f.write(b'description line 1'.ljust(80))
         f.write(b'coordinates'.ljust(80))
 
-        number_of_points = point_coordinates['tuples'].shape[0]
+        number_of_points = point_coordinates.shape[0]
         f.write(np.array([number_of_points], dtype=ensight_id_type))   #int
         f.write(np.arange(1,number_of_points+1, dtype=ensight_id_type))
-        f.write( point_coordinates['tuples'][:,0].ravel().astype(ensight_float_type) )  #x coord
-        f.write( point_coordinates['tuples'][:,1].ravel().astype(ensight_float_type) )  #y coord
-        f.write( point_coordinates['tuples'][:,2].ravel().astype(ensight_float_type) )  #z coord
+        f.write( point_coordinates[:,0].ravel().astype(ensight_float_type) )  #x coord
+        f.write( point_coordinates[:,1].ravel().astype(ensight_float_type) )  #y coord
+        f.write( point_coordinates[:,2].ravel().astype(ensight_float_type) )  #z coord
 
         f.write(element_type.ljust(80))  #tetra4 or hexa8
-        number_of_elements = connectivity['tuples'].shape[0]
+        number_of_elements = connectivity.shape[0]
         f.write(np.array([number_of_elements], dtype=ensight_id_type))   #int
         f.write(np.arange(1,number_of_elements+1, dtype=ensight_id_type))
-        f.write(connectivity['tuples'].ravel().astype(ensight_id_type))
+        f.write(connectivity.ravel().astype(ensight_id_type))
 
 
 # In[15]:
@@ -319,8 +347,14 @@ def write_variable(varname, iteration, number_of_blocks):
         f.write(np.array([1], dtype=ensight_id_type))   #int
         f.write(b'coordinates'.ljust(80))
 
-        if data['variabletype']=='scalar':
-            f.write( data['values']['tuples'].ravel().astype(ensight_float_type) )  #z coord    
+
+        if data['variabletype']=='scalar':            
+            data2write = np.zeros(inverse_pt_correspondence.max()+1, dtype = ensight_float_type)
+            print('Data22write: ',data2write.shape)
+            print('Ravel: ',data['values']['tuples'].ravel().shape)
+            print('Corresp:',inverse_pt_correspondence.shape )
+            data2write[inverse_pt_correspondence] = data['values']['tuples'].ravel()
+            f.write( data2write )  #z coord    
         elif data['variabletype']=='vector':
             #data has coordinates in the order [[x,y,z],[x,y,z],...]
             #expected order of coordinates
@@ -328,7 +362,9 @@ def write_variable(varname, iteration, number_of_blocks):
             #vy_n1 vy_n2 ... vy_nn nn floats
             #vz_n1 vz_n2 ... vz_nn nn floats
             #Rearrange the  matrix
-            f.write( data['values']['tuples'].ravel(order='F').astype(ensight_float_type) )  #z coord    
+            data2write = np.zeros(inverse_pt_correspondence.max()+1, 3, dtype = ensight_float_type)
+            data2write[inverse_pt_correspondence,:] = data['values']['tuples']
+            f.write( data2write.ravel(order='F').astype(ensight_float_type) )  #z coord    
         else:
             assert False, f"Unknown varibale type: {data['variabletype']}"
         
@@ -409,8 +445,24 @@ if my_rank == 0:
     variable_info['time_real'] = 0
     variable_info['variabletype']=''
     variable_info['association']=''
+
+
+inverse_pt_correspondence = None
+if my_rank == 0:    
+    #read correct element arrangement
+    LNINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNINV.post.alyabin'), \
+                                number_of_blocks, alya_id_type)
+    inverse_pt_correspondence = (LNINV['tuples']-1).ravel(); #convert ids to python
     
-    
+    #verify the point correspondence
+    max_id = inverse_pt_correspondence.max();
+    pt_ids = np.zeros(max_id+1)
+    pt_ids[inverse_pt_correspondence] = 1    
+    assert not (LNINV['tuples']<0).any(), "Negative elements in LNINV, wrong mesh"    
+    assert (pt_ids>0).all(), "Some points in the mesh do not have a correspondence in the parittions"
+    pt_ids = None #free memeory
+
+inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
 
 
 # # Unknown stuff
