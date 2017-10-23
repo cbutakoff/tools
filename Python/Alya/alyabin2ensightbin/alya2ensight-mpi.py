@@ -261,8 +261,8 @@ def write_geometry(number_of_blocks):
     connectivity = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNODS.post.alyabin'),    \
                                    number_of_blocks, alya_id_type)
 
-    np.savetxt( 'connectivity.txt', connectivity['tuples'].astype(np.int32), fmt='%d' )
-    np.savetxt( 'inverse.txt', inverse_pt_correspondence.astype(np.int32), fmt='%d' )
+    #np.savetxt( 'connectivity.txt', connectivity['tuples'].astype(np.int32), fmt='%d' )
+    #np.savetxt( 'inverse.txt', inverse_pt_correspondence.astype(np.int32), fmt='%d' )
 
     #elements have ids local to each block, tranform them to global ids
     a = connectivity['tuples_per_block'][0]
