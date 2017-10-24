@@ -703,6 +703,10 @@ if my_rank == 0:
 
 
 
+		#to make sure the whole array gets printed
+		#otherwise numpy converts to string a summary, e.g. (1,2,3,...,5,6,7)
+		np.set_printoptions(threshold=np.inf)
+
         f.write('\n')
         f.write('TIME\n')
         for timeset in timelines:
