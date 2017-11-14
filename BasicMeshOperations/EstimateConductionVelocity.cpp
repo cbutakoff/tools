@@ -11,6 +11,7 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include <vtkSmartPointer.h>
 #include <vtkDataSetReader.h>
+#include <vtkXMLMultiBlockDataReader.h>
 #include <vtkDataSetWriter.h>
 #include <vtkProbeFilter.h>
 #include <vtkCell.h>
@@ -20,6 +21,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkProbeFilter.h>
 #include <vtkPolyData.h>
 #include <vtkFloatArray.h>
+#include <vtkCompositeDataSet.h>
 
 #include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
@@ -27,6 +29,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <iostream>
 
 #include <Eigen/Dense>
+#include <vtkMultiBlockDataSet.h>
 
 //WOrks on point data
 //Adds float array "IsoDerivative"
@@ -57,14 +60,42 @@ int main(int argc, char** argv)
     std::cout<<"Output: "<<outfilename<<std::endl;
     std::cout<<"Isochrone array: "<<isochrone_array_name<<std::endl;
     
+    vtkDataSet* mesh;
+        
+    vtkSmartPointer<vtkXMLMultiBlockDataReader> mesh_reader_xml = vtkSmartPointer<vtkXMLMultiBlockDataReader>::New();
+    if( mesh_reader_xml->CanReadFile(meshfilename) )
+    {
+        CommonTools::AssociateProgressFunction(mesh_reader_xml);
+        std::cout<<"Reading mesh: "<<meshfilename<<std::endl;
+        mesh_reader_xml->SetFileName(meshfilename);
+        mesh_reader_xml->Update();
+        mesh  = vtkDataSet::SafeDownCast( vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutput())->GetBlock(0) );
+        
+        vtkDataObject* blockDO = vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutput())->GetBlock(0);
+        vtkMultiBlockDataSet* block = vtkMultiBlockDataSet::SafeDownCast(blockDO);
     
-    vtkSmartPointer<vtkDataSetReader> mesh_reader = vtkSmartPointer<vtkDataSetReader>::New();
-    CommonTools::AssociateProgressFunction(mesh_reader);
-    std::cout<<"Reading mesh: "<<meshfilename<<std::endl;
-    mesh_reader->SetFileName(meshfilename);
-    mesh_reader->Update();
+        if (block)
+        {
+            mesh = vtkDataSet::SafeDownCast(block->GetBlock(0));
+        }        
+        else
+        {
+            std::cout<<"Could not read block 0 of the XML multiblock dataset"<<std::endl;
+            return -1;
+        }
+        
+    }
+    else
+    {
+        vtkSmartPointer<vtkDataSetReader> mesh_reader = vtkSmartPointer<vtkDataSetReader>::New();
+        CommonTools::AssociateProgressFunction(mesh_reader);
+        std::cout<<"Reading mesh: "<<meshfilename<<std::endl;
+        mesh_reader->SetFileName(meshfilename);
+        mesh_reader->Update();        
+        mesh  = mesh_reader->GetOutput();
+    }
+    
 
-    vtkDataSet* mesh = mesh_reader->GetOutput();
 	    
     EstimateConductionVelocity(mesh, isochrone_array_name);
     
