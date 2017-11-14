@@ -72,7 +72,8 @@ int main(int argc, char** argv)
         mesh_reader_xml->Update();
 
         
-        vtkMultiBlockDataSet* block = vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutputAsDataSet());
+        vtkMultiBlockDataSet* block = vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutput());
+	std::cout<<"Hello"<<std::endl;
         std::cout<<block->GetClassName()<<std::endl;
         std::cout<<vtkUnstructuredGrid::SafeDownCast( block->GetBlock(0) )->GetNumberOfPoints()<<std::endl;
         
