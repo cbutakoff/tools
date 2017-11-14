@@ -1,10 +1,14 @@
 FIND_PACKAGE(ITK 4 REQUIRED)
 FIND_PACKAGE(VTK REQUIRED)
 
-FIND_PACKAGE(Armadillo)
-if(ARMADILLO_FOUND)
-	include_directories(${ARMADILLO_INCLUDES})
-endif(ARMADILLO_FOUND)
+find_package(Eigen3 REQUIRED)
+
+include_directories(${EIGEN3_INCLUDE_DIR})
+
+#FIND_PACKAGE(Armadillo)
+#if(ARMADILLO_FOUND)
+#	include_directories(${ARMADILLO_INCLUDES})
+#endif(ARMADILLO_FOUND)
 
 
 INCLUDE(${VTK_USE_FILE})
@@ -52,6 +56,7 @@ CreateSurfaceMeshEnvelope
 PassVolmeshLabels2Image
 CreatePixelatedTetMesh
 AddFibers2Mesh
+EstimateConductionVelocity
 )
 
 
