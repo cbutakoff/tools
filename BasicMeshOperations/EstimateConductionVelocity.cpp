@@ -23,6 +23,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkFloatArray.h>
 #include <vtkCompositeDataSet.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkDataArray.h>
+#include <vtkCellData.h>
 
 #include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
@@ -34,7 +36,10 @@ PURPOSE.  See the above copyright notice for more information.
 
 //WOrks on point data
 //Adds float array "IsoDerivative"
+//velocity by averaging within each cell
 void EstimateConductionVelocity(vtkDataSet* mesh, const char* isoch_array);
+//velocity by sampling -- very slow
+void EstimateConductionVelocityOld(vtkDataSet* mesh, const char* isoch_array);
 double GetDifferentiationStep(vtkDataSet* mesh);
 
 //by default use order 5 (no reason)
@@ -72,11 +77,7 @@ int main(int argc, char** argv)
         mesh_reader_xml->Update();
 
         
-        vtkMultiBlockDataSet* block = vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutput());
-	std::cout<<"Hello"<<std::endl;
-        std::cout<<block->GetClassName()<<std::endl;
-        std::cout<<vtkUnstructuredGrid::SafeDownCast( block->GetBlock(0) )->GetNumberOfPoints()<<std::endl;
-        
+        vtkMultiBlockDataSet* block = vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutput());        
     
         mesh = vtkDataSet::SafeDownCast( block->GetBlock(0) );
         
@@ -107,7 +108,55 @@ int main(int argc, char** argv)
 
 
 
+
 void EstimateConductionVelocity(vtkDataSet* mesh, const char* isoch_array)
+{
+    vtkDataArray* isoc = mesh->GetPointData()->GetArray(isoch_array);
+    vtkSmartPointer<vtkFloatArray> velocity = vtkSmartPointer<vtkFloatArray>::New();
+    velocity->SetName("Velocity");
+    velocity->SetNumberOfComponents(3);
+    velocity->SetNumberOfTuples(mesh->GetNumberOfCells());
+    
+    for(vtkIdType cellid=0; cellid<mesh->GetNumberOfCells(); cellid++)
+    {
+        if( cellid % 100000 == 0 )
+        {
+            std::cout<<"Processing point "<<cellid<<"/"<<mesh->GetNumberOfCells()<<"\r"<<std::flush;
+        }        
+        
+        Eigen::Vector3d v;
+        v<<0,0,0;
+        
+        vtkCell *cell = mesh->GetCell(cellid);
+        int c=0;
+        for(int edgeid = 0; edgeid < cell->GetNumberOfEdges(); edgeid++)
+        {
+            vtkCell* edge = cell->GetEdge(edgeid);
+            Eigen::Vector3d pt0, pt1;
+            mesh->GetPoint(edge->GetPointId(0), pt0.data());
+            mesh->GetPoint(edge->GetPointId(1), pt1.data());
+            double t0 = isoc->GetTuple1(edge->GetPointId(0));
+            double t1 = isoc->GetTuple1(edge->GetPointId(1));
+
+            if( fabs(t0-t1)>1e-10)
+            {
+                v += (pt0-pt1)/(t0-t1); 
+                c ++;
+            }
+        }
+        v /= c; //average
+        velocity->SetTuple(cellid, v.data());
+    }
+    std::cout<<std::endl;
+    
+    mesh->GetCellData()->AddArray(velocity);
+}
+
+
+
+
+
+void EstimateConductionVelocityOld(vtkDataSet* mesh, const char* isoch_array)
 {
     std::cout<<"Estimating differentiation step"<<std::endl;
     const double h = GetDifferentiationStep(mesh);
@@ -123,14 +172,18 @@ void EstimateConductionVelocity(vtkDataSet* mesh, const char* isoch_array)
     grad_filt->ComputeVorticityOff();
     grad_filt->Update();
     
+    std::cout<<"Getting gradients"<<std::endl;
     vtkDataArray *grad = grad_filt->GetOutput()->GetPointData()->GetArray("Gradients");
+    //std::cout<<grad->GetNumberOfTuples()<<std::endl;
     
     
+    std::cout<<"Setting up prober"<<std::endl;
     vtkSmartPointer<vtkProbeFilter> prober = vtkSmartPointer<vtkProbeFilter>::New();
     prober->SetSourceData(mesh);
     prober->SetInputArrayToProcess(0,0,0,vtkDataObject::FIELD_ASSOCIATION_POINTS, isoch_array);
     
     
+    std::cout<<"Creating array"<<std::endl;
     vtkSmartPointer<vtkFloatArray> derivs = vtkSmartPointer<vtkFloatArray>::New();
     derivs->SetName("IsoDerivative");
     derivs->SetNumberOfComponents(1);
@@ -139,20 +192,23 @@ void EstimateConductionVelocity(vtkDataSet* mesh, const char* isoch_array)
     //for every mesh vertex 
     for(vtkIdType ptid = 0; ptid<mesh->GetNumberOfPoints(); ptid++ )
     {
-        if( ptid % 1000 == 0 )
+        if( ptid % 100 == 0 )
         {
-            std::cout<<"Processing point "<<ptid<<"/"<<mesh->GetNumberOfPoints()<<"\r";
+            std::cout<<"Processing point "<<ptid<<"/"<<mesh->GetNumberOfPoints()<<"\r"<<std::flush;
         }
         
+
         Eigen::Vector3d center;
         mesh->GetPoint(ptid, center.data());
         
         Eigen::Vector3d direction;
         grad->GetTuple(ptid, direction.data());
         
-        vtkSmartPointer<vtkPoints> samples;
+        vtkSmartPointer<vtkPoints> samples = vtkSmartPointer<vtkPoints>::New();
         CreateSamplingPositions(center, direction, h, samples);
-
+//        for(int i=0; i<samples->GetNumberOfPoints(); i++)
+//            std::cout<<samples->GetPoint(i)<<std::endl;
+        
         vtkSmartPointer<vtkPolyData> pd = vtkSmartPointer<vtkPolyData>::New();
         pd->SetPoints(samples);
         prober->SetInputData(pd);
@@ -185,9 +241,10 @@ double GetDifferentiationStep(vtkDataSet* mesh)
 
 void CreateSamplingPositions( Eigen::Vector3d& center, Eigen::Vector3d& direction, double h, vtkPoints* pts )
 {
-    double displacement[] = {-2,-1,1,2};
-    pts->SetNumberOfPoints(5);
-    for(int i=0; i<4; i++)
+    double displacement[] = {-2,2};
+    pts->SetNumberOfPoints(2);
+
+    for(int i=0; i<2; i++)
     {
         Eigen::Vector3d pt = center + direction*h*displacement[i];
         pts->SetPoint(i, pt.data());
@@ -200,13 +257,8 @@ void CreateSamplingPositions( Eigen::Vector3d& center, Eigen::Vector3d& directio
 double CalculateDerivative( vtkDataArray* samples, double h )
 {
     double result = 0;
-    double coef[] = {1,-8,8,-1}; //removed the samples with coefficient 0
     
-    for(int i=0; i<4; i++)
-    {
-        result += samples->GetTuple1(i) *  coef[i];
-    }
-    result /= 12*h;
+    result += 4*2*h/(samples->GetTuple1(1)-samples->GetTuple1(0));
     
     return result;
 }
