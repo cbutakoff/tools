@@ -40,7 +40,7 @@ double CalculateDerivative( vtkDataArray* samples, double h );
 
 int main(int argc, char** argv)
 {
-    if(argc<5)
+    if(argc<3)
     {
         std::cout<<"Usage: EstimateConductionVelocity mesh.vtk isochrone_array_name outmesh.vtk"<<std::endl;
         exit(-1);
