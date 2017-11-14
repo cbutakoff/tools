@@ -22,6 +22,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyData.h>
 #include <vtkFloatArray.h>
 #include <vtkCompositeDataSet.h>
+#include <vtkUnstructuredGrid.h>
 
 #include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
@@ -69,20 +70,14 @@ int main(int argc, char** argv)
         std::cout<<"Reading mesh: "<<meshfilename<<std::endl;
         mesh_reader_xml->SetFileName(meshfilename);
         mesh_reader_xml->Update();
-        mesh  = vtkDataSet::SafeDownCast( vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutput())->GetBlock(0) );
+
         
-        vtkDataObject* blockDO = vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutput())->GetBlock(0);
-        vtkMultiBlockDataSet* block = vtkMultiBlockDataSet::SafeDownCast(blockDO);
+        vtkMultiBlockDataSet* block = vtkMultiBlockDataSet::SafeDownCast(mesh_reader_xml->GetOutputAsDataSet());
+        std::cout<<block->GetClassName()<<std::endl;
+        std::cout<<vtkUnstructuredGrid::SafeDownCast( block->GetBlock(0) )->GetNumberOfPoints()<<std::endl;
+        
     
-        if (block)
-        {
-            mesh = vtkDataSet::SafeDownCast(block->GetBlock(0));
-        }        
-        else
-        {
-            std::cout<<"Could not read block 0 of the XML multiblock dataset"<<std::endl;
-            return -1;
-        }
+        mesh = vtkDataSet::SafeDownCast( block->GetBlock(0) );
         
     }
     else
