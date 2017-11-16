@@ -69,6 +69,8 @@ int main(int argc, char** argv)
     vtkDataSet* mesh;
         
     vtkSmartPointer<vtkXMLMultiBlockDataReader> mesh_reader_xml = vtkSmartPointer<vtkXMLMultiBlockDataReader>::New();
+    vtkSmartPointer<vtkDataSetReader> mesh_reader = vtkSmartPointer<vtkDataSetReader>::New();
+
     if( mesh_reader_xml->CanReadFile(meshfilename) )
     {
         CommonTools::AssociateProgressFunction(mesh_reader_xml);
@@ -84,7 +86,6 @@ int main(int argc, char** argv)
     }
     else
     {
-        vtkSmartPointer<vtkDataSetReader> mesh_reader = vtkSmartPointer<vtkDataSetReader>::New();
         CommonTools::AssociateProgressFunction(mesh_reader);
         std::cout<<"Reading mesh: "<<meshfilename<<std::endl;
         mesh_reader->SetFileName(meshfilename);
@@ -92,8 +93,6 @@ int main(int argc, char** argv)
         mesh  = mesh_reader->GetOutput();
     }
     
-
-	    
     EstimateConductionVelocity(mesh, isochrone_array_name);
     
     
@@ -114,8 +113,10 @@ void EstimateConductionVelocity(vtkDataSet* mesh, const char* isoch_array)
     vtkDataArray* isoc = mesh->GetPointData()->GetArray(isoch_array);
     vtkSmartPointer<vtkFloatArray> velocity = vtkSmartPointer<vtkFloatArray>::New();
     velocity->SetName("Velocity");
-    velocity->SetNumberOfComponents(3);
+    velocity->SetNumberOfComponents(1);
     velocity->SetNumberOfTuples(mesh->GetNumberOfCells());
+        
+    
     
     for(vtkIdType cellid=0; cellid<mesh->GetNumberOfCells(); cellid++)
     {
@@ -124,28 +125,73 @@ void EstimateConductionVelocity(vtkDataSet* mesh, const char* isoch_array)
             std::cout<<"Processing point "<<cellid<<"/"<<mesh->GetNumberOfCells()<<"\r"<<std::flush;
         }        
         
-        Eigen::Vector3d v;
-        v<<0,0,0;
-        
+
         vtkCell *cell = mesh->GetCell(cellid);
-        int c=0;
+        
+        Eigen::Vector3d direction;
+
+        //calculate the gradient within the cell
+        double pcenter[3];
+        cell->GetParametricCenter(pcenter);
+        
+        
+        Eigen::VectorXd iso_values(cell->GetNumberOfPoints());
+        for(int i=0; i<iso_values.size(); i++) iso_values[i] = isoc->GetTuple1(cell->GetPointId(i));
+                
+        cell->Derivatives(0, pcenter, iso_values.data(), 1, direction.data());
+        
+        direction.normalize();
+        //std::cout<<"Cell: "<<cellid<<std::endl;
+        //std::cout<<"Gradient: "<<direction<<std::endl;
+        
+        
+        //find the longest projection of the direction on the edges
+        double proj_length = 0;
+        Eigen::Vector3d pt0l, pt1l; //values for the longest projection
+        double t0l, t1l; //values for the longest projection
+
         for(int edgeid = 0; edgeid < cell->GetNumberOfEdges(); edgeid++)
         {
             vtkCell* edge = cell->GetEdge(edgeid);
-            Eigen::Vector3d pt0, pt1;
+            Eigen::Vector3d pt0, pt1; 
             mesh->GetPoint(edge->GetPointId(0), pt0.data());
             mesh->GetPoint(edge->GetPointId(1), pt1.data());
-            double t0 = isoc->GetTuple1(edge->GetPointId(0));
-            double t1 = isoc->GetTuple1(edge->GetPointId(1));
 
-            if( fabs(t0-t1)>1e-10)
+            Eigen::Vector3d edge_vector = (pt0-pt1).normalized();
+            const double dp = fabs(edge_vector.dot(direction));
+            
+            if( dp>proj_length )
             {
-                v += (pt0-pt1)/(t0-t1); 
-                c ++;
+                proj_length = dp;
+                //std::cout<<"Pt id0: "<<edge->GetPointId(0)<<std::endl;
+                //std::cout<<"Pt id1: "<<edge->GetPointId(1)<<std::endl;
+                t0l = isoc->GetTuple1(edge->GetPointId(0));
+                t1l = isoc->GetTuple1(edge->GetPointId(1));
+                pt0l = pt0;
+                pt1l = pt1;
             }
         }
-        v /= c; //average
-        velocity->SetTuple(cellid, v.data());
+
+        //std::cout<<"Max pt0: "<<pt0l<<std::endl;
+        //std::cout<<"Max pt1: "<<pt1l<<std::endl;
+        //std::cout<<"Max t0: "<<t0l<<std::endl;
+        //std::cout<<"Max t1: "<<t1l<<std::endl;
+        
+        //use the longest projection to estimate velocity along the chosen edge
+        const double edge_length = (pt0l-pt1l).norm();
+        const double time_edge = fabs(t0l-t1l); //ignore the sign, velocity is taken along the gradient, so the time is always increasing and velocity always positive
+        
+        double v=0;
+        if(time_edge>0)
+        {
+            const double v_edge = edge_length/time_edge;
+            //std::cout<<"Velocoity edge: "<<v_edge<<std::endl;
+            //std::cout<<"Dot product:"<<proj_length<<std::endl;
+            v = v_edge/proj_length; //from right triangle: v - velocity, v_e - velocity along the edge, proj_length - cos of the angle between
+            //std::cout<<"Velocity:"<<v<<std::endl;
+        }
+        
+        velocity->SetTuple1(cellid, v);
     }
     std::cout<<std::endl;
     
@@ -160,6 +206,8 @@ void EstimateConductionVelocityOld(vtkDataSet* mesh, const char* isoch_array)
 {
     std::cout<<"Estimating differentiation step"<<std::endl;
     const double h = GetDifferentiationStep(mesh);
+    
+    std::cout<<"Edge length:"<<h<<std::endl;
     
     //calculate the gradient of the isochrones
     vtkSmartPointer<vtkGradientFilter> grad_filt = vtkSmartPointer<vtkGradientFilter>::New();
@@ -185,14 +233,14 @@ void EstimateConductionVelocityOld(vtkDataSet* mesh, const char* isoch_array)
     
     std::cout<<"Creating array"<<std::endl;
     vtkSmartPointer<vtkFloatArray> derivs = vtkSmartPointer<vtkFloatArray>::New();
-    derivs->SetName("IsoDerivative");
+    derivs->SetName("Velocity");
     derivs->SetNumberOfComponents(1);
     derivs->SetNumberOfTuples(mesh->GetNumberOfPoints());
     
     //for every mesh vertex 
     for(vtkIdType ptid = 0; ptid<mesh->GetNumberOfPoints(); ptid++ )
     {
-        if( ptid % 100 == 0 )
+        if( ptid % 1000 == 0 )
         {
             std::cout<<"Processing point "<<ptid<<"/"<<mesh->GetNumberOfPoints()<<"\r"<<std::flush;
         }
@@ -241,9 +289,11 @@ double GetDifferentiationStep(vtkDataSet* mesh)
 
 void CreateSamplingPositions( Eigen::Vector3d& center, Eigen::Vector3d& direction, double h, vtkPoints* pts )
 {
-    double displacement[] = {-2,2};
+    double displacement[] = {-2,2,-1,1};
     pts->SetNumberOfPoints(2);
 
+    direction.normalize();
+    
     for(int i=0; i<2; i++)
     {
         Eigen::Vector3d pt = center + direction*h*displacement[i];
@@ -258,7 +308,14 @@ double CalculateDerivative( vtkDataArray* samples, double h )
 {
     double result = 0;
     
-    result += 4*2*h/(samples->GetTuple1(1)-samples->GetTuple1(0));
+    double diff = (samples->GetTuple1(0)-samples->GetTuple1(1));
+    result += 4*h/diff;
+
+    //std::cout<<diff<<std::endl;
     
-    return result;
+    diff = (samples->GetTuple1(2)-samples->GetTuple1(3));
+    result += 2*h/diff;
+    //std::cout<<diff<<std::endl;
+    
+    return result/2;
 }
