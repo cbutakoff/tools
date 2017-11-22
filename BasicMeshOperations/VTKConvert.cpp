@@ -37,6 +37,7 @@ void SaveVolMeshTetgen(const char* infile, const char* outfile_prefix, float sca
 void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale);
 void SaveSurfMeshOFF(const char* infile, const char* outfile_prefix, float scale);
 void SaveVolMesh2Mesh(const char* infile, const char* outfile_prefix, float scale, const char* array_name);
+void SaveSurfMeshTetgen(const char* infile, const char* outfile_prefix, float scale);
 
 int main(int argc, char *argv[]) {
 
@@ -45,6 +46,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Usage: VTKConvert inshape outshape scale [array name]" << std::endl;
         std::cout << "types determined from extension (.node - tetgen, .bsc - mesh for BSC)" << std::endl;
         std::cout << ".off - for surface meshes" << std::endl;
+        std::cout << ".poly - for surface meshes, tetgen surface mesh" << std::endl;
         std::cout << ".mesh - for vol meshes. One more parameter is needed with array name for groups (must exist for both points and cells)" << std::endl;
         std::cout << ".vtkbin - for vol meshes. Saves as binary (to convert vtk asciii to vtk binary)" << std::endl;
         std::cout << "scale - scale factor to apply to points (e.g. 1)" << std::endl;
@@ -63,6 +65,11 @@ int main(int argc, char *argv[]) {
     {
         std::cout<<"Processing volumetric mesh for tetgen"<<std::endl;
         SaveVolMeshTetgen(inshape, outshape, scale);
+    }
+    else if(strcmp(ext,"poly")==0)  //if we are requesting .node .element volumetric mesh
+    {
+        std::cout<<"Generating surface tetgen mesh"<<std::endl;
+        SaveSurfMeshTetgen(inshape, outshape, scale);
     }
     else if(strcmp(ext,".bsc")==0)
     {
@@ -233,6 +240,63 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
         grad_file.close();
     }
 }
+
+
+void SaveSurfMeshTetgen(const char* infile, const char* outfile_prefix, float scale)
+{
+    std::cout<<outfile_prefix<<std::endl;
+    
+    vtkSmartPointer<vtkDataSetReader> reader = vtkSmartPointer<vtkDataSetReader>::New();
+    reader->SetFileName(infile);
+    reader->Update();
+    
+    vtkDataSet* mesh = reader->GetOutput(); 
+    
+    std::ofstream node_file;
+    node_file.open(outfile_prefix,ios::trunc);
+    node_file<< "# Part 1 - node list"<<std::endl;
+    node_file<< "# node count, 3 dim, no attribute, no boundary marker"<<std::endl;
+    
+    node_file<< mesh->GetNumberOfPoints() <<" 3 0 0"<<std::endl;
+    
+    for(int i=0; i<mesh->GetNumberOfPoints(); i++)
+    {
+        double *pt = mesh->GetPoint(i);
+        node_file<< i+1<<" "<<pt[0]*scale<<" "<< pt[1]*scale<< " "<<pt[2]*scale<<std::endl;
+    }
+
+    node_file<< "# Part 2 - facet list"<<std::endl;
+    node_file<< "# facet count, no boundary marker"<<std::endl;
+    node_file<< mesh->GetNumberOfCells() <<" 0"<<std::endl;
+
+    for(int i=0; i<mesh->GetNumberOfCells(); i++)
+    {
+        vtkCell *cell = mesh->GetCell(i);
+        if(cell->GetNumberOfPoints()>2)
+        {
+            node_file<< " 1            # 1 polygon, no hole, no boundary marker"<<std::endl;
+
+            node_file<<cell->GetNumberOfPoints();
+            for(int j=0; j<cell->GetNumberOfPoints(); j++)
+            {
+                    node_file << " "<< cell->GetPointId(j)+1;
+            }
+
+            node_file<<std::endl;
+        }
+    }
+    
+    node_file<<"# Part 3 - hole list"<<std::endl;
+    node_file<<"0            # no hole"<<std::endl;
+    node_file<<"# Part 4 - region list"<<std::endl;
+    node_file<<"0            # no region"<<std::endl;
+    
+    node_file.close();
+    
+    
+}
+
+
 
 
 void SaveSurfMeshOFF(const char* infile, const char* outfile_prefix, float scale)
