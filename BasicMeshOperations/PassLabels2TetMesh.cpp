@@ -193,6 +193,7 @@ int main(int argc, char** argv)
         if(vtkoutput_mesh)
         {
             vtkSmartPointer<vtkDataSetWriter> wrwr = vtkSmartPointer<vtkDataSetWriter>::New();
+            wrwr->SetFileTypeToBinary();
             wrwr->SetFileName(volmeshout);
             wrwr->SetInputData(volmesh);
             wrwr->Update();
