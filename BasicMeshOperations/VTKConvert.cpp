@@ -31,7 +31,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkShortArray.h>
 #include <vtkUnstructuredGridWriter.h>
 
-#define LINEBREAK "\x0D\x0A"
+//#define LINEBREAK "\x0D\x0A"
+#define LINEBREAK "\x0A"
 
 //------------------------------------------------------------------
 void SaveVolMeshVTK(const char* infile, const char* outfile_prefix, float scale);

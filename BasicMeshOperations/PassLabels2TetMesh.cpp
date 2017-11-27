@@ -34,7 +34,8 @@ typedef struct __bsc_entry {
 } BscEntry;
 
 
-#define LINEBREAK "\x0D\x0A"
+//#define LINEBREAK "\x0D\x0A"
+#define LINEBREAK "\x0A"
 
     
 int main(int argc, char** argv)
