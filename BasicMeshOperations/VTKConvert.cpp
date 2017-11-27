@@ -31,6 +31,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkShortArray.h>
 #include <vtkUnstructuredGridWriter.h>
 
+#define LINEBREAK "\x0D\x0A"
+
 //------------------------------------------------------------------
 void SaveVolMeshVTK(const char* infile, const char* outfile_prefix, float scale);
 void SaveVolMeshTetgen(const char* infile, const char* outfile_prefix, float scale);
@@ -201,7 +203,7 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
     for(int i=0; i<volmesh->GetNumberOfPoints(); i++)
     {
         double *pt = volmesh->GetPoint(i);
-        node_file<<i+1<<" "<< pt[0]*scale<<" "<< pt[1]*scale<< " "<<pt[2]*scale<<"\x0D\x0A";
+        node_file<<i+1<<" "<< pt[0]*scale<<" "<< pt[1]*scale<< " "<<pt[2]*scale<<LINEBREAK;
     }
 
     node_file<< "END_COORDINATES"<<std::endl;
@@ -216,7 +218,7 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
     {
         vtkCell *cell = volmesh->GetCell(i);
         ele_file<<i+1<<" "<< cell->GetPointId(0)+1 <<" "<< cell->GetPointId(1)+1 << " "
-                <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(3)+1<<"\x0D\x0A";
+                <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(3)+1<<LINEBREAK;
     }
 
     ele_file<< "END_ELEMENTS"<<std::endl;
@@ -234,7 +236,7 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
         {
             double *tuple = grads->GetTuple(i);
             double length =  sqrt( tuple[0]*tuple[0]+ tuple[1]*tuple[1]+ tuple[2]*tuple[2]);
-            grad_file<< i+1<<" "<< tuple[0]/length <<" "<< tuple[1]/length << " " << tuple[2]/length<<"\x0D\x0A";
+            grad_file<< i+1<<" "<< tuple[0]/length <<" "<< tuple[1]/length << " " << tuple[2]/length<<LINEBREAK;
         }
 
         grad_file.close();
