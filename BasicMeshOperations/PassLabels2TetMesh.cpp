@@ -34,6 +34,8 @@ typedef struct __bsc_entry {
 } BscEntry;
 
 
+#define LINEBREAK "\x0D\x0A"
+
     
 int main(int argc, char** argv)
 {
@@ -177,7 +179,7 @@ int main(int argc, char** argv)
                 entry.pt1+1<<" "<<
                 entry.pt2+1<<" "<<
                 entry.pt3+1<<" "<<
-                entry.tet_id+1<<"\x0D\x0A";
+                entry.tet_id+1<<LINEBREAK;
         
         if(volmeshout!=NULL)
         {
