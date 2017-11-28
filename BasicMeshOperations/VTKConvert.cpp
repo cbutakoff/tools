@@ -219,7 +219,7 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
     {
         vtkCell *cell = volmesh->GetCell(i);
         ele_file<<i+1<<" "<< cell->GetPointId(0)+1 <<" "<< cell->GetPointId(1)+1 << " "
-                <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(3)+1<<LINEBREAK;
+                <<cell->GetPointId(3)+1<<" "<<cell->GetPointId(2)+1<<LINEBREAK; //flip the element for alya
     }
 
     ele_file<< "END_ELEMENTS"<<std::endl;
