@@ -225,7 +225,7 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
     ele_file<< "END_ELEMENTS"<<std::endl;
     ele_file.close();
     
-    vtkFloatArray* grads = (vtkFloatArray*)volmesh->GetPointData()->GetArray("Gradients");
+    vtkFloatArray* grads = (vtkFloatArray*)volmesh->GetPointData()->GetArray("Fibers");
     if(grads!=NULL)
     {
         std::cout<<outfile_gradient<<std::endl;
