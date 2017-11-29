@@ -8,6 +8,7 @@ Created on Tue Nov 28 19:59:54 2017
 
 mesh_streeter_filename = "for_fibers_fib.vtk"
 mesh_temp_longitudinal = "temperature_longitudinal.vtk"
+mesh_complete = "myo.vtk"
 output_filename = "final_mesh.vtk"
 
 import vtk
@@ -26,14 +27,22 @@ rd2 = vtk.vtkDataSetReader()
 rd2.SetFileName(mesh_temp_longitudinal)
 rd2.Update()
 
+print("Reading yet another mesh")
+rd3 = vtk.vtkDataSetReader()
+rd3.SetFileName(mesh_complete)
+rd3.Update()
+
+mesh_full = rd3.GetOutput()
+
+
 print("Gradient filter")
 grad_filter = vtk.vtkGradientFilter()
 grad_filter.SetInputData(rd2.GetOutput())
 grad_filter.SetInputArrayToProcess(0,0,0,vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS,'temperature')
 grad_filter.Update()
 
-mesh_full = rd2.GetOutput() #this is full mesh
-grad = grad_filter.GetOutput().GetPointData().GetArray('Gradients')
+grad_mesh = grad_filter.GetOutput()
+grad = grad_mesh.GetPointData().GetArray('Gradients')
 
 fibers_full = vtk.vtkFloatArray()
 fibers_full.SetName('Fibers')
@@ -58,13 +67,15 @@ for i in range(mesh_streeter.GetNumberOfPoints()):
     pb.UpdateProgress(i + 1)
     
 print("Append the gradients as fibers")
-pb = TextProgressBar(mesh_full.GetNumberOfPoints(), prefix = 'Progress:', suffix = 'Complete', length = 40)
-for i in range(mesh_full.GetNumberOfPoints()):
+pb = TextProgressBar(grad_mesh.GetNumberOfPoints(), prefix = 'Progress:', suffix = 'Complete', length = 40)
+for i in range(grad_mesh.GetNumberOfPoints()):
     pb.UpdateProgress(i + 1)
-    if fibers_mask[i]==0:
+
+    ptid = loc.FindClosestPoint( grad_mesh.GetPoint(i) )
+    if fibers_mask[ptid]==0:
         v = numpy.array(grad.GetTuple3(i))
         v = v/numpy.linalg.norm(v)
-        fibers_full.SetTuple3(i, v[0], v[1], v[2])
+        fibers_full.SetTuple3(ptid, v[0], v[1], v[2])
         
 mesh_full.GetPointData().AddArray(fibers_full)
 
