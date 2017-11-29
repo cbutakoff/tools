@@ -219,8 +219,8 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
     for(int i=0; i<volmesh->GetNumberOfCells(); i++)
     {
         vtkCell *cell = volmesh->GetCell(i);
-        ele_file<<i+1<<" "<< cell->GetPointId(0)+1 <<" "<< cell->GetPointId(1)+1 << " "
-                <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(3)+1<<LINEBREAK; 
+        ele_file<<i+1<<" "<< cell->GetPointId(3)+1 <<" "<< cell->GetPointId(1)+1 << " "
+                <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(0)+1<<LINEBREAK; //flipping elements
     }
 
     ele_file<< "END_ELEMENTS"<<std::endl;
