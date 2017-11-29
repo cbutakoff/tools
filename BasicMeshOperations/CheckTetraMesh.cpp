@@ -223,6 +223,7 @@ int main(int argc, char **argv)
         std::cout<<"Saving mesh"<<std::endl;
         vtkSmartPointer<vtkDataSetWriter> wr = vtkSmartPointer<vtkDataSetWriter>::New();
         wr->SetFileName(output_volmesh_filename);
+        wr->SetFileTypeToBinary();
         wr->SetInputData(mesh);
         wr->Write();
     }
