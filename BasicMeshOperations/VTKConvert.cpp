@@ -190,6 +190,7 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
     
     std::cout<<outfile_nodes<<std::endl;
     std::cout<<outfile_elements<<std::endl;
+    std::cout<<"DON'T FORGET TO CHECK ELEMENT ORIENTATION!"<<std::endl;
     
     vtkSmartPointer<vtkDataSetReader> reader = vtkSmartPointer<vtkDataSetReader>::New();
     reader->SetFileName(infile);
@@ -219,7 +220,7 @@ void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
     {
         vtkCell *cell = volmesh->GetCell(i);
         ele_file<<i+1<<" "<< cell->GetPointId(0)+1 <<" "<< cell->GetPointId(1)+1 << " "
-                <<cell->GetPointId(3)+1<<" "<<cell->GetPointId(2)+1<<LINEBREAK; //flip the element for alya
+                <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(3)+1<<LINEBREAK; 
     }
 
     ele_file<< "END_ELEMENTS"<<std::endl;
