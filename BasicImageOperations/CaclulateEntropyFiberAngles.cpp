@@ -86,6 +86,8 @@ int main(int argc, char** argv) {
     //create the output image
     OutputImageType::Pointer image = OutputImageType::New();
     image->SetRegions(inputx->GetLargestPossibleRegion());
+    image->SetSpacing(inputx->GetSpacing());
+    image->SetOrigin(inputx->GetOrigin());
     image->Allocate();
     image->FillBuffer(0);
 
@@ -115,8 +117,22 @@ int main(int argc, char** argv) {
     
     int c_id = (int) (nneighbors / 2); // get offset of center pixel
     
+    
+    //check image size for the progress indicator
+    OutputImageType::RegionType region = image->GetLargestPossibleRegion();
+    OutputImageType::SizeType size = region.GetSize();
+    const unsigned long int npixels = size[0]*size[1]*size[2];
+    
+    unsigned long int k = 0;
     while ( ! iteratorx.IsAtEnd() )
     {
+        if(npixels%10000 == 0)
+        {
+            std::cout<<"Processed "<<k<<"/"<<npixels<<"\r"<<std::flush;
+        }
+            
+        k++;
+            
         unsigned int j = 0;
         for (unsigned int i = 0; i < nneighbors; ++i)
         {    
@@ -146,6 +162,7 @@ int main(int argc, char** argv) {
         ++iteratorz;
         ++it;
     }    
+    std::cout<<std::endl;
     
     //  The output of the resampling filter is connected to a writer and the
     //  execution of the pipeline is triggered by a writer update.
