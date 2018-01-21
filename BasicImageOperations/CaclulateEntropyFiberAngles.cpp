@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
     unsigned long int k = 0;
     while ( ! iteratorx.IsAtEnd() )
     {
-        if(npixels%10000 == 0)
+        if(k%10000 == 0)
         {
             std::cout<<"Processed "<<k<<"/"<<npixels<<"\r"<<std::flush;
         }
