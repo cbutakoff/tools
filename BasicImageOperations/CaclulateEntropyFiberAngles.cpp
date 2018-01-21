@@ -27,13 +27,13 @@
 
 int main(int argc, char** argv) {
 
-    if (argc < 8) {
+    if (argc < 5) {
         std::cerr << "From the 3 images representing fiber orientation estimate angles and calculate angle homogeneity in the neighborhoods." << std::endl;
         std::cerr << "Usage: CalculateEntropyFiberAngles coordx_image coordy_image coordz_image out_image neigborhood_radius" << std::endl;
         return EXIT_FAILURE;
     }
 
-    //poarsing parameters
+    //parsing parameters
     int c = 1;
     const char* imagex_filename = argv[c++];
     const char* imagey_filename = argv[c++];
