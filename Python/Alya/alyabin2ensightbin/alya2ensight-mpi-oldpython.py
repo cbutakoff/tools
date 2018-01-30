@@ -49,7 +49,7 @@ try:
 	#check if input path exists
         import pathlib
         path = pathlib.Path(inputfolder)
-        assert path.exists(), f'{inputfolder} does not exist'
+        assert path.exists(), '{} does not exist'.format(inputfolder)
 
         #create output folders
         path = pathlib.Path(outputfolder)
@@ -57,11 +57,11 @@ try:
 
         import sys
         sys.stdout.flush()
-        print(f'-------------------------------------------------------');
-        print(f'Alya task: {project_name}');
-        print(f'Input path: {inputfolder}');
-        print(f'Output path: {outputfolder}');
-        print(f'-------------------------------------------------------');
+        print('-------------------------------------------------------');
+        print('Alya task: {}'.format(project_name));
+        print('Input path: {}'.format(inputfolder));
+        print('Output path: {}'.format(outputfolder));
+        print('-------------------------------------------------------');
 finally:
     inputfolder = comm.bcast(inputfolder, root=0)
     project_name = comm.bcast(project_name, root=0)
@@ -93,7 +93,7 @@ iterationid_number_of_digits = 6  #how many digits to use for the iteration id i
 
 def identify_alya_id_type(project_name):
     #read he header where element ids are stored and see if it's int8 or int4
-    filename = os.path.join(inputfolder,f'{project_name}-LNODS.post.alyabin');
+    filename = os.path.join(inputfolder,'{}-LNODS.post.alyabin'.format(project_name));
     with open(filename, 'rb') as f:
         header = read_header(f)
         if header['strings'][6] == '4BYTE':
@@ -101,7 +101,7 @@ def identify_alya_id_type(project_name):
         elif header['strings'][6] == '8BYTE':
             alya_id_type = np.int64
         else:
-            assert False, f'Alya id type {header[6]} is not supported'
+            assert False, 'Alya id type {} is not supported'.format(header[6])
     return alya_id_type        
 
 
@@ -183,7 +183,7 @@ def read_alya_array(filename, number_of_blocks, datatype):
         number_of_tuples_total = header['integers'][1][0]
         time_instant_int = header['integers'][3][0]
         time_instant_real = header['reals'][0]
-        print(f'Reading array: {number_of_dimensions} dim, {number_of_tuples_total} tuples\n')
+        print('Reading array: {} dim, {} tuples\n'.format(number_of_dimensions, number_of_tuples_total))
 
         tuples = np.zeros((number_of_tuples_total,number_of_dimensions), dtype=datatype)
 
@@ -194,7 +194,7 @@ def read_alya_array(filename, number_of_blocks, datatype):
             number_of_tuples_in_block = read_one_fp90_record(f, 1, alya_id_type)[0] #stored by alya
             tuples_per_block[i] = number_of_tuples_in_block
 
-            print(f'Block {i}/{number_of_blocks}: {(number_of_tuples_in_block)} tuples\n')
+            print('Block {}/{}: {} tuples\n'.format(i, number_of_blocks, number_of_tuples_in_block))
             tuples_temp = read_one_fp90_record(f, number_of_dimensions*number_of_tuples_in_block, datatype)
             
             tuples[c:c+number_of_tuples_in_block, :] =                 np.reshape(tuples_temp, (number_of_tuples_in_block,number_of_dimensions))
@@ -253,12 +253,12 @@ def read_alya_variable(variable_name, iteration, number_of_blocks):
 
 
 def write_geometry(number_of_blocks):
-    point_coordinates = read_alya_array(os.path.join(inputfolder,f'{project_name}-COORD.post.alyabin'), \
+    point_coordinates = read_alya_array(os.path.join(inputfolder,'{}-COORD.post.alyabin'.format(project_name)), \
                                         number_of_blocks, np.float64)
-    element_types = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPE.post.alyabin'),  \
+    element_types = read_alya_array(os.path.join(inputfolder, '{}-LTYPE.post.alyabin'.format(project_name)),  \
                                     number_of_blocks, alya_id_type)
     #Read connectivity (indices inside start with 1)
-    connectivity = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNODS.post.alyabin'),    \
+    connectivity = read_alya_array(os.path.join(inputfolder, '{}-LNODS.post.alyabin'.format(project_name)),    \
                                    number_of_blocks, alya_id_type)
 
     #np.savetxt( 'connectivity.txt', connectivity['tuples'].astype(np.int32), fmt='%d' )
@@ -307,7 +307,7 @@ def write_geometry(number_of_blocks):
 
     
     #geometry ensight
-    with open(os.path.join(outputfolder,f'{project_name}.ensi.geo'),'wb') as f:
+    with open(os.path.join(outputfolder, '{}.ensi.geo'.format(project_name)),'wb') as f:
         f.write(b'C Binary'.ljust(80))
         f.write(b'description line 1'.ljust(80))
         f.write(b'description line 2'.ljust(80))
@@ -340,7 +340,7 @@ def write_variable(varname, iteration, number_of_blocks):
 
     
     #variable ensight
-    fmt = '%s.ensi.%s-'+f'%0{iterationid_number_of_digits}d';
+    fmt = '%s.ensi.%s-%0{}d'.format(iterationid_number_of_digits);
     with open( os.path.join(outputfolder, fmt % (project_name, varname, iteration)),'wb') as f:
         f.write(b'description line 1'.ljust(80))
         f.write(b'part'.ljust(80))
@@ -366,7 +366,7 @@ def write_variable(varname, iteration, number_of_blocks):
             data2write[inverse_pt_correspondence,:] = data['values']['tuples']
             f.write( data2write.ravel(order='F').astype(ensight_float_type) )  #z coord    
         else:
-            assert False, f"Unknown varibale type: {data['variabletype']}"
+            assert False, "Unknown varibale type: "+str(data['variabletype'])
         
         
         
@@ -382,13 +382,13 @@ def write_variable(varname, iteration, number_of_blocks):
 
 # In[16]:
 
-print(f'My rank:{my_rank}')
+print('My rank:{}'.format(my_rank))
 alya_id_type = None
 
 if my_rank == 0:
     #identify id type
     alya_id_type = identify_alya_id_type(project_name)
-    print(f'Node 0: Using Alya id type {np.dtype(np.int32).name}')
+    print('Node 0: Using Alya id type {}'.format(np.dtype(np.int32).name))
     
 
 #broadcast ALYA id type to all the nodes
@@ -396,13 +396,13 @@ alya_id_type = comm.bcast(alya_id_type, root=0);
 
 
 if my_rank != 0:
-    print(f'Node {my_rank}: Using Alya id type {alya_id_type}')
+    print('Node {}: Using Alya id type {}'.format(my_rank, alya_id_type))
 
 
 
 if my_rank == 0:
     #read the partitioning info
-    partition_filename = os.path.join(inputfolder,f'{project_name}.post.alyapar')
+    partition_filename = os.path.join(inputfolder, '{}.post.alyapar'.format(project_name))
     with open(partition_filename) as f:
         partitions = np.fromstring(f.read(), dtype=alya_id_type, sep=' ')
 
@@ -426,7 +426,7 @@ if my_rank == 0:
 
 if my_rank == 0:
     #Parse the filelist of the fields
-    with open(os.path.join(inputfolder, f'{project_name}.post.alyafil'),'r') as f:
+    with open(os.path.join(inputfolder, '{}.post.alyafil'.format(project_name)),'r') as f:
         field_filelist = f.read().splitlines()
 
     #remove spaces and empty lines
@@ -450,7 +450,7 @@ if my_rank == 0:
 inverse_pt_correspondence = None
 if my_rank == 0:    
     #read correct element arrangement
-    LNINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNINV.post.alyabin'), \
+    LNINV = read_alya_array(os.path.join(inputfolder, '{}-LNINV.post.alyabin'.format(project_name)), \
                                 number_of_blocks, alya_id_type)
     inverse_pt_correspondence = (LNINV['tuples']-1).ravel(); #convert ids to python
     
@@ -528,7 +528,7 @@ class Work(object):
 
 
 def do_work(work):
-    print(f'Node: Using Alya id type {alya_id_type}')
+    print( 'Node: Using Alya id type {}'.format(alya_id_type))
 
     info = {}
     if work['filetype'] == 'geometry':
@@ -537,7 +537,7 @@ def do_work(work):
         info = write_variable(work['name'], work['iteration'], work['number_of_blocks'])
         info['table_index'] = work['table_index'];       
     else:
-        assert False, f'Unsupported file type {work["filetype"]}'
+        assert False, 'Unsupported file type {}'.format(work["filetype"])
     
     info['filetype'] = work['filetype']
     return info
@@ -568,7 +568,7 @@ def master(comm):
     wq = Work(variable_info, number_of_blocks)
 
     num_procs = min(wq.get_size(), comm.Get_size())
-    print(f'Number of processes: {num_procs}')
+    print( 'Number of processes: {}'.format(num_procs))
 
     # Seed the slaves, send one unit of work to each slave (rank)
     sent_jobs = 0
@@ -591,19 +591,19 @@ def master(comm):
         comm.send(work, dest=status.Get_source(), tag=WORKTAG)
         sent_jobs = sent_jobs+1
     
-    print(f'Jobs still running: {sent_jobs}')
+    print( 'Jobs still running: {}'.format(sent_jobs) )
 
     # No more work to be done, receive all outstanding results from slaves
     for rank in range(sent_jobs): 
-        print(f'Receiving {rank}')
+        print('Receiving {}'.format(rank))
         result = comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
-        print(f'Received {rank}')
+        print('Received {}'.format(rank))
         process_result(result)
 
-    print(f'Shutting down')
+    print('Shutting down')
     # Tell all the slaves to exit by sending an empty message with DIETAG
     for rank in range(1, comm.Get_size()):
-        print(f'Shutting down {rank}')
+        print('Shutting down {}'.format(rank))
         comm.send(0, dest=rank, tag=DIETAG)
 
 
@@ -614,16 +614,16 @@ def slave(comm):
     my_rank = comm.Get_rank()
     status = MPI.Status()
 
-    print(f'running processor: {my_rank}')
+    print('running processor: {}'.format(my_rank))
 
     while True:
         # Receive a message from the master
-        print(f'Proc {my_rank}: receiving')
+        print('Proc {}: receiving'.format(my_rank))
         work = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
-        print(f'Proc {my_rank}: received')
+        print('Proc {}: received'.format(my_rank))
 
 
-        print(f'Process {my_rank}, kill signal: {status.Get_tag()==DIETAG}')
+        print('Process {}, kill signal: {}'.format(my_rank, status.Get_tag()==DIETAG))
         # Check the tag of the received message
         if status.Get_tag() == DIETAG: break 
 
@@ -632,7 +632,7 @@ def slave(comm):
 
         # Send the result back
         comm.send(result, dest=0, tag=0)
-        print(f'Proc {my_rank}: sent')
+        print('Proc {}: sent'.format(my_rank))
 
 
 # In[ ]:
@@ -654,17 +654,17 @@ comm.Barrier()
 if my_rank == 0:
     print(variable_info)
     
-    case_file = f'{project_name}.ensi.case'
+    case_file = '{}.ensi.case'.format(project_name)
     with open(os.path.join(outputfolder, case_file), 'w') as f:
         f.write('# Converted from Alya\n')
         f.write('# Ensight Gold Format\n')
         f.write('#\n')
-        f.write(f'# Problem name: {project_name}\n')
+        f.write('# Problem name: {}\n'.format(project_name))
         f.write('FORMAT\n')
         f.write('type: ensight gold\n')
         f.write('\n')
         f.write('GEOMETRY\n')
-        f.write(f'model: 1 {project_name}.ensi.geo\n')
+        f.write('model: 1 {}.ensi.geo\n'.format(project_name))
         f.write('\n')
         f.write('VARIABLE\n')
 
@@ -696,9 +696,10 @@ if my_rank == 0:
         for var_data in variable_info_per_variable:
             varname = var_data['varname']
             timeline_id = var_data['timeline']
-            print(f'Varname {varname}\n')
+            print('Varname {}\n'.format(varname))
             df = var_data['data'].iloc[0] #get one record with this varibale
-            line = f'{df.variabletype} per {df.association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
+            line = '{} per {}: {} {} {}.ensi.{}-'.format(df.variabletype, df.association, timeline_id, varname, project_name, varname)+\
+                '*'*iterationid_number_of_digits+'\n'       
             f.write(line)
 
 
@@ -711,10 +712,10 @@ if my_rank == 0:
         f.write('TIME\n')
         for timeset in timelines:
             var_data = variable_info_per_variable[ timelines[timeset]['array_loc'] ]
-            f.write(f'time set: {var_data["timeline"]}\n')
+            f.write('time set: {}\n'.format(var_data["timeline"]))
             number_of_timesteps = var_data['data'].shape[0]
-            f.write(f'number of steps: {number_of_timesteps}\n')
-            f.write(f'filename numbers: \n')
+            f.write('number of steps: {}\n'.format(number_of_timesteps))
+            f.write('filename numbers: \n')
             f.write(str(var_data['data'].time_int.as_matrix())[1:-1]+'\n')
             f.write('time values:\n')
             f.write(str(var_data['data'].time_real.as_matrix())[1:-1]+'\n')
