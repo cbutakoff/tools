@@ -366,7 +366,7 @@ def write_variable(varname, iteration, number_of_blocks):
             data2write[inverse_pt_correspondence,:] = data['values']['tuples']
             f.write( data2write.ravel(order='F').astype(ensight_float_type) )  #z coord    
         else:
-            assert False, f"Unknown varibale type: {data['variabletype']}"
+            assert False, "Unknown varibale type: "+str(data['variabletype'])
         
         
         
