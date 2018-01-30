@@ -57,6 +57,7 @@ PassVolmeshLabels2Image
 CreatePixelatedTetMesh
 AddFibers2Mesh
 EstimateConductionVelocity
+SampleImage2UG
 )
 
 
