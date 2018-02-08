@@ -26,27 +26,32 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include <vtkCallbackCommand.h>
 #include <VTKCommonTools.h>
-
+#include <vtkType.h>
 
     
 typedef struct __bsc_entry {
-    int id;
-    int pt1;
-    int pt2;
-    int pt3;
-    int tet_id;
+    vtkIdType id;
+    vtkIdType pt1;
+    vtkIdType pt2;
+    vtkIdType pt3;
+    vtkIdType tet_id;
 } BscEntry;
 
 
 //#define LINEBREAK "\x0D\x0A"
-#define LINEBREAK "\x0A"
+//#define LINEBREAK "\x0A"
 
     
 int main(int argc, char** argv)
 {
-    std::cout<<"exec volmesh.vtk surfmesh.vtk out_labels.txt arrayname volmesh_out.vtk"<<std::endl;
+    std::cout<<"exec volmesh.vtk surfmesh.vtk out_labels.txt arrayname volmesh_out.vtk [scale]"<<std::endl;
+    std::cout<<"Scale - rescale mesh by this factor, !!! for now works only for ALYA, for everything else put 1"<<std::endl;
     std::cout<<"Labels must be celldata"<<std::endl;
+    std::cout<<"Add extension .bsc to volmesh_out to get mesh in Alya format"<<std::endl;
     std::cout<<"Skip extension in volmesh_out to get mesh in Elmer format"<<std::endl;
+    std::cout<<"out_labels.txt -- faces with labels, format: label point1 point2 point3 tetra_id"<<std::endl;
+     
+    
     
     if(argc<4) return -1;
     
@@ -56,13 +61,29 @@ int main(int argc, char** argv)
     const char* array_name = argv[4];
     const char* volmeshout = argv[5];
     
-    bool vtkoutput_mesh = false;
+    float scale = 1;
+    if (argv[6]!= NULL)
+        scale = atof(argv[6]);
     
+    
+    std::cout<<"Volumetric mesh: "<<volmesh_file<<std::endl;
+    std::cout<<"Surface mesh: "<<surfmesh_file<<std::endl;
+    std::cout<<"Labels: "<<outfile<<std::endl;
+    std::cout<<"Label array: "<<array_name<<std::endl;
+    std::cout<<"Output mesh: "<<volmeshout<<std::endl;
+    std::cout<<"Scale: "<<scale<<std::endl;
+    
+    
+    bool vtkoutput_mesh = false;
+    bool alyaoutput_mesh = false;
+        
     if(volmeshout!=NULL)
     {
         const char *ext = volmeshout+strlen(volmeshout)-4;
         if(strcmp(ext,".vtk")==0)  //if we are requesting .node .element volumetric mesh    
             vtkoutput_mesh = true;
+        else if(strcmp(ext,".bsc")==0)
+            alyaoutput_mesh = true;
     }
 
     vtkSmartPointer<vtkDataSetReader> vol_rdr = vtkSmartPointer<vtkDataSetReader>::New();
@@ -109,13 +130,13 @@ int main(int argc, char** argv)
         volmesh_regions->SetNumberOfValues(volmesh->GetNumberOfPoints());
 
         //fill the array of scalars to store with volumetric mesh
-        for(int i=0; i<volmesh->GetNumberOfPoints();i++)
+        for(vtkIdType i=0; i<volmesh->GetNumberOfPoints();i++)
         {
             volmesh_regions->SetValue(i,0);
         }
 
         //for every cell of the surface mesh
-        for(int i=0; i<surfmesh->GetNumberOfPoints(); i++)
+        for(vtkIdType i=0; i<surfmesh->GetNumberOfPoints(); i++)
         {
             vtkIdType ptid = ptloc->FindClosestPoint(surfmesh->GetPoint(i));
             volmesh_regions->SetValue(ptid, pscalars->GetValue(i));
@@ -131,7 +152,7 @@ int main(int argc, char** argv)
     //create std::vector with information about the cell and point ids for every label
     //for every cell of the surface mesh
     std::cout<<"Looking for boundaries"<<std::endl;
-    for(int i=0; i<surfmesh->GetNumberOfCells(); i++)
+    for(vtkIdType i=0; i<surfmesh->GetNumberOfCells(); i++)
     {
         if( i%10000 == 0 )
             std::cout<<"Cell "<<i<<"/"<<surfmesh->GetNumberOfCells()<<"\r"<<std::flush;
@@ -180,14 +201,14 @@ int main(int argc, char** argv)
     volmesh_regions_cells->SetNumberOfComponents(1);
     volmesh_regions_cells->SetNumberOfValues(volmesh->GetNumberOfCells());
     
-    for(int i1=0; i1<volmesh->GetNumberOfCells(); i1++)
+    for(vtkIdType i1=0; i1<volmesh->GetNumberOfCells(); i1++)
     {
         volmesh_regions_cells->SetValue(i1,0); //reset
     }
     
     //store the labels
     std::ofstream file(outfile);
-    for(int i=0; i<labeldata.size(); i++)
+    for(vtkIdType i=0; i<labeldata.size(); i++)
     {
         BscEntry entry = labeldata[i];
         file<<entry.id<<" "<<
@@ -216,6 +237,28 @@ int main(int argc, char** argv)
             wrwr->SetInputData(volmesh);
             wrwr->Update();
         }
+        else if(alyaoutput_mesh)
+        {
+            std::cout<<"Writing alya format"<<std::endl;
+            CommonTools::SaveVolMeshBSC(volmesh, volmeshout, scale);      
+            
+            //add the boundary
+            char boundary_file[256];
+            sprintf(boundary_file, "%s.bound", volmeshout);
+            std::ofstream file(boundary_file);
+            for(vtkIdType i=0; i<labeldata.size(); i++)
+            {
+                BscEntry entry = labeldata[i];
+                file<<i+1<<" "<<
+                        entry.pt1+1<<" "<<
+                        entry.pt2+1<<" "<<
+                        entry.pt3+1<<" "<<
+                        entry.tet_id+1<<LINEBREAK;
+
+
+            }            
+            
+        }
         else //Write elmer mesh
         {
             std::cout<<"Writing elmer file"<<std::endl;
@@ -228,7 +271,7 @@ int main(int argc, char** argv)
 
             std::string node_filename = "mesh.nodes";
             std::ofstream node_file(node_filename.c_str());
-            for(int i=0; i<volmesh->GetNumberOfPoints(); i++)
+            for(vtkIdType i=0; i<volmesh->GetNumberOfPoints(); i++)
             {
                 double* pt = volmesh->GetPoint(i);
                 node_file<<i+1<<" -1 "<<pt[0]<<" "<<pt[1]<<" "<<pt[2]<<std::endl;
@@ -236,7 +279,7 @@ int main(int argc, char** argv)
 
             std::string ele_filename = "mesh.elements";
             std::ofstream ele_file(ele_filename.c_str());
-            for(int i=0; i<volmesh->GetNumberOfCells(); i++)
+            for(vtkIdType i=0; i<volmesh->GetNumberOfCells(); i++)
             {
                 vtkCell* cell = volmesh->GetCell(i);
                 ele_file<<i+1<<" 1 504 "<<cell->GetPointId(0)+1<<" "<<
@@ -247,7 +290,7 @@ int main(int argc, char** argv)
             
             std::string bound_filename =  "mesh.boundary";
             std::ofstream bound_file(bound_filename.c_str());
-            for(int i=0; i<labeldata.size(); i++)
+            for(vtkIdType i=0; i<labeldata.size(); i++)
             {
                 BscEntry entry = labeldata[i];
                 bound_file<<i+1<<" "<<
