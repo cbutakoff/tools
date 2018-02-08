@@ -37,7 +37,6 @@ PURPOSE.  See the above copyright notice for more information.
 //------------------------------------------------------------------
 void SaveVolMeshVTK(const char* infile, const char* outfile_prefix, float scale);
 void SaveVolMeshTetgen(const char* infile, const char* outfile_prefix, float scale);
-void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale);
 void SaveSurfMeshOFF(const char* infile, const char* outfile_prefix, float scale);
 void SaveVolMesh2Mesh(const char* infile, const char* outfile_prefix, float scale, const char* array_name);
 void SaveSurfMeshTetgen(const char* infile, const char* outfile_prefix, float scale);
@@ -77,7 +76,7 @@ int main(int argc, char *argv[]) {
     else if(strcmp(ext,".bsc")==0)
     {
         std::cout<<"Processing volumetric mesh for bsc"<<std::endl;
-        SaveVolMeshBSC(inshape, outshape, scale);
+        CommonTools::SaveVolMeshBSC(inshape, outshape, scale);
     }
     else if(strcmp(ext,"kbin")==0)
     {
@@ -179,71 +178,6 @@ void SaveVolMeshTetgen(const char* infile, const char* outfile_prefix, float sca
 }
 
 
-void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
-{
-    std::string outfile_nodes(outfile_prefix);
-    std::string outfile_elements(outfile_prefix);
-    std::string outfile_gradient(outfile_prefix);
-    outfile_nodes += ".node";
-    outfile_elements += ".ele";
-    outfile_gradient += ".grad";
-    
-    std::cout<<outfile_nodes<<std::endl;
-    std::cout<<outfile_elements<<std::endl;
-    std::cout<<"DON'T FORGET TO CHECK ELEMENT ORIENTATION!"<<std::endl;
-    
-    vtkSmartPointer<vtkDataSetReader> reader = vtkSmartPointer<vtkDataSetReader>::New();
-    reader->SetFileName(infile);
-    reader->Update();
-    
-    vtkDataSet* volmesh = reader->GetOutput(); 
-    
-    std::ofstream node_file;
-    node_file.open(outfile_nodes.c_str(),ios::trunc);
-    node_file<< "COORDINATES"<<std::endl;
-    
-    for(int i=0; i<volmesh->GetNumberOfPoints(); i++)
-    {
-        double *pt = volmesh->GetPoint(i);
-        node_file<<i+1<<" "<< pt[0]*scale<<" "<< pt[1]*scale<< " "<<pt[2]*scale<<LINEBREAK;
-    }
-
-    node_file<< "END_COORDINATES"<<std::endl;
-    node_file.close();
-    
-    
-    std::ofstream ele_file;
-    ele_file.open(outfile_elements.c_str(),ios::trunc);
-    ele_file<< "ELEMENTS"<<std::endl;
-
-    for(int i=0; i<volmesh->GetNumberOfCells(); i++)
-    {
-        vtkCell *cell = volmesh->GetCell(i);
-        ele_file<<i+1<<" "<< cell->GetPointId(3)+1 <<" "<< cell->GetPointId(1)+1 << " "
-                <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(0)+1<<LINEBREAK; //flipping elements
-    }
-
-    ele_file<< "END_ELEMENTS"<<std::endl;
-    ele_file.close();
-    
-    vtkFloatArray* grads = (vtkFloatArray*)volmesh->GetPointData()->GetArray("Fibers");
-    if(grads!=NULL)
-    {
-        std::cout<<outfile_gradient<<std::endl;
-        
-        std::ofstream grad_file;
-        grad_file.open(outfile_gradient.c_str(),ios::trunc);
-
-        for(int i=0; i<grads->GetNumberOfTuples(); i++)
-        {
-            double *tuple = grads->GetTuple(i);
-            double length =  sqrt( tuple[0]*tuple[0]+ tuple[1]*tuple[1]+ tuple[2]*tuple[2]);
-            grad_file<< i+1<<" "<< tuple[0]/length <<" "<< tuple[1]/length << " " << tuple[2]/length<<LINEBREAK;
-        }
-
-        grad_file.close();
-    }
-}
 
 
 void SaveSurfMeshTetgen(const char* infile, const char* outfile_prefix, float scale)

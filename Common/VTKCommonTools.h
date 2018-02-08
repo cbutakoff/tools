@@ -24,6 +24,9 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkAlgorithm.h>
 
 
+//#define LINEBREAK "\x0D\x0A"
+#define LINEBREAK "\x0A"
+
 //---------------------------------------------------
 // FORWARD DECLARATIONS
 //---------------------------------------------------
@@ -77,6 +80,9 @@ namespace CommonTools {
     VTKVolumeMeshFormats GetTypeOfVTKVolumeData(const char *volumeFileName);
     //! identify VTK data type
     VTKSurfaceMeshFormats GetTypeOfVTKData(const char *shapeFileName);
+
+    void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale);
+    void SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix, float scale);
 
 }
 
