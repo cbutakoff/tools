@@ -27,7 +27,7 @@ PURPOSE.  See the above copyright notice for more information.
 
 
 
-void PassScalarsFloat( int argc, char *argv[] )
+void PassScalarsFloat( int argc, char *argv[], double radius )
 {	
 
 	std::cout << " reading source " << argv[1] << std::endl;
@@ -58,9 +58,21 @@ void PassScalarsFloat( int argc, char *argv[] )
 		for (int i=0; i<targetPd -> GetNumberOfPoints(); i++) 
 		{
 			double *p1 = targetPd -> GetPoint(i);
-			vtkIdType pointId  = in_source_locator->FindClosestPoint(p1);//(p1, p2, cellId, subId, dist);
+                        
+                        vtkIdType pointId;
+                        if(radius>=0)
+                        {
+                            double dist2;
+                            pointId  = in_source_locator->FindClosestPointWithinRadius(radius, p1, dist2);
+                        }
+                        else
+                            pointId  = in_source_locator->FindClosestPoint(p1);//(p1, p2, cellId, subId, dist);
 
-			target_scalars->SetValue(i,source_scalars->GetValue(pointId));
+                        
+                        if(pointId>=0)
+                            target_scalars->SetValue(i,source_scalars->GetValue(pointId));
+                        else
+                            target_scalars->SetValue(i,-1);
 		}
 	}
 	else
@@ -70,6 +82,7 @@ void PassScalarsFloat( int argc, char *argv[] )
 		vtkFloatArray *target_scalars = (vtkFloatArray*) targetPd -> GetCellData() -> GetArray(property_name);
 		vtkFloatArray *source_scalars = (vtkFloatArray*) sourcePd -> GetCellData() -> GetArray(property_name);
 
+                std::cout<<"Building locator"<<std::endl;
 		vtkSmartPointer<vtkCellLocator> in_source_locator = vtkSmartPointer<vtkCellLocator>::New();
 		in_source_locator->SetDataSet(sourcePd);
 		in_source_locator->BuildLocator();
@@ -87,10 +100,18 @@ void PassScalarsFloat( int argc, char *argv[] )
 			vtkIdType cellid;
 			int subid;
 			double dist2;
-			in_source_locator->FindClosestPoint(pt,closestpoint,cellid,subid, dist2);
 
-			target_scalars->SetValue(i,source_scalars->GetValue(cellid));
-		}
+                        vtkIdType pointId;
+                        in_source_locator->FindClosestPoint(pt,closestpoint,cellid,subid, dist2);
+                        
+                        if(radius>=0)
+                            if(dist2>radius*radius)
+                                cellid = -1;
+
+                        if(cellid>=0)
+                            target_scalars->SetValue(i,source_scalars->GetValue(cellid));
+                        else
+                            target_scalars->SetValue(i,-1);		}
 	}
 
 	char outputFileName[255];
@@ -103,7 +124,7 @@ void PassScalarsFloat( int argc, char *argv[] )
 
 
 
-void PassScalarsShort( int argc, char *argv[] )
+void PassScalarsShort( int argc, char *argv[], double radius )
 {	
 
 
@@ -135,9 +156,21 @@ void PassScalarsShort( int argc, char *argv[] )
 		for (int i=0; i<targetPd -> GetNumberOfPoints(); i++) 
 		{
 			double *p1 = targetPd -> GetPoint(i);
-			vtkIdType pointId  = in_source_locator->FindClosestPoint(p1);//(p1, p2, cellId, subId, dist);
+                        
+                        vtkIdType pointId;
+                        if(radius>=0)
+                        {
+                            double dist2;
+                            pointId  = in_source_locator->FindClosestPointWithinRadius(radius, p1, dist2);
+                        }
+                        else
+                            pointId  = in_source_locator->FindClosestPoint(p1);//(p1, p2, cellId, subId, dist);
 
-			target_scalars->SetValue(i,source_scalars->GetValue(pointId));
+                        
+                        if(pointId>=0)
+                            target_scalars->SetValue(i,source_scalars->GetValue(pointId));
+                        else
+                            target_scalars->SetValue(i,-1);
 		}
 	}
 	else
@@ -164,9 +197,18 @@ void PassScalarsShort( int argc, char *argv[] )
 			vtkIdType cellid;
 			int subid;
 			double dist2;
-			in_source_locator->FindClosestPoint(pt,closestpoint,cellid,subid, dist2);
 
-			target_scalars->SetValue(i,source_scalars->GetValue(cellid));
+                        vtkIdType pointId;
+                        in_source_locator->FindClosestPoint(pt,closestpoint,cellid,subid, dist2);
+                        
+                        if(radius>=0)
+                            if(dist2>radius*radius)
+                                cellid = -1;
+
+                        if(cellid>=0)
+                            target_scalars->SetValue(i,source_scalars->GetValue(cellid));
+                        else
+                            target_scalars->SetValue(i,-1);
 		}
 	}
 
@@ -187,16 +229,20 @@ int main( int argc, char *argv[] )
 	{
 		std::cout << "Same as PassScalars, except that the search is done for every point/cell of target, not source!" << std::endl;
 		std::cout << "Usage: " << std::endl;
-		std::cout << argv[0] << " <source> <target> <property name> <output> <short|float>" << std::endl;
+		std::cout << argv[0] << " <source> <target> <property name> <output> <short|float> [radius]" << std::endl;
 		return EXIT_FAILURE;
 	}
 
 	const char* datatype = argv[5];
 
+        double radius = -1; //search radius
+        if (argv[6]!=NULL)
+            radius = atof(argv[6]);
+        
 	if( strcmp(datatype,"short")==0 )
-		PassScalarsShort( argc, argv );
+		PassScalarsShort( argc, argv, radius );
 	else if( strcmp(datatype,"float")==0 )
-		PassScalarsFloat( argc, argv );
+		PassScalarsFloat( argc, argv, radius );
 	else
 	{
 		std::cout<<"Unknown data type: "<<datatype<<std::endl;
