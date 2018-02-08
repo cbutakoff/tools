@@ -24,6 +24,10 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkCell.h>
 #include <fstream>
 
+#include <vtkCallbackCommand.h>
+#include <VTKCommonTools.h>
+
+
     
 typedef struct __bsc_entry {
     int id;
@@ -62,11 +66,15 @@ int main(int argc, char** argv)
     }
 
     vtkSmartPointer<vtkDataSetReader> vol_rdr = vtkSmartPointer<vtkDataSetReader>::New();
+    CommonTools::AssociateProgressFunction(vol_rdr);
+
     vol_rdr->SetFileName(volmesh_file);
     vol_rdr->Update();
     vtkUnstructuredGrid* volmesh = (vtkUnstructuredGrid*)vol_rdr->GetOutput();
     
     vtkSmartPointer<vtkPolyDataReader> poly_rdr = vtkSmartPointer<vtkPolyDataReader>::New();
+    CommonTools::AssociateProgressFunction(poly_rdr);
+
     poly_rdr->SetFileName(surfmesh_file);
     poly_rdr->Update();
     vtkPolyData* surfmesh = poly_rdr->GetOutput();
@@ -122,8 +130,12 @@ int main(int argc, char** argv)
     
     //create std::vector with information about the cell and point ids for every label
     //for every cell of the surface mesh
+    std::cout<<"Looking for boundaries"<<std::endl;
     for(int i=0; i<surfmesh->GetNumberOfCells(); i++)
     {
+        if( i%10000 == 0 )
+            std::cout<<"Cell "<<i<<"/"<<surfmesh->GetNumberOfCells()<<"\r"<<std::flush;
+        
         vtkCell* cell = surfmesh->GetCell(i);
         BscEntry entry;
         
@@ -159,7 +171,9 @@ int main(int argc, char** argv)
         
         labeldata.push_back(entry);
     }
-
+    std::cout<<std::endl;
+    
+    
     //to store labels for cells
     vtkSmartPointer<vtkShortArray> volmesh_regions_cells = vtkSmartPointer<vtkShortArray>::New();
     volmesh_regions_cells->SetName(array_name);
@@ -196,6 +210,7 @@ int main(int argc, char** argv)
         if(vtkoutput_mesh)
         {
             vtkSmartPointer<vtkDataSetWriter> wrwr = vtkSmartPointer<vtkDataSetWriter>::New();
+            CommonTools::AssociateProgressFunction(wrwr);
             wrwr->SetFileTypeToBinary();
             wrwr->SetFileName(volmeshout);
             wrwr->SetInputData(volmesh);
@@ -203,6 +218,7 @@ int main(int argc, char** argv)
         }
         else //Write elmer mesh
         {
+            std::cout<<"Writing elmer file"<<std::endl;
             std::string header_filename = "mesh.header";
             std::ofstream header_file(header_filename.c_str());
             header_file<<volmesh->GetNumberOfPoints()<<" "<<volmesh->GetNumberOfCells()<<" "<<labeldata.size()<<std::endl;
