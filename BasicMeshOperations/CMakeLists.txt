@@ -1,7 +1,7 @@
-FIND_PACKAGE(ITK 4 REQUIRED)
+FIND_PACKAGE(ITK 4)
 FIND_PACKAGE(VTK REQUIRED)
 
-find_package(Eigen3 REQUIRED)
+find_package(Eigen3)
 
 include_directories(${EIGEN3_INCLUDE_DIR})
 
@@ -56,21 +56,33 @@ CreateSurfaceMeshEnvelope
 PassVolmeshLabels2Image
 CreatePixelatedTetMesh
 AddFibers2Mesh
-EstimateConductionVelocity
 SampleImage2UG
 )
 
+set(VTKEIGEN_PROGRAMS 
+EstimateConductionVelocity
+)
 
-foreach(program ${ITK_VTK_PROGRAMS})
-  add_executable(${program} ${MYCOMMON_FILES} ${program}.cpp)
-  target_link_libraries(${program} ${ITK_LIBRARIES} ${VTK_LIBRARIES})
-endforeach(program)
+
+IF (ITK_FOUND)
+    foreach(program ${ITK_VTK_PROGRAMS})
+        add_executable(${program} ${MYCOMMON_FILES} ${program}.cpp)
+        target_link_libraries(${program} ${ITK_LIBRARIES} ${VTK_LIBRARIES})
+    endforeach(program)
+ENDIF(ITK_FOUND)
 
 foreach(program ${VTK_PROGRAMS})
   add_executable(${program} ${MYVTKCOMMON_FILES} ${program}.cpp)
   target_link_libraries(${program} ${VTK_LIBRARIES})
 endforeach(program)
 
+
+IF (EIGEN3_FOUND)
+    foreach(program ${VTKEIGEN_PROGRAMS})
+        add_executable(${program} ${MYVTKCOMMON_FILES} ${program}.cpp)
+        target_link_libraries(${program} ${VTK_LIBRARIES})
+    endforeach(program)
+ENDIF (EIGEN3_FOUND)
 
 
 
