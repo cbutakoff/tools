@@ -3,7 +3,6 @@ FIND_PACKAGE(VTK REQUIRED)
 
 find_package(Eigen3)
 
-include_directories(${EIGEN3_INCLUDE_DIR})
 
 #FIND_PACKAGE(Armadillo)
 #if(ARMADILLO_FOUND)
@@ -12,7 +11,6 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 
 INCLUDE(${VTK_USE_FILE})
-INCLUDE(${ITK_USE_FILE})
 
 
 
@@ -65,6 +63,8 @@ EstimateConductionVelocity
 
 
 IF (ITK_FOUND)
+    INCLUDE(${ITK_USE_FILE})
+
     foreach(program ${ITK_VTK_PROGRAMS})
         add_executable(${program} ${MYCOMMON_FILES} ${program}.cpp)
         target_link_libraries(${program} ${ITK_LIBRARIES} ${VTK_LIBRARIES})
@@ -78,6 +78,9 @@ endforeach(program)
 
 
 IF (EIGEN3_FOUND)
+    include_directories(${EIGEN3_INCLUDE_DIR})
+
+
     foreach(program ${VTKEIGEN_PROGRAMS})
         add_executable(${program} ${MYVTKCOMMON_FILES} ${program}.cpp)
         target_link_libraries(${program} ${VTK_LIBRARIES})
