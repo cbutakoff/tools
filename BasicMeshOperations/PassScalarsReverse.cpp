@@ -71,8 +71,8 @@ void PassScalarsFloat( int argc, char *argv[], double radius )
                         
                         if(pointId>=0)
                             target_scalars->SetValue(i,source_scalars->GetValue(pointId));
-                        else
-                            target_scalars->SetValue(i,-1);
+                        //else
+                        //    target_scalars->SetValue(i,-1);
 		}
 	}
 	else
@@ -110,8 +110,9 @@ void PassScalarsFloat( int argc, char *argv[], double radius )
 
                         if(cellid>=0)
                             target_scalars->SetValue(i,source_scalars->GetValue(cellid));
-                        else
-                            target_scalars->SetValue(i,-1);		}
+                        //else
+                        //    target_scalars->SetValue(i,-1);		
+                }
 	}
 
 	char outputFileName[255];
@@ -169,8 +170,8 @@ void PassScalarsShort( int argc, char *argv[], double radius )
                         
                         if(pointId>=0)
                             target_scalars->SetValue(i,source_scalars->GetValue(pointId));
-                        else
-                            target_scalars->SetValue(i,-1);
+                        //else
+                        //    target_scalars->SetValue(i,-1);
 		}
 	}
 	else
@@ -207,8 +208,8 @@ void PassScalarsShort( int argc, char *argv[], double radius )
 
                         if(cellid>=0)
                             target_scalars->SetValue(i,source_scalars->GetValue(cellid));
-                        else
-                            target_scalars->SetValue(i,-1);
+                        //else
+                        //    target_scalars->SetValue(i,-1);
 		}
 	}
 
