@@ -93,6 +93,16 @@ int main(int argc, char** argv)
     vol_rdr->Update();
     vtkUnstructuredGrid* volmesh = (vtkUnstructuredGrid*)vol_rdr->GetOutput();
     
+    
+    if(volmesh->GetCell(0)->GetNumberOfPoints()<4)
+    {
+        std::cout<<"Supplied volumetric mesh has cells with : "<<volmesh->GetCell(0)->GetNumberOfPoints()<<" vertices"<<std::endl;
+        std::cout<<"Make sure your mesh is actually volumetric"<<std::endl;
+        exit(-1);
+    }
+
+    
+    
     vtkSmartPointer<vtkPolyDataReader> poly_rdr = vtkSmartPointer<vtkPolyDataReader>::New();
     CommonTools::AssociateProgressFunction(poly_rdr);
 
@@ -228,6 +238,7 @@ int main(int argc, char** argv)
     {
         volmesh->GetCellData()->AddArray(volmesh_regions_cells);
          
+        
         if(vtkoutput_mesh)
         {
             vtkSmartPointer<vtkDataSetWriter> wrwr = vtkSmartPointer<vtkDataSetWriter>::New();
