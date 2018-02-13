@@ -203,7 +203,7 @@ int vtkUnstructuredGridWriter::WriteCellsAndFaces(
     {
       cellEnd = cellStart + (*cellStart + 1);
       while (cellStart != cellEnd)
-        *fp << static_cast<int>(*cellStart++) << " ";
+        *fp << static_cast<vtkIdType>(*cellStart++) << " ";
       *fp << "\n";
     }
   }
