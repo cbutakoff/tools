@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[111]:
+# In[1]:
 
 
 import vtk
@@ -16,7 +16,7 @@ array_name = 'Regions'
 #for example 0 2 3 4 0 -- connected line passing through the points 0 2 3 4 0 in that order 
 
 
-# In[112]:
+# In[2]:
 
 
 rd = vtk.vtkPolyDataReader()
@@ -25,15 +25,26 @@ rd.Update()
 mesh = rd.GetOutput()
 
 
-# In[119]:
+# In[3]:
 
 
 #line points have to be ordered
-line = np.loadtxt(line_textfile,dtype=int)
+lines = []
+#np.loadtxt(line_textfile,dtype=int)
 #line
+with open(line_textfile, 'r') as f:
+    for line in f:
+        l = line.replace('\n','').strip()
+        lines.append( np.array([int(x) for x in l.split(' ')]) )
 
 
-# In[114]:
+# In[4]:
+
+
+lines
+
+
+# In[5]:
 
 
 #extract connectivity
@@ -45,7 +56,7 @@ for i in range(tri.shape[0]):
         tri[i,j] = ids.GetId(j)
 
 
-# In[115]:
+# In[9]:
 
 
 def find_triangles(p1_id, p2_id, tri):
@@ -74,7 +85,9 @@ def triangle_common_edge(tri1, tri2):
     else:
         return common_pts
 
-def triangles_on_line(t1, t2, tri, line):
+    
+    
+def triangles_on_one_line(t1, t2, tri, line):
     edge = triangle_common_edge(tri[t1,:], tri[t2,:]);
     
     on_line = False;
@@ -86,10 +99,19 @@ def triangles_on_line(t1, t2, tri, line):
             break
             
     return on_line
-        
 
 
-# In[116]:
+def triangles_on_any_line(t1, t2, tri, lines):
+    on_line = False;
+    for line in lines:
+        on_line = triangles_on_one_line(t1, t2, tri, line)
+        if on_line:
+            break;
+            
+    return on_line
+
+
+# In[10]:
 
 
 trilabel = np.zeros(mesh.GetNumberOfCells(), dtype=np.int64)
@@ -115,11 +137,11 @@ for i in range(mesh.GetNumberOfCells()):
                     if trilabel[neighb[j]]==0:
                         #see if the triangles tri_id and neighb[j] are on the different sides of the line
                         #i.e. if they share any pair of points of the line
-                        if not triangles_on_line(tri_id, neighb[j], tri, line):
+                        if not triangles_on_any_line(tri_id, neighb[j], tri, lines):
                             tri_stack.append(neighb[j])
 
 
-# In[117]:
+# In[11]:
 
 
 array = vtk.vtkIdTypeArray()
