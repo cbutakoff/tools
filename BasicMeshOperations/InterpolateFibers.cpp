@@ -138,11 +138,20 @@ int main(int argc, char **argv)
     
     while ( getline (file,line) )
     {
-        auto values = split(line, " ", false);
-        auto id = pts->InsertNextPoint( atoll(values[1].c_str()), atoll(values[2].c_str()), atoll(values[3].c_str()) );
+        //std::cout<<"Line "<<line<<std::endl;
         
-        if(id%10000==0)
-            std::cout<<"Reading point "<<id<<"\r"<<std::flush;
+        auto values = split(line, " ", false);
+        if(values.size()>0)
+        {
+            //std::cout<<"Values "<<values[0]<<"  "<<values[1]<<"  "<<values[2]<<"  "<<values[3]<<std::endl;
+
+            auto id = pts->InsertNextPoint( atof(values[1].c_str()), atof(values[2].c_str()), atof(values[3].c_str()) );
+            //std::cout<<"Id :"<<id<<std::endl;
+            //std::cout<<"Inserted point"<<pts->GetPoint(id)[0]<<" "<<pts->GetPoint(id)[1]<<" "<<pts->GetPoint(id)[2]<<std::endl;
+
+            if(id%10000==0)
+                std::cout<<"Reading point "<<id<<"\r"<<std::flush;
+        }
     }
     file.close();
     std::cout<<std::endl;
@@ -173,7 +182,7 @@ int main(int argc, char **argv)
     for(vtkIdType i=0; i<probed->GetNumberOfPoints(); i++)       
     {
         if(i%10000==0)
-            std::cout<<"Saving id"<<i<<" "<<probed->GetNumberOfPoints()<<"\r"<<std::flush;
+            std::cout<<"Saving id "<<i<<"/"<<probed->GetNumberOfPoints()<<"\r"<<std::flush;
 
         double *fiber = probed->GetPointData()->GetArray(fiberarray_name)->GetTuple(i);
         double length = sqrt(fiber[0]*fiber[0]+fiber[1]*fiber[1]+fiber[2]*fiber[2]);
