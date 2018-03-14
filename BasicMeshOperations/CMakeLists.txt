@@ -55,6 +55,7 @@ PassVolmeshLabels2Image
 CreatePixelatedTetMesh
 AddFibers2Mesh
 SampleImage2UG
+InterpolateFibers
 )
 
 set(VTKEIGEN_PROGRAMS 
