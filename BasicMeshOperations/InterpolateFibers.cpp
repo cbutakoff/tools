@@ -19,28 +19,18 @@
 #include <VTKCommonTools.h>
 
 
-//https://stackoverflow.com/questions/236129/the-most-elegant-way-to-iterate-the-words-of-a-string
-std::vector<std::string> split(const std::string& s, const std::string& delim, const bool keep_empty = true) {
-    std::vector<std::string> result;
-    if (delim.empty()) {
-        result.push_back(s);
-        return result;
-    }
-    std::string::const_iterator substart = s.begin(), subend;
-    while (true) {
-        subend = search(substart, s.end(), delim.begin(), delim.end());
-        std::string temp(substart, subend);
-        if (keep_empty || !temp.empty()) {
-            result.push_back(temp);
-        }
-        if (subend == s.end()) {
-            break;
-        }
-        substart = subend + delim.size();
-    }
-    return result;
-}
+void StripNonNumber(char* str)
+{
+    //std::cout<<"Str: "<<str<<std::endl;
 
+    for(int i=0; i<strlen(str); i++)
+    {
+        auto c = str[i];
+        if( !( isalnum(c) || c=='.' || c=='+' || c=='-' ) )
+            str[i] =' ';
+    }
+    //std::cout<<"Str: "<<str<<std::endl;
+}
 
 
 int main(int argc, char **argv)
@@ -117,8 +107,20 @@ int main(int argc, char **argv)
             std::cout<<"Point "<<i<<"/"<<mesh->GetNumberOfPoints()<<"\r"<<std::flush;
         
         getline (file, line);
-        auto values = split(line, " ", false);
-        lbl->SetTuple1(i, atoll(values[1].c_str()) );
+        
+        
+        
+        int64_t id;
+        int label;
+        StripNonNumber(&line[0]);
+        //std::cout<<"Line :"<<line<<std::endl;
+        auto count = sscanf(line.c_str(), "%ld%d", &id, &label);
+                
+        if(count==2)
+        {
+            //std::cout<<"Id "<<id<<" "<<label<<std::flush<<std::endl;
+            lbl->SetTuple1(id-1, label );
+        }
     }
     file.close();
     std::cout<<std::endl;
@@ -139,13 +141,21 @@ int main(int argc, char **argv)
     while ( getline (file,line) )
     {
         //std::cout<<"Line "<<line<<std::endl;
-        
-        auto values = split(line, " ", false);
-        if(values.size()>0)
-        {
-            //std::cout<<"Values "<<values[0]<<"  "<<values[1]<<"  "<<values[2]<<"  "<<values[3]<<std::endl;
 
-            auto id = pts->InsertNextPoint( atof(values[1].c_str()), atof(values[2].c_str()), atof(values[3].c_str()) );
+        StripNonNumber(&line[0]);
+        //std::cout<<"Line :"<<line<<std::endl;
+        
+        int64_t id;
+        double x, y, z;
+        auto count = sscanf(line.c_str(), "%ld%lf%lf%lf", &id, &x, &y, &z);
+        
+        //std::cout<<"Values "<<id<<"  "<<x<<"  "<<y<<"  "<<z<<std::endl;
+        //std::cout<<count<<std::endl;
+
+        if(count==4)
+        {
+    
+            auto id = pts->InsertNextPoint( x, y, z );
             //std::cout<<"Id :"<<id<<std::endl;
             //std::cout<<"Inserted point"<<pts->GetPoint(id)[0]<<" "<<pts->GetPoint(id)[1]<<" "<<pts->GetPoint(id)[2]<<std::endl;
 
