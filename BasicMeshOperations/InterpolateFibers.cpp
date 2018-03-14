@@ -179,6 +179,7 @@ int main(int argc, char **argv)
     std::ofstream outfile_fibers;
     std::ofstream outfile_labels;
     outfile_fibers.open(out_fibers_filename);
+    outfile_labels.open(out_labels_filename);
     for(vtkIdType i=0; i<probed->GetNumberOfPoints(); i++)       
     {
         if(i%10000==0)
