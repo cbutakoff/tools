@@ -8,6 +8,7 @@
 #include <vtkShortArray.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkPolyData.h>
+#include <vtkPolyDataWriter.h>
 
 #include <iostream>
 #include <stdlib.h>
@@ -46,7 +47,7 @@ int main(int argc, char **argv)
 {    
     if(argc<6)
     {
-        std::cout<<"Usage: InterpolateFibers unstructured_grid.vtk fibre_array labels.txt target_points.txt out_fibers.txt out_labels.txt"<<std::endl;
+        std::cout<<"Usage: InterpolateFibers unstructured_grid.vtk fibre_array labels.txt target_points.txt out_fibers.txt out_labels.txt out.vtk"<<std::endl;
         std::cout<<"Given: "<<std::endl<<
                 "1) source tetrahedral mesh in vtk format"<<std::endl<<
                 "2) fibers associated to the points of the source mesh in pointdata"<<std::endl<<
@@ -68,6 +69,8 @@ int main(int argc, char **argv)
     const char *points_filename = argv[c++];
     const char *out_fibers_filename = argv[c++];
     const char *out_labels_filename = argv[c++];
+    const char *outvtk_filename = argv[c++];
+    
     
     std::cout<<"Mesh: "<<ug_filename<<std::endl;
     std::cout<<"Fiber array: "<<fiberarray_name<<std::endl;
@@ -75,6 +78,7 @@ int main(int argc, char **argv)
     std::cout<<"Target points: "<<points_filename<<std::endl;
     std::cout<<"Output for fibers: "<<out_fibers_filename<<std::endl;
     std::cout<<"Output for labels: "<<out_labels_filename<<std::endl;
+    std::cout<<"VTK output with the result: "<<outvtk_filename<<std::endl;
     
     
     std::cout<<"Reading the mesh"<<std::endl;
@@ -158,6 +162,11 @@ int main(int argc, char **argv)
     
     //saving
     std::cout<<"Saving fibers and labels"<<std::endl;
+    vtkSmartPointer<vtkPolyDataWriter> pdwr =     vtkSmartPointer<vtkPolyDataWriter> ::New();
+    pdwr->SetFileName(outvtk_filename);
+    pdwr->SetInputData(probed);
+    pdwr->Write();
+    
     std::ofstream outfile_fibers;
     std::ofstream outfile_labels;
     outfile_fibers.open(out_fibers_filename);
