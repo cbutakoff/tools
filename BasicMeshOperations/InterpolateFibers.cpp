@@ -37,7 +37,8 @@ int main(int argc, char **argv)
 {    
     if(argc<6)
     {
-        std::cout<<"Usage: InterpolateFibers unstructured_grid.vtk fibre_array labels.txt target_points.txt out_fibers.txt out_labels.txt out.vtk"<<std::endl;
+        std::cout<<"Usage: InterpolateFibers unstructured_grid.vtk fibre_array labels.txt target_points.txt out_fibers.txt out_labels.txt startPtId endPtId"<<std::endl;
+        std::cout<<"Specify point range: startPtId endPtId are both included. Ids start from 1"<<std::endl;
         std::cout<<"Given: "<<std::endl<<
                 "1) source tetrahedral mesh in vtk format"<<std::endl<<
                 "2) fibers associated to the points of the source mesh in pointdata"<<std::endl<<
@@ -59,7 +60,9 @@ int main(int argc, char **argv)
     const char *points_filename = argv[c++];
     const char *out_fibers_filename = argv[c++];
     const char *out_labels_filename = argv[c++];
-    const char *outvtk_filename = argv[c++];
+    vtkIdType startPtId = atol(argv[c++]);
+    vtkIdType endPtId = atol(argv[c++]);
+    
     
     
     std::cout<<"Mesh: "<<ug_filename<<std::endl;
@@ -68,8 +71,7 @@ int main(int argc, char **argv)
     std::cout<<"Target points: "<<points_filename<<std::endl;
     std::cout<<"Output for fibers: "<<out_fibers_filename<<std::endl;
     std::cout<<"Output for labels: "<<out_labels_filename<<std::endl;
-    std::cout<<"VTK output with the result: "<<outvtk_filename<<std::endl;
-    
+    std::cout<<"Point range: "<<startPtId<<" - "<<endPtId<<std::endl;
     
     std::cout<<"Reading the mesh"<<std::endl;
     vtkSmartPointer<vtkDataSetReader> mesh_rdr =     vtkSmartPointer<vtkDataSetReader>::New();
@@ -148,19 +150,23 @@ int main(int argc, char **argv)
         int64_t id;
         double x, y, z;
         auto count = sscanf(line.c_str(), "%ld%lf%lf%lf", &id, &x, &y, &z);
+        id; //stored ids are from 1
         
         //std::cout<<"Values "<<id<<"  "<<x<<"  "<<y<<"  "<<z<<std::endl;
         //std::cout<<count<<std::endl;
 
         if(count==4)
         {
-    
-            auto id = pts->InsertNextPoint( x, y, z );
-            //std::cout<<"Id :"<<id<<std::endl;
-            //std::cout<<"Inserted point"<<pts->GetPoint(id)[0]<<" "<<pts->GetPoint(id)[1]<<" "<<pts->GetPoint(id)[2]<<std::endl;
-
+            if(id>=startPtId && id<=endPtId)
+            {
+                pts->InsertNextPoint( x, y, z );
+                //std::cout<<"Id :"<<id<<std::endl;
+                //std::cout<<"Inserted point"<<pts->GetPoint(id)[0]<<" "<<pts->GetPoint(id)[1]<<" "<<pts->GetPoint(id)[2]<<std::endl;
+            }
+            
             if(id%10000==0)
                 std::cout<<"Reading point "<<id<<"\r"<<std::flush;
+            
         }
     }
     file.close();
@@ -180,11 +186,11 @@ int main(int argc, char **argv)
     auto probed = probe->GetOutput();
     
     //saving
-    std::cout<<"Saving fibers and labels"<<std::endl;
-    vtkSmartPointer<vtkPolyDataWriter> pdwr =     vtkSmartPointer<vtkPolyDataWriter> ::New();
-    pdwr->SetFileName(outvtk_filename);
-    pdwr->SetInputData(probed);
-    pdwr->Write();
+//    std::cout<<"Saving fibers and labels"<<std::endl;
+//    vtkSmartPointer<vtkPolyDataWriter> pdwr =     vtkSmartPointer<vtkPolyDataWriter> ::New();
+//    pdwr->SetFileName(outvtk_filename);
+//    pdwr->SetInputData(probed);
+//    pdwr->Write();
     
     std::ofstream outfile_fibers;
     std::ofstream outfile_labels;
@@ -197,10 +203,10 @@ int main(int argc, char **argv)
 
         double *fiber = probed->GetPointData()->GetArray(fiberarray_name)->GetTuple(i);
         double length = sqrt(fiber[0]*fiber[0]+fiber[1]*fiber[1]+fiber[2]*fiber[2]);
-        outfile_fibers<<i+1<<" "<<fiber[0]/length<<" "<<fiber[1]/length<<" "<<fiber[2]/length<<std::endl;
+        outfile_fibers<<i+startPtId<<" "<<fiber[0]/length<<" "<<fiber[1]/length<<" "<<fiber[2]/length<<std::endl;
         
         auto label = probed->GetPointData()->GetArray("Labels")->GetTuple1(i);
-        outfile_labels<<i+1<<" "<<label<<std::endl;
+        outfile_labels<<i+startPtId<<" "<<label<<std::endl;
     }
     outfile_fibers.close();
     outfile_labels.close();
