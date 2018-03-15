@@ -15,7 +15,7 @@ include_directories(${VMTK_INCLUDES})
 
 link_directories(${VMTK_LIBRARIES})
 
-set(VMTK_LIBRARIES 
+set(VMTK_LIBS
 vtkvmtkCommon
 vtkvmtkIO
 vtkvmtkITK
@@ -33,11 +33,11 @@ vtkvmtkMisc
 
 
 ADD_EXECUTABLE(SmoothMeshThroughImage ${MYCOMMON_FILES} SmoothMeshTrhoughImage.cpp)
-TARGET_LINK_LIBRARIES(SmoothMeshThroughImage ${ITK_LIBRARIES} ${VTK_LIBRARIES}  ${VMTK_LIBRARIES})
+TARGET_LINK_LIBRARIES(SmoothMeshThroughImage ${ITK_LIBRARIES} ${VTK_LIBRARIES}  ${VMTK_LIBS})
 
 
 ADD_EXECUTABLE(GenerateAtrialLayers ${MYCOMMON_FILES} GenerateAtrialLayers.cpp)
-TARGET_LINK_LIBRARIES(GenerateAtrialLayers  ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${VMTK_LIBRARIES})
+TARGET_LINK_LIBRARIES(GenerateAtrialLayers  ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${VMTK_LIBS})
 
 
 
