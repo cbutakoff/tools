@@ -9,6 +9,7 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataWriter.h>
+#include <vtkPointLocator.h>
 
 #include <iostream>
 #include <stdlib.h>
@@ -152,16 +153,15 @@ int main(int argc, char **argv)
         auto count = sscanf(line.c_str(), "%ld%lf%lf%lf", &id, &x, &y, &z);
         id; //stored ids are from 1
         
-        //std::cout<<"Values "<<id<<"  "<<x<<"  "<<y<<"  "<<z<<std::endl;
-        //std::cout<<count<<std::endl;
+//        std::cout<<"Values "<<id<<"  "<<x<<"  "<<y<<"  "<<z<<std::endl;
+//        std::cout<<count<<std::endl;
 
         if(count==4)
         {
             if(id>=startPtId && id<=endPtId)
             {
                 pts->InsertNextPoint( x, y, z );
-                //std::cout<<"Id :"<<id<<std::endl;
-                //std::cout<<"Inserted point"<<pts->GetPoint(id)[0]<<" "<<pts->GetPoint(id)[1]<<" "<<pts->GetPoint(id)[2]<<std::endl;
+//                std::cout<<"Inserted point"<<x<<" "<<y<<" "<<z<<std::endl;
             }
             
             if(id%10000==0)
@@ -192,6 +192,11 @@ int main(int argc, char **argv)
 //    pdwr->SetInputData(probed);
 //    pdwr->Write();
     
+    vtkSmartPointer<vtkPointLocator> loc =     vtkSmartPointer<vtkPointLocator>::New();
+    loc->SetDataSet(mesh);
+    loc->BuildLocator();
+    
+    
     std::ofstream outfile_fibers;
     std::ofstream outfile_labels;
     outfile_fibers.open(out_fibers_filename);
@@ -203,9 +208,18 @@ int main(int argc, char **argv)
 
         double *fiber = probed->GetPointData()->GetArray(fiberarray_name)->GetTuple(i);
         double length = sqrt(fiber[0]*fiber[0]+fiber[1]*fiber[1]+fiber[2]*fiber[2]);
-        outfile_fibers<<i+startPtId<<" "<<fiber[0]/length<<" "<<fiber[1]/length<<" "<<fiber[2]/length<<std::endl;
-        
         auto label = probed->GetPointData()->GetArray("Labels")->GetTuple1(i);
+        
+        if(length==0) 
+        {  //interpolation failed, the point is outside, use nearest neighbor
+            length=1;
+            auto closest_ptid = loc->FindClosestPoint( probed->GetPoint(i) );
+            std::cout<<std::endl<<"Point (base 1):"<<i+startPtId<<" is outside of the mesh. Using data from the nearest point (base 0):"<<closest_ptid<<std::endl;
+            fiber = fibers->GetTuple(closest_ptid);
+            label = lbl->GetTuple1(closest_ptid);
+        }
+        
+        outfile_fibers<<i+startPtId<<" "<<fiber[0]/length<<" "<<fiber[1]/length<<" "<<fiber[2]/length<<std::endl;                
         outfile_labels<<i+startPtId<<" "<<label<<std::endl;
     }
     outfile_fibers.close();
