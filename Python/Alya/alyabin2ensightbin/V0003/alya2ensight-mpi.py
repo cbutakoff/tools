@@ -338,6 +338,7 @@ def write_geometry(number_of_blocks):
 
 
 def write_variable(varname, iteration, number_of_blocks):
+    print("Writing variable: ",varname)
     data = read_alya_variable(varname, iteration, number_of_blocks)
 
     
@@ -355,6 +356,7 @@ def write_variable(varname, iteration, number_of_blocks):
             print('Data22write: ',data2write.shape)
             print('Ravel: ',data['values']['tuples'].ravel().shape)
             print('Corresp:',inverse_pt_correspondence.shape )
+            print("Writing variable: ",varname)
             data2write[inverse_pt_correspondence] = data['values']['tuples'].ravel()
             f.write( data2write )  #z coord    
         elif data['variabletype']=='vector':
