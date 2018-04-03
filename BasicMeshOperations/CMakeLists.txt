@@ -57,6 +57,7 @@ AddFibers2Mesh
 SampleImage2UG
 InterpolateFibers
 RelabelSurfaceMesh
+ThresholdDS
 )
 
 set(VTKEIGEN_PROGRAMS 
