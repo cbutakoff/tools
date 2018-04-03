@@ -56,6 +56,7 @@ CreatePixelatedTetMesh
 AddFibers2Mesh
 SampleImage2UG
 InterpolateFibers
+RelabelSurfaceMesh
 )
 
 set(VTKEIGEN_PROGRAMS 
