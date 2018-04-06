@@ -233,6 +233,16 @@ int main(int argc, char** argv)
         }
     
     }
+
+    //store the labels 1
+    std::ofstream file1((std::string(outfile)+".1").c_str());
+    for(vtkIdType i=0; i<labeldata.size(); i++)
+    {
+        BscEntry entry = labeldata[i];
+        file1<<i+1<<" "<<entry.id<<LINEBREAK;            
+    }
+
+
     
     if(volmeshout!=NULL)
     {
