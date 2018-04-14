@@ -239,7 +239,7 @@ int main(int argc, char** argv)
     for(vtkIdType i=0; i<labeldata.size(); i++)
     {
         BscEntry entry = labeldata[i];
-        file1<<i+1<<" "<<entry.id<<LINEBREAK;            
+        file1<<i+1<<" "<<entry.id<<LINEBREAK;        
     }
 
 
@@ -250,7 +250,7 @@ int main(int argc, char** argv)
          
         
         if(vtkoutput_mesh)
-        {
+        {   
             vtkSmartPointer<vtkDataSetWriter> wrwr = vtkSmartPointer<vtkDataSetWriter>::New();
             CommonTools::AssociateProgressFunction(wrwr);
             wrwr->SetFileTypeToBinary();
@@ -273,8 +273,8 @@ int main(int argc, char** argv)
                 file<<i+1<<" "<<
                         entry.pt1+1<<" "<<
                         entry.pt2+1<<" "<<
-                        entry.pt3+1<<" "<<
-                        entry.tet_id+1<<LINEBREAK;
+                        entry.pt3+1<<" "<<LINEBREAK;
+//                        entry.tet_id+1<<LINEBREAK;
 
 
             }            
