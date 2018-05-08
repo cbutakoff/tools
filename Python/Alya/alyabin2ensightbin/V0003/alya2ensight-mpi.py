@@ -366,7 +366,7 @@ def write_variable(varname, iteration, number_of_blocks):
             #vy_n1 vy_n2 ... vy_nn nn floats
             #vz_n1 vz_n2 ... vz_nn nn floats
             #Rearrange the  matrix
-            data2write = np.zeros(inverse_pt_correspondence.max()+1, 3, dtype = ensight_float_type)
+            data2write = np.zeros( [inverse_pt_correspondence.max()+1, 3], dtype = ensight_float_type)
             data2write[inverse_pt_correspondence,:] = data['values']['tuples']
             f.write( data2write.ravel(order='F').astype(ensight_float_type) )  #z coord    
         else:
@@ -419,9 +419,9 @@ if my_rank == 0:
 # In[64]:
 
 
-if my_rank == 0:
+#if my_rank == 0:
     #this script does not handle boundaries yet
-    assert (partitions[:,3]==0).all(),  'this script does not handle boundaries yet'
+    #assert (partitions[:,3]==0).all(),  'this script does not handle boundaries yet'
 
 
 # # Identify variables
