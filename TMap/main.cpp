@@ -10,12 +10,8 @@
 
 int main(int argc, char* argv[])
 {
-    //const char* inputmesh_filename = "/home/costa/Dropbox/Ideas/T-Map/mediummesh.vtk";
-    const char* outputmesh_filename = "/home/costa/Dropbox/Ideas/T-Map/out.vtk";
-    //const char* inputmesh_filename = "/home/costa/Dropbox/Ideas/atrial_trunks/flat_1.vtk";
-    const char* inputmesh_filename = "/home/costa/Dropbox/Ideas/T-Map/sample.vtk";
-    //const char* inputmesh_filename = "/home/costa/Dropbox/Ideas/T-Map/smallmesh1.vtk";
-    //const char* inputmesh_filename = "/home/costa/Data/code/CPP/bin/tools-private/bin/tri.vtk";
+    const char* outputmesh_filename = "out.vtk";
+    const char* inputmesh_filename = "sample.vtk";
 
     vtkSmartPointer<vtkPolyDataReader> pdr = vtkSmartPointer<vtkPolyDataReader>::New();
     pdr->SetFileName(inputmesh_filename);
@@ -52,16 +48,6 @@ int main(int argc, char* argv[])
         T.AddLandmarkConstraint(487,0.5,-0.5); //for sample.vtk
 
 
-        //T.AddLandmarkConstraint(6,0.2,0.2); //for mediummesh.vtk
-        //T.AddLandmarkConstraint(751,0.5,0.5); //for flat_1.vtk
-        //T.AddLandmarkConstraint(7385,-0.5,-0.5); //for flat_1.vtk
-        //T.AddLandmarkConstraint(5250,-0.5,0.5); //for flat_1.vtk
-        //T.AddLandmarkConstraint(4070,0.5,-0.5); //for flat_1.vtk
-        //T.AddLandmarkConstraint(761,0.05,-0.15); //for atrium.vtk
-        //T.AddLandmarkConstraint(11825,-0.5,0.0); //for atrium.vtk
-        //T.AddLandmarkConstraint(12345,-0.5,0.4); //for atrium.vtk
-        //T.AddLandmarkConstraint(2608,0.5,0.25); //for atrium.vtk
-        //T.AddLandmarkConstraint(3767,0.5,-0.25); //for atrium.vtk
         T.SetMaxNumberOfIterations(500);
         T.Update();
         
