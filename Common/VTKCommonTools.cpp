@@ -404,7 +404,10 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
     ele_file.open(outfile_elements.c_str(),ios::trunc);
     ele_file<< "ELEMENTS"<<std::endl;
 
+    /*https://cgns.github.io/CGNS_docs_current/sids/conv.html */
     double hex_order[8] = {0,1,3,2,4,5,6,7};
+    double wedge_order[6] = {2-1,3-1,1-1,6-1,4-1,5-1};
+    double pyramid_order[5] = {1-1,4-1,2-1,3-1,5-1};
 
     for(int i=0; i<volmesh->GetNumberOfCells(); i++)
     {
@@ -435,26 +438,31 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
 
         else if(cell->GetNumberOfPoints()==6)
         {
-            if(correct_orientation)
-                cout<<"Cell "<<i<<" has "<<cell->GetNumberOfPoints()<<" vertices. No rule to correct orientation."<<std::endl;
 
             ele_file<<i+1;
-            for(int k=0; k<6; k++)
-                ele_file <<" "<< cell->GetPointId(k)+1;
+            if(correct_orientation)
+                for(int k=0; k<6; k++)
+                    ele_file <<" "<< cell->GetPointId(wedge_order[k])+1;
+            else
+                for(int k=0; k<6; k++)
+                    ele_file <<" "<< cell->GetPointId(k)+1;
+
+            ele_file<<LINEBREAK; 
+        }
+        else if(cell->GetNumberOfPoints()==5)
+        {
+            ele_file<<i+1;
+            if(correct_orientation)
+                for(int k=0; k<cell->GetNumberOfPoints(); k++)
+                    ele_file <<" "<< cell->GetPointId(pyramid_order[k])+1;
+            else
+                for(int k=0; k<cell->GetNumberOfPoints(); k++)
+                    ele_file <<" "<< cell->GetPointId(k)+1;
 
             ele_file<<LINEBREAK; 
         }
         else
-        {
-            if(correct_orientation)
-                cout<<"Cell "<<i<<" has "<<cell->GetNumberOfPoints()<<" vertices. No rule to correct orientation."<<std::endl;
-
-            ele_file<<i+1;
-            for(int k=0; k<cell->GetNumberOfPoints(); k++)
-                ele_file <<" "<< cell->GetPointId(k)+1;
-
-            ele_file<<LINEBREAK; 
-        }
+            cout<<"element "<<i<<" has "<<cell->GetNumberOfPoints()<<" points and is not supported."<<endl;
 
     }
 
