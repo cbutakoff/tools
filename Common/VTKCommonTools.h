@@ -81,8 +81,8 @@ namespace CommonTools {
     //! identify VTK data type
     VTKSurfaceMeshFormats GetTypeOfVTKData(const char *shapeFileName);
 
-    void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale);
-    void SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix, float scale);
+    void SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale, bool correct_orientation=true);
+    void SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix, float scale, bool correct_orientation=true);
 
 }
 
