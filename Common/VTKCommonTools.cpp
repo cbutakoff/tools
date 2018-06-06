@@ -350,7 +350,7 @@ CommonTools::AssociateProgressFunction(vtkAlgorithm* algorithm, vtkCallbackComma
 
 
 
-void CommonTools::SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale)
+void CommonTools::SaveVolMeshBSC(const char* infile, const char* outfile_prefix, float scale, bool correct_orientation)
 {
     vtkSmartPointer<vtkDataSetReader> reader = vtkSmartPointer<vtkDataSetReader>::New();
     reader->SetFileName(infile);
@@ -365,15 +365,17 @@ void CommonTools::SaveVolMeshBSC(const char* infile, const char* outfile_prefix,
 
 
 
-void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix, float scale)
+void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix, float scale, bool correct_orientation)
 {
     std::string outfile_nodes(outfile_prefix);
     std::string outfile_elements(outfile_prefix);
     std::string outfile_gradient(outfile_prefix);
+    std::string outfile_elementtype(outfile_prefix);
     outfile_nodes += ".node";
     outfile_elements += ".ele";
     outfile_gradient += ".grad";
-    
+    outfile_elementtype += ".elem_type";    
+
     std::cout<<outfile_nodes<<std::endl;
     std::cout<<outfile_elements<<std::endl;
     std::cout<<"DON'T FORGET TO CHECK ELEMENT ORIENTATION!"<<std::endl;
@@ -402,11 +404,58 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
     ele_file.open(outfile_elements.c_str(),ios::trunc);
     ele_file<< "ELEMENTS"<<std::endl;
 
+    double hex_order[8] = {0,1,3,2,4,5,6,7};
+
     for(int i=0; i<volmesh->GetNumberOfCells(); i++)
     {
         vtkCell *cell = volmesh->GetCell(i);
-        ele_file<<i+1<<" "<< cell->GetPointId(3)+1 <<" "<< cell->GetPointId(1)+1 << " "
-                <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(0)+1<<LINEBREAK; //flipping elements
+
+        if(cell->GetNumberOfPoints()==4)
+        {
+            if( correct_orientation )
+                ele_file<<i+1<<" "<< cell->GetPointId(3)+1 <<" "<< cell->GetPointId(1)+1 << " "
+                    <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(0)+1<<LINEBREAK; //flipping elements
+            else
+                ele_file<<i+1<<" "<< cell->GetPointId(0)+1 <<" "<< cell->GetPointId(1)+1 << " "
+                    <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(3)+1<<LINEBREAK; //flipping elements
+        }
+
+        else if(cell->GetNumberOfPoints()==8)
+        {
+            ele_file<<i+1;
+            if( correct_orientation )
+                for(int k=0; k<4; k++)
+                    ele_file <<" "<< cell->GetPointId(hex_order[k])+1;
+            else
+                for(int k=0; k<4; k++)
+                    ele_file <<" "<< cell->GetPointId(k)+1;
+
+            ele_file<<LINEBREAK; 
+        }
+
+        else if(cell->GetNumberOfPoints()==6)
+        {
+            if(correct_orientation)
+                cout<<"Cell "<<i<<" has "<<cell->GetNumberOfPoints()<<" vertices. No rule to correct orientation."<<std::endl;
+
+            ele_file<<i+1;
+            for(int k=0; k<6; k++)
+                ele_file <<" "<< cell->GetPointId(k)+1;
+
+            ele_file<<LINEBREAK; 
+        }
+        else
+        {
+            if(correct_orientation)
+                cout<<"Cell "<<i<<" has "<<cell->GetNumberOfPoints()<<" vertices. No rule to correct orientation."<<std::endl;
+
+            ele_file<<i+1;
+            for(int k=0; k<cell->GetNumberOfPoints(); k++)
+                ele_file <<" "<< cell->GetPointId(k)+1;
+
+            ele_file<<LINEBREAK; 
+        }
+
     }
 
     ele_file<< "END_ELEMENTS"<<std::endl;
@@ -429,4 +478,23 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
 
         grad_file.close();
     }
+
+    {
+        std::ofstream type_file;
+        std::cout<<"Saving element types (number of vertices per element)"<<std::endl;
+        type_file.open(outfile_elementtype.c_str(),ios::trunc);
+
+
+        for(int i=0; i<volmesh->GetNumberOfCells(); i++)
+        {
+            vtkCell *cell = volmesh->GetCell(i);
+
+            type_file<<i+1<<" "<< cell->GetNumberOfPoints()<<LINEBREAK; 
+
+        }
+
+        type_file.close();
+
+    }
+
 }
