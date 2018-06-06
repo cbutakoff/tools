@@ -30,10 +30,12 @@ PURPOSE.  See the above copyright notice for more information.
 
     
 typedef struct __bsc_entry {
+    int nvertices;
     vtkIdType id;
     vtkIdType pt1;
     vtkIdType pt2;
     vtkIdType pt3;
+    vtkIdType pt4;
     vtkIdType tet_id;
 } BscEntry;
 
@@ -44,8 +46,9 @@ typedef struct __bsc_entry {
     
 int main(int argc, char** argv)
 {
-    std::cout<<"exec volmesh.vtk surfmesh.vtk out_labels.txt arrayname volmesh_out.vtk [scale]"<<std::endl;
+    std::cout<<"exec volmesh.vtk surfmesh.vtk out_labels.txt arrayname volmesh_out.vtk scale correct_orientation(0|1)"<<std::endl;
     std::cout<<"Scale - rescale mesh by this factor, !!! for now works only for ALYA, for everything else put 1"<<std::endl;
+    std::cout<<"correct_orientation - 1 or 0 whether to correct cell orientation or not"<<std::endl;
     std::cout<<"Labels must be celldata"<<std::endl;
     std::cout<<"Add extension .bsc to volmesh_out to get mesh in Alya format"<<std::endl;
     std::cout<<"Skip extension in volmesh_out to get mesh in Elmer format"<<std::endl;
@@ -61,9 +64,8 @@ int main(int argc, char** argv)
     const char* array_name = argv[4];
     const char* volmeshout = argv[5];
     
-    float scale = 1;
-    if (argv[6]!= NULL)
-        scale = atof(argv[6]);
+    float scale = atof(argv[6]);
+    bool correct_orientation = atoi(argv[7])==1;
     
     
     std::cout<<"Volumetric mesh: "<<volmesh_file<<std::endl;
@@ -72,6 +74,10 @@ int main(int argc, char** argv)
     std::cout<<"Label array: "<<array_name<<std::endl;
     std::cout<<"Output mesh: "<<volmeshout<<std::endl;
     std::cout<<"Scale: "<<scale<<std::endl;
+    if(correct_orientation)
+        std::cout<<"Correcting orientation: ON"<<std::endl;
+    else
+        std::cout<<"Correcting orientation: OFF"<<std::endl;
     
     
     bool vtkoutput_mesh = false;
@@ -170,27 +176,56 @@ int main(int argc, char** argv)
         vtkCell* cell = surfmesh->GetCell(i);
         BscEntry entry;
         
-        if( cell->GetNumberOfPoints()!=3 )
-        {
-            std::cout<<"Face does not have 3 vertices. Id= "<<i<<std::endl;
-            continue;
-        }
+        //if( cell->GetNumberOfPoints()!=3 )
+        //{
+        //    std::cout<<"Face does not have 3 vertices. Id= "<<i<<std::endl;
+        //    continue;
+        //}
 
         entry.id = scalars->GetValue(i);
         entry.pt1 = ptloc->FindClosestPoint(cell->GetPoints()->GetPoint(0));
         entry.pt2 = ptloc->FindClosestPoint(cell->GetPoints()->GetPoint(1));
         entry.pt3 = ptloc->FindClosestPoint(cell->GetPoints()->GetPoint(2));
+        if( cell->GetNumberOfPoints()==4 )
+        {
+            entry.pt4 = ptloc->FindClosestPoint(cell->GetPoints()->GetPoint(3));
+            entry.nvertices=4;
+        }   
+        else if(cell->GetNumberOfPoints()==3)
+        {
+            entry.nvertices=3;
+        }
+        else 
+        {
+            cout<<"cell "<<i<<" has "<<cell->GetNumberOfPoints()<<" vertices, it is unsupported"<<endl;
+            exit(-1);
+        }
         
+
+
         double pt1[3];
-        volmesh->GetPoint(entry.pt1, pt1);
         double pt2[3];
-        volmesh->GetPoint(entry.pt2, pt2);
         double pt3[3];
+        double pt4[3];
+        volmesh->GetPoint(entry.pt1, pt1);
+        volmesh->GetPoint(entry.pt2, pt2);
         volmesh->GetPoint(entry.pt3, pt3);
+    
+        if( entry.nvertices==4 )
+        {
+            volmesh->GetPoint(entry.pt4, pt4);            
+        }
+        else
+        {
+            pt4[0]=0;
+            pt4[1]=0;
+            pt4[2]=0;
+        }
+
         double c[3];
-        c[0] = (pt1[0]+pt2[0]+pt3[0])/3;
-        c[1] = (pt1[1]+pt2[1]+pt3[1])/3;
-        c[2] = (pt1[2]+pt2[2]+pt3[2])/3;
+        c[0] = (pt1[0]+pt2[0]+pt3[0]+pt4[0])/entry.nvertices;
+        c[1] = (pt1[1]+pt2[1]+pt3[1]+pt4[1])/entry.nvertices;
+        c[2] = (pt1[2]+pt2[2]+pt3[2]+pt4[2])/entry.nvertices;
         
         vtkIdType cellid = cellloc->FindCell(c);
         
@@ -224,8 +259,12 @@ int main(int argc, char** argv)
         file<<entry.id<<" "<<
                 entry.pt1+1<<" "<<
                 entry.pt2+1<<" "<<
-                entry.pt3+1<<" "<<
-                entry.tet_id+1<<LINEBREAK;
+                entry.pt3+1<<" ";
+
+        if( entry.nvertices==4 )
+            file<<entry.pt4+1<<" ";
+
+        file<<entry.tet_id+1<<LINEBREAK;
         
         if(volmeshout!=NULL)
         {
@@ -261,24 +300,38 @@ int main(int argc, char** argv)
         else if(alyaoutput_mesh)
         {
             std::cout<<"Writing alya format"<<std::endl;
-            CommonTools::SaveVolMeshBSC(volmesh, volmeshout, scale);      
+            CommonTools::SaveVolMeshBSC(volmesh, volmeshout, scale, correct_orientation);      
             
             //add the boundary
             char boundary_file[256];
+            char boundary_elemtype_file[256];
             sprintf(boundary_file, "%s.bound", volmeshout);
+            sprintf(boundary_elemtype_file, "%s.bound_type", volmeshout);
             std::ofstream file(boundary_file);
+            std::ofstream file_elemtype(boundary_elemtype_file);
+
             for(vtkIdType i=0; i<labeldata.size(); i++)
             {
                 BscEntry entry = labeldata[i];
                 file<<i+1<<" "<<
                         entry.pt1+1<<" "<<
                         entry.pt2+1<<" "<<
-                        entry.pt3+1<<" "<<LINEBREAK;
-//                        entry.tet_id+1<<LINEBREAK;
+                        entry.pt3+1<<" ";
 
+                if( entry.nvertices==4 )
+                    file<<entry.pt4+1;
+        
+
+                file<<LINEBREAK;
+
+                file_elemtype<<i+1<<" "<<entry.nvertices<<LINEBREAK;
 
             }            
             
+
+
+            
+
         }
         else //Write elmer mesh
         {
@@ -303,10 +356,10 @@ int main(int argc, char** argv)
             for(vtkIdType i=0; i<volmesh->GetNumberOfCells(); i++)
             {
                 vtkCell* cell = volmesh->GetCell(i);
-                ele_file<<i+1<<" 1 504 "<<cell->GetPointId(0)+1<<" "<<
-                        cell->GetPointId(1)+1<<" "<<
-                        cell->GetPointId(2)+1<<" "<<
-                        cell->GetPointId(3)+1<<std::endl;
+                ele_file<<i+1<<" 1 504";
+                for(int k=0; k<cell->GetNumberOfPoints(); k++)                
+                    ele_file<<" "<<cell->GetPointId(k)+1;
+                ele_file<<std::endl;
             }
             
             std::string bound_filename =  "mesh.boundary";
@@ -319,7 +372,11 @@ int main(int argc, char** argv)
                         entry.tet_id+1<<" 0 303 "<<
                         entry.pt1+1<<" "<<
                         entry.pt2+1<<" "<<
-                        entry.pt3+1<<std::endl;
+                        entry.pt3+1;
+                if( entry.nvertices==4 )
+                    bound_file<<" "<<entry.pt4+1;
+
+                bound_file<<std::endl;
             }
         }
     }
