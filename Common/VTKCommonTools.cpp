@@ -492,7 +492,7 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
         std::cout<<"Saving element types (number of vertices per element)"<<std::endl;
         type_file.open(outfile_elementtype.c_str(),ios::trunc);
 
-
+        type_file<< "TYPES"<<std::endl;
         for(int i=0; i<volmesh->GetNumberOfCells(); i++)
         {
             vtkCell *cell = volmesh->GetCell(i);
@@ -509,6 +509,7 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
                 cout<<"element "<<i<<" has "<<cell->GetNumberOfPoints()<<" vertices, unsupported"<<endl;
 
         }
+        type_file<< "END_TYPES"<<std::endl;
 
         type_file.close();
 
