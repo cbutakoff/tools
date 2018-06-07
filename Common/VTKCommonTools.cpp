@@ -496,8 +496,17 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
         for(int i=0; i<volmesh->GetNumberOfCells(); i++)
         {
             vtkCell *cell = volmesh->GetCell(i);
-
-            type_file<<i+1<<" "<< cell->GetNumberOfPoints()<<LINEBREAK; 
+            
+            if(cell->GetNumberOfPoints()==4) //TET04
+                type_file<<i+1<<" "<< 30<<LINEBREAK;
+            else if(cell->GetNumberOfPoints()==8) //HEX08
+                type_file<<i+1<<" "<< 37<<LINEBREAK;
+            else if(cell->GetNumberOfPoints()==5) //PYR05
+                type_file<<i+1<<" "<< 32<<LINEBREAK;
+            else if(cell->GetNumberOfPoints()==6) //PEN06
+                type_file<<i+1<<" "<< 34<<LINEBREAK;
+            else
+                cout<<"element "<<i<<" has "<<cell->GetNumberOfPoints()<<" vertices, unsupported"<<endl;
 
         }
 
