@@ -405,6 +405,7 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
     ele_file<< "ELEMENTS"<<std::endl;
 
     /*https://cgns.github.io/CGNS_docs_current/sids/conv.html */
+    double tetra_order[4] = {1-1, 3-1, 4-1, 2-1};
     double hex_order[8] = {0,1,3,2,4,5,6,7};
     double wedge_order[6] = {2-1,3-1,1-1,6-1,4-1,5-1};
     double pyramid_order[5] = {1-1,4-1,2-1,3-1,5-1};
@@ -416,11 +417,13 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
         if(cell->GetNumberOfPoints()==4)
         {
             if( correct_orientation )
-                ele_file<<i+1<<" "<< cell->GetPointId(3)+1 <<" "<< cell->GetPointId(1)+1 << " "
-                    <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(0)+1<<LINEBREAK; //flipping elements
+//                ele_file<<i+1<<" "<< cell->GetPointId(3)+1 <<" "<< cell->GetPointId(1)+1 << " "
+//                    <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(0)+1<<LINEBREAK; //flipping elements
+                for(int k=0; k<4; k++)
+                    ele_file <<" "<< cell->GetPointId(tetra_order[k])+1;
             else
-                ele_file<<i+1<<" "<< cell->GetPointId(0)+1 <<" "<< cell->GetPointId(1)+1 << " "
-                    <<cell->GetPointId(2)+1<<" "<<cell->GetPointId(3)+1<<LINEBREAK; //flipping elements
+                for(int k=0; k<4; k++)
+                    ele_file <<" "<< cell->GetPointId(k)+1;
         }
 
         else if(cell->GetNumberOfPoints()==8)
