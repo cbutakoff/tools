@@ -427,10 +427,10 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
         {
             ele_file<<i+1;
             if( correct_orientation )
-                for(int k=0; k<4; k++)
+                for(int k=0; k<8; k++)
                     ele_file <<" "<< cell->GetPointId(hex_order[k])+1;
             else
-                for(int k=0; k<4; k++)
+                for(int k=0; k<8; k++)
                     ele_file <<" "<< cell->GetPointId(k)+1;
 
             ele_file<<LINEBREAK; 
