@@ -263,6 +263,7 @@ def write_geometry(number_of_blocks):
     connectivity = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNODS.post.alyabin'),    \
                                    number_of_blocks, alya_id_type)
 
+
     #np.savetxt( 'connectivity.txt', connectivity['tuples'].astype(np.int32), fmt='%d' )
     #np.savetxt( 'inverse.txt', inverse_pt_correspondence.astype(np.int32), fmt='%d' )
 
@@ -274,14 +275,24 @@ def write_geometry(number_of_blocks):
         connectivity['tuples'][a:b,:] = connectivity['tuples'][a:b,:] + npts
         a = b
         npts = npts + point_coordinates['tuples_per_block'][i]
+
+    print("Connectivty dimensions:", connectivity['tuples'].shape)
         
 
     #assume all elements are the same
-    element_type = b'hexa8';
-    if element_types['tuples'][0] == 37: #alya hex08 element
-        element_type = b'hexa8';
-    elif element_types['tuples'][0] == 30: #alya tet04 element
-        element_type = b'tetra4';
+#    element_type = b'hexa8';
+#    if element_types['tuples'][0] == 37: #alya hex08 element
+#        element_type = b'hexa8';
+#    elif element_types['tuples'][0] == 30: #alya tet04 element
+#        element_type = b'tetra4';
+#    elif element_types['tuples'][0] == 32: #alya pyr05 element
+#        element_type = b'pyramid5';
+#    elif element_types['tuples'][0] == 34: #alya pen06 element
+#        element_type = b'penta6';
+    
+    #Ensight groups elements by type. Create grouping
+    element_alya2ensi = {37:{'Name':b'hexa8','Vertices':8}, 30:{'Name':b'tetra4','Vertices':4}, \
+                         32:{'Name':b'pyramid5','Vertices':5}, 34:{'Name':b'penta6','Vertices':6}}
     
 
     #print(f'Id {connectivity["tuples"][0,0]} transforms to {inverse_pt_correspondence[connectivity["tuples"][0,:]]}'  )
@@ -327,17 +338,83 @@ def write_geometry(number_of_blocks):
         f.write( point_coordinates[:,1].ravel().astype(ensight_float_type) )  #y coord
         f.write( point_coordinates[:,2].ravel().astype(ensight_float_type) )  #z coord
 
-        f.write(element_type.ljust(80))  #tetra4 or hexa8
-        number_of_elements = connectivity.shape[0]
-        f.write(np.array([number_of_elements], dtype=ensight_id_type))   #int
-        f.write(np.arange(1,number_of_elements+1, dtype=ensight_id_type))
-        f.write(connectivity.ravel().astype(ensight_id_type))
+        for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
+            print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
+
+            element_locations = np.where( element_types['tuples']==elem_alya_id )[0] #returns 2 sets, take first
+        
+        
+            elements = connectivity[element_locations,0:elem_ensi_id['Vertices']]
+            #print("Locations: ", element_locations)
+
+        
+            number_of_elements = elements.shape[0]
+            print("Number of elements = ",number_of_elements)
+
+
+            f.write(elem_ensi_id['Name'].ljust(80))  #tetra4 or hexa8
+            f.write( np.array([number_of_elements], dtype=ensight_id_type) )   #int
+            f.write( np.array( element_locations, dtype=ensight_id_type)+1 )
+            f.write( elements.ravel().astype(ensight_id_type) )
+
+        
+
 
 
 # In[15]:
 
+def write_material(number_of_blocks):
+    #this is per element variable
+    materials_file = os.path.join(inputfolder,f'{project_name}-LMATE.post.alyabin')
 
-def write_variable(varname, iteration, number_of_blocks):
+    if not os.path.isfile( materials_file ) :
+        return                
+        
+    materials = read_alya_array(materials_file, number_of_blocks, alya_id_type)
+
+    print("Writing variable: LMATE")
+
+    
+    #variable ensight
+    fmt = '%s.ensi.%s-'+f'%0{iterationid_number_of_digits}d';
+    with open( os.path.join(outputfolder, fmt % (project_name, varname, iteration)),'wb') as f:
+        f.write(b'description line 1'.ljust(80))
+        f.write(b'part'.ljust(80))
+        f.write(np.array([1], dtype=ensight_id_type))   #int
+        f.write(b'coordinates'.ljust(80))
+
+
+        if data['variabletype']=='scalar':            
+            data2write = np.zeros(inverse_pt_correspondence.max()+1, dtype = ensight_float_type)
+            print('Data22write: ',data2write.shape)
+            print('Ravel: ',data['values']['tuples'].ravel().shape)
+            print('Corresp:',inverse_pt_correspondence.shape )
+            print("Writing variable: ",varname)
+            data2write[inverse_pt_correspondence] = data['values']['tuples'].ravel()
+            f.write( data2write )  #z coord    
+        elif data['variabletype']=='vector':
+            #data has coordinates in the order [[x,y,z],[x,y,z],...]
+            #expected order of coordinates
+            #vx_n1 vx_n2 ... vx_nn nn floats
+            #vy_n1 vy_n2 ... vy_nn nn floats
+            #vz_n1 vz_n2 ... vz_nn nn floats
+            #Rearrange the  matrix
+            data2write = np.zeros( [inverse_pt_correspondence.max()+1, 3], dtype = ensight_float_type)
+            data2write[inverse_pt_correspondence,:] = data['values']['tuples']
+            f.write( data2write.ravel(order='F').astype(ensight_float_type) )  #z coord    
+        else:
+            assert False, f"Unknown varibale type: {data['variabletype']}"
+        
+        
+        
+        
+    return {'time_real':data['values']['time_real'], 'time_int':data['values']['time_int'],             'variable_type':data['variabletype'], 'variable_association':data['association']}
+
+
+
+
+
+def write_variable_pernode(varname, iteration, number_of_blocks):
     print("Writing variable: ",varname)
     data = read_alya_variable(varname, iteration, number_of_blocks)
 
@@ -493,7 +570,7 @@ inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
 #
 #
 #for index, row in variable_info.iterrows():
-#    info = write_variable(row.field, row.iteration)
+#    info = write_variable_pernode(row.field, row.iteration)
 #    variable_info.loc[index, 'time_real'] = info['time_real']
 #    variable_info.loc[index, 'time_int']= info['time_int']
 #    variable_info.loc[index, 'variabletype'] = info['variable_type']
@@ -538,7 +615,7 @@ def do_work(work):
     if work['filetype'] == 'geometry':
         write_geometry(work['number_of_blocks'])
     elif work['filetype'] == 'variable':
-        info = write_variable(work['name'], work['iteration'], work['number_of_blocks'])
+        info = write_variable_pernode(work['name'], work['iteration'], work['number_of_blocks'])
         info['table_index'] = work['table_index'];       
     else:
         assert False, f'Unsupported file type {work["filetype"]}'
@@ -719,9 +796,9 @@ if my_rank == 0:
             number_of_timesteps = var_data['data'].shape[0]
             f.write(f'number of steps: {number_of_timesteps}\n')
             f.write(f'filename numbers: \n')
-            f.write(str(var_data['data'].time_int.as_matrix())[1:-1]+'\n')
+            f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
             f.write('time values:\n')
-            f.write(str(var_data['data'].time_real.as_matrix())[1:-1]+'\n')
+            f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
 
 
 # In[33]:
