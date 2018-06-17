@@ -278,7 +278,7 @@ int main(int argc, char** argv)
     for(vtkIdType i=0; i<labeldata.size(); i++)
     {
         BscEntry entry = labeldata[i];
-        file1<<i+1<<" "<<entry.id<<LINEBREAK;        
+        file1<<i+1<<" "<<entry.id<<endl;        
     }
 
 
