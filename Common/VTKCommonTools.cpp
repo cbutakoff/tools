@@ -405,7 +405,7 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
     ele_file<< "ELEMENTS"<<std::endl;
 
     /*https://cgns.github.io/CGNS_docs_current/sids/conv.html */
-    double tetra_order[4] = {1-1, 3-1, 4-1, 2-1};
+    double tetra_order[4] = {2-1, 1-1, 3-1, 4-1};
     double hex_order[8] = {0,1,3,2,4,5,6,7};
     double wedge_order[6] = {2-1,1-1,3-1,5-1,4-1,6-1};
     double pyramid_order[5] = {1-1,4-1,2-1,3-1,5-1};
