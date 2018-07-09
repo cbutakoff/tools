@@ -1,22 +1,23 @@
 
 # coding: utf-8
 
-# In[17]:
+# In[1]:
 
 
 import progressbar
 import pandas as pd
 import glob
 import matplotlib.pyplot as plt
+from math import ceil
 
 import numpy
 
 
 density = 1.817  #g/cm3
-flowrate_cm2s = True
+flowrate_cm2s = False
 
 
-# In[18]:
+# In[2]:
 
 
 #find the results file
@@ -35,12 +36,14 @@ if nsi_set_file!=[]:
     print(f'Using input from {nsi_set_file}')    
 
 
-# In[19]:
+# In[5]:
 
 
 if nsi_cvg_file!=[]:
     nsi_cvg = pd.read_csv(nsi_cvg_file, comment='#', header=None, delim_whitespace=True)
-    nsi_cvg = nsi_cvg[nsi_cvg[2]==1]
+    max_inner_iteration = nsi_cvg[nsi_cvg[0]==1][2].max()
+    nsi_cvg = nsi_cvg[nsi_cvg[2]==max_inner_iteration]
+    nsi_cvg.sort_values(by=0)
 
     nsi_cvg['Timestep']=nsi_cvg[3].diff()*1000
     
@@ -54,20 +57,20 @@ if nsi_cvg_file!=[]:
     axes[0].set_ylabel('Residual')
     axes[0].legend()
 
-    axes[1].plot(nsi_cvg.index, nsi_cvg[4], label='Velocity')
-    axes[1].plot(nsi_cvg.index, nsi_cvg[5], label='Pressure')
+    axes[1].plot(nsi_cvg[0], nsi_cvg[4], label='Velocity')
+    axes[1].plot(nsi_cvg[0], nsi_cvg[5], label='Pressure')
     axes[1].set_yscale('log')
     axes[1].set_ylabel('Linf')
     axes[1].set_xlabel('Iteration')
     axes[1].legend()
 
-    axes[2].plot(nsi_cvg.index, nsi_cvg['Timestep'])
+    axes[2].plot(nsi_cvg[0], nsi_cvg['Timestep'])
     axes[2].set_ylabel('Timestep (ms)')
     axes[2].set_xlabel('Iteration')
 
 
 
-    plt.show()
+#    plt.show()
     
 
 
@@ -144,9 +147,9 @@ if nsi_set_file!=[]:
     stats = df_middletime.describe();
 
     m = 3
-    n = df.shape[1]//3
+    n = ceil(df.shape[1]/3)
 
-    fig, axes = plt.subplots(n, m, figsize=(20,5*n))
+    fig, axes = plt.subplots(n, m, figsize=(20,5*n), sharex=True)
 
 
     i =0
