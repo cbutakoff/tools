@@ -14,7 +14,7 @@ import numpy
 
 
 density = 1.817  #g/cm3
-flowrate_cm2s = False
+flowrate_cm2s = True
 
 
 # In[2]:
@@ -145,6 +145,10 @@ if nsi_set_file!=[]:
     mask = (df['Time']>=tmax/2) & (df['Time']<=tmax)
     df_middletime = df.loc[mask,:]
     stats = df_middletime.describe();
+
+    pd.set_option('display.max_rows', 1000)
+    pd.set_option('display.max_columns', 500)
+    print(stats.T)
 
     m = 3
     n = ceil(df.shape[1]/3)
