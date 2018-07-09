@@ -41,8 +41,7 @@ if nsi_set_file!=[]:
 
 if nsi_cvg_file!=[]:
     nsi_cvg = pd.read_csv(nsi_cvg_file, comment='#', header=None, delim_whitespace=True)
-    max_inner_iteration = nsi_cvg[nsi_cvg[0]==1][2].max()
-    nsi_cvg = nsi_cvg[nsi_cvg[2]==max_inner_iteration]
+    nsi_cvg = nsi_cvg[nsi_cvg[2]==1]
     nsi_cvg.sort_values(by=0)
 
     nsi_cvg['Timestep']=nsi_cvg[3].diff()*1000
