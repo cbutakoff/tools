@@ -62,6 +62,7 @@ ThresholdDS
 
 set(VTKEIGEN_PROGRAMS 
 EstimateConductionVelocity
+CalculateFlatteningDistortion
 )
 
 
