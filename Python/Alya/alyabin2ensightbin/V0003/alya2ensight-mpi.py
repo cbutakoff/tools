@@ -196,7 +196,7 @@ def read_alya_array(filename, number_of_blocks, datatype):
             number_of_tuples_in_block = read_one_fp90_record(f, 1, alya_id_type)[0] #stored by alya
             tuples_per_block[i] = number_of_tuples_in_block
 
-            print(f'Block {i}/{number_of_blocks}: {(number_of_tuples_in_block)} tuples\n')
+            #print(f'Block {i}/{number_of_blocks}: {(number_of_tuples_in_block)} tuples\n')
             tuples_temp = read_one_fp90_record(f, number_of_dimensions*number_of_tuples_in_block, datatype)
             
             tuples[c:c+number_of_tuples_in_block, :] =                 np.reshape(tuples_temp, (number_of_tuples_in_block,number_of_dimensions))
@@ -512,16 +512,21 @@ if my_rank == 0:
 
     #remove spaces and empty lines
     field_filelist = [x.strip() for x in field_filelist if x.strip()!='']
+    new_field_filelist = []
 
     #extract array names and iteration numbers 
     fields = []
     iteration_numbers = []
     for filename in field_filelist:
-        s1 = filename.split('-');
-        fields = fields + [s1[1]]
-        iteration_numbers =  iteration_numbers + [ int(s1[2].split('.')[0]) ] #this will be long in python 3
+        if not 'MATER' in filename:
+            s1 = filename.split('-');
+            fields = fields + [s1[1]]
+            iteration_numbers =  iteration_numbers + [ int(s1[2].split('.')[0]) ] #this will be long in python 3
+            new_field_filelist = new_field_filelist + [filename]
+        else:
+            print('*** Skipping MATER file')
 
-    variable_info = pandas.DataFrame({'field':fields, 'iteration':iteration_numbers,'filename':field_filelist})
+    variable_info = pandas.DataFrame({'field':fields, 'iteration':iteration_numbers,'filename':new_field_filelist})
     variable_info['time_int'] = 0
     variable_info['time_real'] = 0
     variable_info['variabletype']=''
