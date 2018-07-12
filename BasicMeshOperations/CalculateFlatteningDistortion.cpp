@@ -7,7 +7,7 @@ PURPOSE.  See the above copyright notice for more information.
 =========================================================================*/
 
 /*! \file
-    \brief Given mesh and flattening, calculates distortion
+    \brief Given mesh and flattening, calculates distortion. Only for triangular cells
 */
 #include "vtkPolyDataReader.h"
 #include "vtkPolyData.h"
@@ -15,15 +15,22 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkType.h"
 #include "vtkSmartPointer.h"
 #include "vtkCell.h"
+#include "vtkFloatArray.h"
+#include "vtkCellData.h"
+
 #include "VTKCommonTools.h"
+
+#include <string>
+
 #include "Eigen/Dense"
 
-
+using namespace std;
 
 double TriangleGradientMatrix(Eigen::Vector2d& q0, Eigen::Vector2d& q1, Eigen::Vector2d& q2, Eigen::MatrixXd& T,  bool normalize=true);
 double TriangleGradientMatrix(vtkPolyData* mesh, vtkIdType pt1id, vtkIdType pt2id, vtkIdType pt3id, Eigen::MatrixXd& T,  bool normalize=true);
 void FlattenTriangle(Eigen::Vector3d& p0, Eigen::Vector3d& p1, Eigen::Vector3d& p2, Eigen::Vector2d& q0, Eigen::Vector2d& q1, Eigen::Vector2d& q2);
 
+void TransformationJacobian(vtkPolyData* src, vtkPolyData* tgt);
 
 
 int main( int argc, char *argv[] )
@@ -49,12 +56,72 @@ int main( int argc, char *argv[] )
     vtkSmartPointer<vtkPolyData> targetPd = vtkSmartPointer<vtkPolyData>::Take(
             CommonTools::LoadShapeFromFile(mesh2d_filename) );
 
+    TransformationJacobian(sourcePd, targetPd);
 
-    //CommonTools::SaveShapeToFile(targetPd,output_filename);
+    CommonTools::SaveShapeToFile(targetPd, output_filename);
 
     return 0;
 }
 
+
+
+
+/*! \brief Calculate the Jacobian of the flattening
+ *  @param src - source mesh
+ *  @param tgt - target mesh, triangles must have the same order and vertices must have the same order of points
+ * 
+ *  @return tgt with 'Jacobian' cell array 
+ */
+void TransformationJacobian(vtkPolyData* src, vtkPolyData* tgt)
+{
+    vtkSmartPointer<vtkFloatArray> J =     vtkSmartPointer<vtkFloatArray> ::New();
+    J->SetNumberOfComponents(1);
+    J->SetNumberOfTuples(src->GetNumberOfCells());
+    J->SetName("Jacobian");
+    
+    for(vtkIdType i=0; i<src->GetNumberOfCells(); i++)
+    {
+        auto cell_src = src->GetCell(i);
+        auto cell_tgt = tgt->GetCell(i);
+        
+        if (cell_src->GetNumberOfPoints()!=3)
+        {
+            std::ostringstream msg;
+            msg<<"Cell "<<i<<" has unsupported number of vertices: "<<cell_src->GetNumberOfPoints()<<endl;
+            cout<<msg.str();
+            throw msg.str(); 
+        }
+        
+        Eigen::MatrixXd T;
+        TriangleGradientMatrix(src, cell_src->GetPointId(0), 
+                cell_src->GetPointId(1), cell_src->GetPointId(2), 
+                T,  true);
+        
+        Eigen::Vector3d u, v;
+        
+        u(0) = cell_tgt->GetPoints()->GetPoint(0)[0];
+        u(1) = cell_tgt->GetPoints()->GetPoint(1)[0];
+        u(2) = cell_tgt->GetPoints()->GetPoint(2)[0];
+
+        v(0) = cell_tgt->GetPoints()->GetPoint(0)[1];
+        v(1) = cell_tgt->GetPoints()->GetPoint(1)[1];
+        v(2) = cell_tgt->GetPoints()->GetPoint(2)[1];
+        
+
+        Eigen::Vector2d dudxy = T*u;
+        Eigen::Vector2d dvdxy = T*v;
+        
+        Eigen::Matrix2d Jm;
+        Jm(0,0) = dudxy(0);
+        Jm(0,1) = dudxy(1);
+        Jm(1,0) = dvdxy(0);
+        Jm(1,1) = dvdxy(1);
+        
+        J->SetTuple1(i, Jm.determinant());
+    }
+    
+    tgt->GetCellData()->AddArray(J);
+}
 
 
 
