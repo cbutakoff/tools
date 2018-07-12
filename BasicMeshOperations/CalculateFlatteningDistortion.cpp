@@ -36,7 +36,7 @@ void TransformationJacobian(vtkPolyData* src, vtkPolyData* tgt);
 int main( int argc, char *argv[] )
 {	
 
-    if( argc < 5 )
+    if( argc < 3 )
     {
             std::cout << "Usage: " << std::endl;
             std::cout << argv[0] << " <original_mesh> <flattened_mesh> <output_flattened_mesh>" << std::endl;
@@ -70,7 +70,7 @@ int main( int argc, char *argv[] )
  *  @param src - source mesh
  *  @param tgt - target mesh, triangles must have the same order and vertices must have the same order of points
  * 
- *  @return tgt with 'Jacobian' cell array 
+ *  @return tgt with 'Jacobian' cell array
  */
 void TransformationJacobian(vtkPolyData* src, vtkPolyData* tgt)
 {
