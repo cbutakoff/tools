@@ -167,6 +167,8 @@ with progressbar.ProgressBar(max_value=filesize) as bar:
     with open(elem_file,'r') as f:
         for line in f:
             pp = line.strip().split()
+            bar.update(bar.value+len(line))
+
             n = len(pp)-1 #1st is the id
 
             types += [eltypes[n]]
