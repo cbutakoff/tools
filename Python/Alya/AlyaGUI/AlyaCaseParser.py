@@ -231,11 +231,18 @@ class AlyaCaseParser():
                     pp = []
                     if len(parts)>1:
                         pp += parts[1:]
+
+                
                     
                     #included files are appended to the end of the deque at this level
                     #if they are too big, they stay as 'include':['filename'] pair
                     if name != 'include':      
-                        if len(pp)!=1:                  
+                        if name=='constant_matrix':
+                            print('****caught, pp = ',pp==[],'\n');
+                            
+                        if pp==[]:
+                            hierarchy[ name ] = ''
+                        elif len(pp)!=1:                  
 	                        hierarchy[ name ] = pp 
                         else:
 	                        hierarchy[ name ] = pp[0] 
