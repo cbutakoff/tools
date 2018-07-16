@@ -217,7 +217,10 @@ class AlyaCaseParser():
                         
                     hierarchy[section_name_withid] = self.__ParseSection(line_subset) 
                     if(options!=[]):
-                        hierarchy[section_name_withid]['OPTIONS'] = options 
+                        if len(options)!=1:
+	                        hierarchy[section_name_withid]['OPTIONS'] = options 
+                        else:
+	                        hierarchy[section_name_withid]['OPTIONS'] = options[0]
                     
                     if(comment!=''):
                         hierarchy[section_name_withid]['COMMENT'] = comment 
@@ -231,8 +234,11 @@ class AlyaCaseParser():
                     
                     #included files are appended to the end of the deque at this level
                     #if they are too big, they stay as 'include':['filename'] pair
-                    if name != 'include':                        
-                        hierarchy[ name ] = pp 
+                    if name != 'include':      
+                        if len(pp)!=1:                  
+	                        hierarchy[ name ] = pp 
+                        else:
+	                        hierarchy[ name ] = pp[0] 
     
                         if(comment!=''):
                             hierarchy[name] += ['$COMMENT: '+str(comment)]
@@ -288,12 +294,19 @@ class AlyaCaseParser():
 
                     tt = key.split('%')
 
-                    lines += [ nspaces + tt[0].upper()+' '+' '.join(options)+'\n' ]
+                    if type(options)==list:
+	                    lines += [ nspaces + tt[0].upper()+' '+' '.join(options)+'\n' ]
+                    else:
+	                    lines += [ nspaces + tt[0].upper()+' '+options+'\n' ]
+
                     lines += self.__HierarchyToLines(hierarchy[key], nidents+1)
                     lines += [ nspaces + f'end_{tt[0]}'.upper() +'\n']
                 else:
                     tt = key.split('%')
-                    lines += [ nspaces + tt[0].upper() +' ' + ' '.join(value) +'\n']
+                    if type(value)==list:
+                        lines += [ nspaces + tt[0].upper() +' ' + ' '.join(value) +'\n']
+                    else:
+                        lines += [ nspaces + tt[0].upper() +' ' + value +'\n']
         
         return lines
         
@@ -315,3 +328,10 @@ aa = parser.GetHierarchy()
 
 parser.SetCasePath('/home/costa/Downloads/1111/save/')
 parser.SaveCase()
+
+
+import json
+js = json.dumps(aa)
+with open('jsonout.json','w') as f:
+	f.write(js)
+
