@@ -79,6 +79,11 @@ void TransformationJacobian(vtkPolyData* src, vtkPolyData* tgt)
     J->SetNumberOfTuples(src->GetNumberOfCells());
     J->SetName("Jacobian");
     
+    vtkSmartPointer<vtkFloatArray> tensor =  vtkSmartPointer<vtkFloatArray> ::New();
+    tensor->SetNumberOfComponents(9);
+    tensor->SetNumberOfTuples(src->GetNumberOfCells());
+    tensor->SetName("TransfMatrix");
+    
     for(vtkIdType i=0; i<src->GetNumberOfCells(); i++)
     {
         auto cell_src = src->GetCell(i);
@@ -118,9 +123,15 @@ void TransformationJacobian(vtkPolyData* src, vtkPolyData* tgt)
         Jm(1,1) = dvdxy(1);
         
         J->SetTuple1(i, Jm.determinant());
+        
+        double tuple[] = {Jm(0,0), Jm(0,1), 0, Jm(1,0), Jm(1,1), 0, 0, 0, 0};
+        tensor->SetTuple(i, tuple);
+        
     }
     
     tgt->GetCellData()->AddArray(J);
+    tgt->GetCellData()->SetTensors(tensor);
+    
 }
 
 
