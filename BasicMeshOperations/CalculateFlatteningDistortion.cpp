@@ -79,6 +79,12 @@ void TransformationJacobian(vtkPolyData* src, vtkPolyData* tgt)
     J->SetNumberOfTuples(src->GetNumberOfCells());
     J->SetName("Jacobian");
     
+    vtkSmartPointer<vtkFloatArray> ev =     vtkSmartPointer<vtkFloatArray> ::New();
+    ev->SetNumberOfComponents(1);
+    ev->SetNumberOfTuples(src->GetNumberOfCells());
+    ev->SetName("EigenvalueRatio");
+    
+    
     vtkSmartPointer<vtkFloatArray> tensor =  vtkSmartPointer<vtkFloatArray> ::New();
     tensor->SetNumberOfComponents(9);
     tensor->SetNumberOfTuples(src->GetNumberOfCells());
@@ -122,14 +128,25 @@ void TransformationJacobian(vtkPolyData* src, vtkPolyData* tgt)
         Jm(1,0) = dvdxy(0);
         Jm(1,1) = dvdxy(1);
         
+        
         J->SetTuple1(i, Jm.determinant());
         
         double tuple[] = {Jm(0,0), Jm(0,1), 0, Jm(1,0), Jm(1,1), 0, 0, 0, 0};
         tensor->SetTuple(i, tuple);
         
+        Eigen::VectorXcd eivals = Jm.eigenvalues();
+        double eiv[] = {std::abs(eivals[0]),std::abs(eivals[1])};
+        double ratio = 0;
+        if(eiv[0]>eiv[1]) ratio = eiv[1]/eiv[0];
+        else ratio = eiv[0]/eiv[1];
+                
+        ev->SetTuple1(i, ratio);
+        
+        
     }
     
     tgt->GetCellData()->AddArray(J);
+    tgt->GetCellData()->AddArray(ev);
     tgt->GetCellData()->SetTensors(tensor);
     
 }
