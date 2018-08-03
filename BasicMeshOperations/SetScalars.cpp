@@ -20,6 +20,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include "vtkSmartPointer.h"
 #include <vtkDataArray.h>
 #include <vtkFloatArray.h>
+#include <vtkIntArray.h>
 #include "VTKCommonTools.h"
 
 
@@ -72,7 +73,7 @@ int main( int argc, char *argv[] )
 	if( argc < 5 )
 	{
 		std::cout << "Usage: " << std::endl;
-		std::cout << argv[0] << "SetScalars <shape> <property name> <value> <outputshape> <points|cells> <short|float>" << std::endl;
+		std::cout << argv[0] << "SetScalars <shape> <property name> <value> <outputshape> <points|cells> <short|int|float>" << std::endl;
 		return EXIT_FAILURE;
 	}
 
@@ -99,6 +100,8 @@ int main( int argc, char *argv[] )
 		AddArray( shape, use_points, value, property, (vtkShortArray*)NULL );
 	else if( strcmp(datatype,"float")==0 )
 		AddArray( shape, use_points, value, property, (vtkFloatArray*)NULL );
+	else if( strcmp(datatype,"int")==0 )
+		AddArray( shape, use_points, value, property, (vtkIntArray*)NULL );
 	else
 	{
 		std::cout<<"Unknown data type: "<<datatype<<std::endl;
