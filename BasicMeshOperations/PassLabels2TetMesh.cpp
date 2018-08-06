@@ -117,7 +117,7 @@ int main(int argc, char** argv)
     vtkPolyData* surfmesh = poly_rdr->GetOutput();
     
     //read cell scalars from the surface mesh (labels)
-    vtkShortArray* scalars = (vtkShortArray*)surfmesh->GetCellData()->GetArray(array_name);
+    auto scalars = surfmesh->GetCellData()->GetArray(array_name);
     
     vtkSmartPointer<vtkPointLocator> ptloc = vtkSmartPointer<vtkPointLocator>::New();
     ptloc->SetDataSet(volmesh);
@@ -137,7 +137,7 @@ int main(int argc, char** argv)
         c2pdata->PassCellDataOn();
         c2pdata->Update();
 
-        vtkShortArray* pscalars = (vtkShortArray*)c2pdata->GetOutput()->GetPointData()->GetArray(array_name);
+        auto pscalars = c2pdata->GetOutput()->GetPointData()->GetArray(array_name);
         
         //to store ids with the tetra mesh points
         vtkSmartPointer<vtkShortArray> volmesh_regions = vtkSmartPointer<vtkShortArray>::New();
@@ -148,14 +148,14 @@ int main(int argc, char** argv)
         //fill the array of scalars to store with volumetric mesh
         for(vtkIdType i=0; i<volmesh->GetNumberOfPoints();i++)
         {
-            volmesh_regions->SetValue(i,0);
+            volmesh_regions->SetTuple1(i,0);
         }
 
         //for every cell of the surface mesh
         for(vtkIdType i=0; i<surfmesh->GetNumberOfPoints(); i++)
         {
             vtkIdType ptid = ptloc->FindClosestPoint(surfmesh->GetPoint(i));
-            volmesh_regions->SetValue(ptid, pscalars->GetValue(i));
+            volmesh_regions->SetTuple1(ptid, pscalars->GetTuple1(i));
         }
         
         volmesh->GetPointData()->AddArray(volmesh_regions);
@@ -182,7 +182,7 @@ int main(int argc, char** argv)
         //    continue;
         //}
 
-        entry.id = scalars->GetValue(i);
+        entry.id = scalars->GetTuple1(i);
         entry.pt1 = ptloc->FindClosestPoint(cell->GetPoints()->GetPoint(0));
         entry.pt2 = ptloc->FindClosestPoint(cell->GetPoints()->GetPoint(1));
         entry.pt3 = ptloc->FindClosestPoint(cell->GetPoints()->GetPoint(2));
@@ -248,7 +248,7 @@ int main(int argc, char** argv)
     
     for(vtkIdType i1=0; i1<volmesh->GetNumberOfCells(); i1++)
     {
-        volmesh_regions_cells->SetValue(i1,0); //reset
+        volmesh_regions_cells->SetTuple1(i1,0); //reset
     }
     
     //store the labels
@@ -268,7 +268,7 @@ int main(int argc, char** argv)
         
         if(volmeshout!=NULL)
         {
-            volmesh_regions_cells->SetValue(entry.tet_id, entry.id);
+            volmesh_regions_cells->SetTuple1(entry.tet_id, entry.id);
         }
     
     }
