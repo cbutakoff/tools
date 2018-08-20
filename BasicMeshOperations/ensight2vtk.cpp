@@ -33,7 +33,7 @@ int main(int argc, char** argv)
         std::cout<<"Options: "<<std::endl;
         std::cout<<"-case <filename> -- filename of the ensight casefile"<<std::endl;
         std::cout<<"-o <prefix> -- prefix for the output filenames (will add numbers)"<<std::endl;
-        std::cout<<"-t [ASCII|ASCII] -- binary or ascii"<<std::endl;
+        std::cout<<"-t [BIN|ASCII] -- binary or ascii ensight case"<<std::endl;
         return -1;
     }
     
