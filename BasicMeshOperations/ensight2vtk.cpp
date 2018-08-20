@@ -119,6 +119,7 @@ int main(int argc, char** argv)
         
         vtkSmartPointer<vtkDataSetWriter> wr = vtkSmartPointer<vtkDataSetWriter>::New();
         wr->SetFileName(name.c_str());
+        wr->SetFileTypeToBinary();
         wr->SetInputData(rdr->GetOutput()->GetBlock(0));
         wr->Write();
     }
