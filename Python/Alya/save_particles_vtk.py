@@ -45,7 +45,7 @@ pd.GetPointData().AddArray(times)
 print('Writing ', main_filename)
 wr= vtk.vtkPolyDataWriter()
 wr.SetInputData(pd)
-wr.SetDataModeToBinary()
+wr.SetFileTypeToBinary()
 wr.SetFileName(main_filename)
 wr.Write()
 
