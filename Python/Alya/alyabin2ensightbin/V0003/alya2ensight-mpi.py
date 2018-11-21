@@ -416,8 +416,14 @@ def write_material(number_of_blocks):
 
 def write_variable_pernode(varname, iteration, number_of_blocks):
     print("Writing variable: ",varname)
-    data = read_alya_variable(varname, iteration, number_of_blocks)
-
+    
+    try:
+        data = read_alya_variable(varname, iteration, number_of_blocks)
+    except:
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        print('!!! An error occured reading variable ',varname,' iteration ', iteration)
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        return {'time_real':-1, 'time_int':-1,             'variable_type':'FAILED', 'variable_association':'FAILED'}
     
     #variable ensight
     fmt = '%s.ensi.%s-'+f'%0{iterationid_number_of_digits}d';
