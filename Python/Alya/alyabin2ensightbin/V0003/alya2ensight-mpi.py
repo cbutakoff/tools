@@ -9,6 +9,7 @@
 import numpy as np   #needs install
 import os
 import pandas #needs install
+import sys
 
 from mpi4py import MPI #needs install
 from queue import Queue
@@ -55,13 +56,13 @@ try:
         path = pathlib.Path(outputfolder)
         path.mkdir(parents=True, exist_ok=True)
 
-        import sys
-        sys.stdout.flush()
         print(f'-------------------------------------------------------');
         print(f'Alya task: {project_name}');
         print(f'Input path: {inputfolder}');
         print(f'Output path: {outputfolder}');
         print(f'-------------------------------------------------------');
+  
+        sys.stdout.flush()
 finally:
     inputfolder = comm.bcast(inputfolder, root=0)
     project_name = comm.bcast(project_name, root=0)
@@ -185,7 +186,7 @@ def read_alya_array(filename, number_of_blocks, datatype):
         number_of_tuples_total = header['integers'][1][0]
         time_instant_int = header['integers'][3][0]
         time_instant_real = header['reals'][0]
-        print(f'Reading array: {number_of_dimensions} dim, {number_of_tuples_total} tuples\n')
+        #print(f'Reading array: {number_of_dimensions} dim, {number_of_tuples_total} tuples\n')
 
         tuples = np.zeros((number_of_tuples_total,number_of_dimensions), dtype=datatype)
 
@@ -210,7 +211,7 @@ def read_alya_array(filename, number_of_blocks, datatype):
 
 def read_alya_variable(variable_name, iteration, number_of_blocks):
     field_filename = os.path.join(inputfolder, '%s-%s-%08d.post.alyabin'% (project_name, variable_name, iteration)) 
-    print(field_filename)
+    #print(field_filename)
     
     field_dtype = alya_id_type
     association = '';
@@ -276,7 +277,7 @@ def write_geometry(number_of_blocks):
         a = b
         npts = npts + point_coordinates['tuples_per_block'][i]
 
-    print("Connectivty dimensions:", connectivity['tuples'].shape)
+    #print("Connectivty dimensions:", connectivity['tuples'].shape)
         
 
     #assume all elements are the same
@@ -315,8 +316,8 @@ def write_geometry(number_of_blocks):
         #here -1 to transform to python array, and +1 to ensight array indexing
         connectivity[:,i] = inverse_pt_correspondence[connectivity[:,i]-1]+1                 
     
-    print('Element 0, transformed connectivity: ', connectivity[0,:])
-    print('Element 0, transformed points: ', point_coordinates[connectivity[0,:],:])
+    #print('Element 0, transformed connectivity: ', connectivity[0,:])
+    #print('Element 0, transformed points: ', point_coordinates[connectivity[0,:],:])
 
     
     #geometry ensight
@@ -339,7 +340,7 @@ def write_geometry(number_of_blocks):
         f.write( point_coordinates[:,2].ravel().astype(ensight_float_type) )  #z coord
 
         for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
-            print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
+            #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
 
             element_locations = np.where( element_types['tuples']==elem_alya_id )[0] #returns 2 sets, take first
         
@@ -349,7 +350,7 @@ def write_geometry(number_of_blocks):
 
         
             number_of_elements = elements.shape[0]
-            print("Number of elements = ",number_of_elements)
+            #print("Number of elements = ",number_of_elements)
 
 
             f.write(elem_ensi_id['Name'].ljust(80))  #tetra4 or hexa8
@@ -386,10 +387,10 @@ def write_material(number_of_blocks):
 
         if data['variabletype']=='scalar':            
             data2write = np.zeros(inverse_pt_correspondence.max()+1, dtype = ensight_float_type)
-            print('Data22write: ',data2write.shape)
-            print('Ravel: ',data['values']['tuples'].ravel().shape)
-            print('Corresp:',inverse_pt_correspondence.shape )
-            print("Writing variable: ",varname)
+            #print('Data22write: ',data2write.shape)
+            #print('Ravel: ',data['values']['tuples'].ravel().shape)
+            #print('Corresp:',inverse_pt_correspondence.shape )
+            #print("Writing variable: ",varname)
             data2write[inverse_pt_correspondence] = data['values']['tuples'].ravel()
             f.write( data2write )  #z coord    
         elif data['variabletype']=='vector':
@@ -415,7 +416,7 @@ def write_material(number_of_blocks):
 
 
 def write_variable_pernode(varname, iteration, number_of_blocks):
-    print("Writing variable: ",varname)
+    #print("Writing variable: ",varname)
     
     try:
         data = read_alya_variable(varname, iteration, number_of_blocks)
@@ -423,6 +424,7 @@ def write_variable_pernode(varname, iteration, number_of_blocks):
         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         print('!!! An error occured reading variable ',varname,' iteration ', iteration)
         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        sys.stdout.flush()
         return {'time_real':-1, 'time_int':-1,             'variable_type':'FAILED', 'variable_association':'FAILED'}
     
     #variable ensight
@@ -436,10 +438,10 @@ def write_variable_pernode(varname, iteration, number_of_blocks):
 
         if data['variabletype']=='scalar':            
             data2write = np.zeros(inverse_pt_correspondence.max()+1, dtype = ensight_float_type)
-            print('Data22write: ',data2write.shape)
-            print('Ravel: ',data['values']['tuples'].ravel().shape)
-            print('Corresp:',inverse_pt_correspondence.shape )
-            print("Writing variable: ",varname)
+            #print('Data22write: ',data2write.shape)
+            #print('Ravel: ',data['values']['tuples'].ravel().shape)
+            #print('Corresp:',inverse_pt_correspondence.shape )
+            #print("Writing variable: ",varname)
             data2write[inverse_pt_correspondence] = data['values']['tuples'].ravel()
             f.write( data2write )  #z coord    
         elif data['variabletype']=='vector':
@@ -661,6 +663,7 @@ def master(comm):
 
     num_procs = min(wq.get_size(), comm.Get_size())
     print(f'Number of processes: {num_procs}')
+    sys.stdout.flush()
 
     # Seed the slaves, send one unit of work to each slave (rank)
     sent_jobs = 0
@@ -669,8 +672,13 @@ def master(comm):
         comm.send(work, dest=rank, tag=WORKTAG)
         sent_jobs = sent_jobs+1
     
+    print('Submitted the first batch')
+    sys.stdout.flush()
     # Loop over getting new work requests until there is no more work to be done
     while True:
+        print(f'Jobs in the queue: {wq.get_size()}')
+        sys.stdout.flush()
+
         work = wq.get_next()
         if not work: break
 
@@ -683,13 +691,13 @@ def master(comm):
         comm.send(work, dest=status.Get_source(), tag=WORKTAG)
         sent_jobs = sent_jobs+1
     
-    print(f'Jobs still running: {sent_jobs}')
+
 
     # No more work to be done, receive all outstanding results from slaves
     for rank in range(sent_jobs): 
-        print(f'Receiving {rank}')
+        #print(f'Receiving {rank}')
         result = comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
-        print(f'Received {rank}')
+        #print(f'Received {rank}')
         process_result(result)
 
     print(f'Shutting down')
@@ -710,12 +718,12 @@ def slave(comm):
 
     while True:
         # Receive a message from the master
-        print(f'Proc {my_rank}: receiving')
+        #print(f'Proc {my_rank}: receiving')
         work = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
-        print(f'Proc {my_rank}: received')
+        #print(f'Proc {my_rank}: received')
 
 
-        print(f'Process {my_rank}, kill signal: {status.Get_tag()==DIETAG}')
+        #print(f'Process {my_rank}, kill signal: {status.Get_tag()==DIETAG}')
         # Check the tag of the received message
         if status.Get_tag() == DIETAG: break 
 
@@ -724,7 +732,7 @@ def slave(comm):
 
         # Send the result back
         comm.send(result, dest=0, tag=0)
-        print(f'Proc {my_rank}: sent')
+        #print(f'Proc {my_rank}: sent')
 
 
 # In[ ]:
@@ -745,6 +753,8 @@ else:
 comm.Barrier()
 if my_rank == 0:
     print(variable_info)
+    print('Saving case')
+    sys.stdout.flush()
     
     case_file = f'{project_name}.ensi.case'
     with open(os.path.join(outputfolder, case_file), 'w') as f:
