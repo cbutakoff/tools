@@ -17,7 +17,8 @@ y = df['COORY']
 z = df['COORZ']
 tp = df['ITYPE']
 
-pts.SetNumberOfPoints(df.shape[0])
+N=df.shape[0]
+pts.SetNumberOfPoints(N)
 
 types = vtk.vtkShortArray()
 types.SetNumberOfComponents(1)
@@ -29,15 +30,19 @@ times.SetNumberOfComponents(1)
 times.SetNumberOfTuples(pts.GetNumberOfPoints())
 times.SetName('Time')
 
+verts = vtk.vtkCellArray()
 
-
-for j in progressbar.progressbar(range(df.shape[0])):         
+for j in progressbar.progressbar(range(N)):         
     pts.SetPoint(j, (x.iloc[j],y.iloc[j],z.iloc[j]))
     types.SetTuple1(j, tp.iloc[j])
     times.SetTuple1(j, T.iloc[j])
     
+    verts.InsertNextCell(1)
+    verts.InsertCellPoint(j)
+    
 pd = vtk.vtkPolyData()
 pd.SetPoints(pts)
+pd.SetVerts(verts)
 pd.GetPointData().AddArray(types)
 pd.GetPointData().AddArray(times)
 
