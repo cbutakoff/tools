@@ -237,7 +237,6 @@ def read_alya_variable(variable_name, iteration, number_of_blocks):
         variabletype = 'scalar'
     elif( header['strings'][3] == 'VECTO' ):
         variabletype = 'vector'
-        print('Reading vectors, this has not been tested yet')
     else:
         assert False, "unsupported type of variable"
 
