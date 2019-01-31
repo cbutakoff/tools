@@ -305,7 +305,7 @@ def write_geometry(number_of_blocks):
     #print('Point 0: ', point_coordinates1[0,:])
     #print('0 maps to ',inverse_pt_correspondence[0])
 
-    point_coordinates2 = np.zeros( (inverse_pt_correspondence.max()+1,2), dtype=ensight_float_type)
+    point_coordinates2 = np.zeros( (inverse_pt_correspondence.max()+1,point_coordinates1.shape[1]), dtype=ensight_float_type)
     point_coordinates2[inverse_pt_correspondence,:] = point_coordinates1 
     #print('Point ',inverse_pt_correspondence[0], ', ', point_coordinates2[inverse_pt_correspondence[0],:])
     
@@ -337,7 +337,6 @@ def write_geometry(number_of_blocks):
         f.write(np.arange(1,number_of_points+1, dtype=ensight_id_type))
     
         #save existing coordinates into the matrix
-        print('!!!! shape !!!',point_coordinates.shape[1])
         iii = 0        
         while iii<point_coordinates.shape[1]:
             f.write( point_coordinates[:,iii].ravel().astype(ensight_float_type) )  #x coord
