@@ -3,10 +3,12 @@ import pandas as pd
 import  progressbar 
 import multiprocessing as mp
 import numpy as np
+from os.path import isfile
 
-main_filename = '2d.pvd'
-pts_filename = '../2d.pts.res'
+main_filename = 'fluidda.pvd'
+pts_filename = '../fluidda.pts.res'
 ncpus = 10
+nlastlines = 500000*50
 
 print('Parsing ',pts_filename)
 
@@ -18,24 +20,36 @@ COORX = []
 COORY = []
 COORZ = []
 with open(pts_filename, mode='rb') as file: # b is important -> binary
+    #get filesize
+    file.seek(0,2)
+    filesize = file.tell()
+    file.seek(0,0)
+
     hdr = file.read(255)
     print(hdr)
-    while True:
-        T1 = np.fromfile(file, dtype=np.float64, count=1)
-        if T1.shape[0]==0: break #end of file
-        T.append(T1)
 
-        ILAGR.append( np.fromfile(file, dtype=np.int64, count=1) )
-        ITYPE.append( np.fromfile(file, dtype=np.int64, count=1) )
-        EXIST.append( np.fromfile(file, dtype=np.int64, count=1) )
-        COORX.append( np.fromfile(file, dtype=np.float64, count=1) )
-        COORY.append( np.fromfile(file, dtype=np.float64, count=1) )
-        COORZ.append( np.fromfile(file, dtype=np.float64, count=1) )
-        VELOX = np.fromfile(file, dtype=np.float64, count=1)
-        VELOY = np.fromfile(file, dtype=np.float64, count=1)
-        VELOZ = np.fromfile(file, dtype=np.float64, count=1)
-        DTK = np.fromfile(file, dtype=np.float64, count=1)
-        CD = np.fromfile(file, dtype=np.float64, count=1)
+    file.seek(filesize-nlastlines*12*8,0)
+
+
+    with progressbar.ProgressBar(max_value=filesize) as bar:
+        while True:
+            T1 = np.fromfile(file, dtype=np.float64, count=1)
+            if T1.shape[0]==0: break #end of file
+            T.append(T1[0])
+
+            ILAGR.append( np.fromfile(file, dtype=np.int64, count=1)[0] )
+            ITYPE.append( np.fromfile(file, dtype=np.int64, count=1)[0] )
+            EXIST.append( np.fromfile(file, dtype=np.int64, count=1)[0] )
+            COORX.append( np.fromfile(file, dtype=np.float64, count=1)[0] )
+            COORY.append( np.fromfile(file, dtype=np.float64, count=1)[0] )
+            COORZ.append( np.fromfile(file, dtype=np.float64, count=1)[0] )
+            VELOX = np.fromfile(file, dtype=np.float64, count=1)
+            VELOY = np.fromfile(file, dtype=np.float64, count=1)
+            VELOZ = np.fromfile(file, dtype=np.float64, count=1)
+            DTK = np.fromfile(file, dtype=np.float64, count=1)
+            CD = np.fromfile(file, dtype=np.float64, count=1)
+
+            bar.update( file.tell() )
 
 #
 #df = pd.read_csv(pts_filename, delim_whitespace=True,\
@@ -45,14 +59,13 @@ df = pd.DataFrame({'T':T,'ILAGR':ILAGR, 'ITYPE':ITYPE, 'EXIST':EXIST, 'COORX':CO
 
 df['T']=  df['T'].apply(lambda x: np.round(x,10))
 
-print(df)
+#print(df)
 
 #unique_times = df['T'].unique()
-unique_times = list(np.round(np.arange(0,1,0.01),10))
+unique_times = list(np.round(np.arange(0,100+(5e-2),5e-2),10))
 
 #print(unique_times)
 
-empty_file = np.zeros(len(unique_times))
 
 print('Saving the particles')
 
@@ -66,9 +79,7 @@ def save_one_file(i):
     tp = df1['ITYPE']
     pts.SetNumberOfPoints(df1.shape[0])
 
-    if df1.shape[0]==0:
-        empty_file[i]=1
-    else:
+    if df1.shape[0]!=0:
         for j in range(df1.shape[0]):         
             pts.SetPoint(j, (x.iloc[j],y.iloc[j],z.iloc[j]))
 
@@ -108,8 +119,8 @@ with open(main_filename,'w') as f:
     f.write(' <Collection>\n')
 
     for i in progressbar.progressbar(range(len(unique_times))):
-        if empty_file[i]==0:
-            filename = "pts_{:010d}.vtp".format(i)
+        filename = "pts_{:010d}.vtp".format(i)
+        if isfile(filename):
             f.write(f'<DataSet timestep="{unique_times[i]}" group="" part="0"\n')
             f.write(f'     file="{filename}"/>\n')
     
