@@ -101,7 +101,6 @@ def save_one_file(infilename, outfilename):
 #save 0-th timestep
 save_one_file( pts_filename0, "pts_{:010d}.vtp".format(0) )
 
-exit()
 
 bar = progressbar.ProgressBar(max_value=len(filenumbers))
 with mp.Pool(processes = ncpus) as p:
