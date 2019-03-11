@@ -28,7 +28,6 @@ def read_file( filename ):
     
     df = pd.DataFrame.from_records(data, exclude=['VELOX','VELOY','VELOZ','DTK', 'CD'])
 
-    print (df)
     return df
     
 
