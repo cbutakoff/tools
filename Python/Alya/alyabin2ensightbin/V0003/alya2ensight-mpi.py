@@ -257,8 +257,6 @@ def read_alya_variable(variable_name, iteration, number_of_blocks):
 def write_geometry(number_of_blocks):
     point_coordinates = read_alya_array(os.path.join(inputfolder,f'{project_name}-COORD.post.alyabin'), \
                                         number_of_blocks, np.float64)
-    element_types = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPE.post.alyabin'),  \
-                                    number_of_blocks, alya_id_type)
     #Read connectivity (indices inside start with 1)
     connectivity = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNODS.post.alyabin'),    \
                                    number_of_blocks, alya_id_type)
@@ -279,21 +277,8 @@ def write_geometry(number_of_blocks):
     #print("Connectivty dimensions:", connectivity['tuples'].shape)
         
 
-    #assume all elements are the same
-#    element_type = b'hexa8';
-#    if element_types['tuples'][0] == 37: #alya hex08 element
-#        element_type = b'hexa8';
-#    elif element_types['tuples'][0] == 30: #alya tet04 element
-#        element_type = b'tetra4';
-#    elif element_types['tuples'][0] == 32: #alya pyr05 element
-#        element_type = b'pyramid5';
-#    elif element_types['tuples'][0] == 34: #alya pen06 element
-#        element_type = b'penta6';
+
     
-    #Ensight groups elements by type. Create grouping
-    element_alya2ensi = {37:{'Name':b'hexa8','Vertices':8}, 30:{'Name':b'tetra4','Vertices':4}, \
-                         32:{'Name':b'pyramid5','Vertices':5}, 34:{'Name':b'penta6','Vertices':6},\
-                         10:{'Name':b'tria3','Vertices':3}, 12:{'Name':b'quad4','Vertices':4}}
     
 
     #print(f'Id {connectivity["tuples"][0,0]} transforms to {inverse_pt_correspondence[connectivity["tuples"][0,:]]}'  )
@@ -351,7 +336,7 @@ def write_geometry(number_of_blocks):
         for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
             #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
 
-            element_locations = np.where( element_types['tuples']==elem_alya_id )[0] #returns 2 sets, take first
+            element_locations = np.where( element_types==elem_alya_id )[0] #returns 2 sets, take first
         
         
             elements = connectivity[element_locations,0:elem_ensi_id['Vertices']]
@@ -422,11 +407,50 @@ def write_material(number_of_blocks):
     return {'time_real':data['values']['time_real'], 'time_int':data['values']['time_int'],             'variable_type':data['variabletype'], 'variable_association':data['association']}
 
 
+def write_variable_percell(varname, iteration, number_of_blocks):
+    try:
+        data = read_alya_variable(varname, iteration, number_of_blocks)
+    except:
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        print('!!! An error occured reading variable ',varname,' iteration ', iteration)
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        sys.stdout.flush()
+        return {'time_real':-1, 'time_int':-1,             'variable_type':'FAILED', 'variable_association':'FAILED'}
+    
+    #variable ensight
+    fmt = '%s.ensi.%s-'+f'%0{iterationid_number_of_digits}d';
+    with open( os.path.join(outputfolder, fmt % (project_name, varname, iteration)),'wb') as f:
+        f.write(b'description line 1'.ljust(80))
+        f.write(b'part'.ljust(80))
+        f.write(np.array([1], dtype=ensight_id_type))   #int
 
+        if 'MATER' in varname:  #this is very particular          
+            #data2write = np.zeros(inverse_el_correspondence.max()+1, dtype = ensight_float_type)
+            #data2write[inverse_el_correspondence] = data['values']['tuples'].ravel()
+            data2write = data['values']['tuples'].ravel()
+
+            for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
+                #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
+
+                element_locations = np.where( element_types==elem_alya_id )[0] #returns 2 sets, take first
+            
+        
+                values = data2write[element_locations]
+                number_of_values = values.shape[0]
+
+
+                f.write(elem_ensi_id['Name'].ljust(80))  #tetra4 or hexa8
+                f.write( values.ravel().astype(ensight_float_type) )
+
+
+        else:
+            assert False, f'For now only saving MATER is implmeneted, not {varname}'       
+        
+    return {'time_real':data['values']['time_real'], 'time_int':data['values']['time_int'],             'variable_type':data['variabletype'], 'variable_association':data['association']}
 
 
 def write_variable_pernode(varname, iteration, number_of_blocks):
-    #print("Writing variable: ",varname)
+    #print("Writing variable: ",varname,' iteration ',iteration)
     
     try:
         data = read_alya_variable(varname, iteration, number_of_blocks)
@@ -452,6 +476,7 @@ def write_variable_pernode(varname, iteration, number_of_blocks):
             #print('Ravel: ',data['values']['tuples'].ravel().shape)
             #print('Corresp:',inverse_pt_correspondence.shape )
             #print("Writing variable: ",varname)
+      
             data2write[inverse_pt_correspondence] = data['values']['tuples'].ravel()
             f.write( data2write )  #z coord    
         elif data['variabletype']=='vector':
@@ -476,6 +501,10 @@ def write_variable_pernode(varname, iteration, number_of_blocks):
 
 # # Main program
 
+#Ensight groups elements by type. Create grouping
+element_alya2ensi = {37:{'Name':b'hexa8','Vertices':8}, 30:{'Name':b'tetra4','Vertices':4}, \
+                     32:{'Name':b'pyramid5','Vertices':5}, 34:{'Name':b'penta6','Vertices':6},\
+                     10:{'Name':b'tria3','Vertices':3}, 12:{'Name':b'quad4','Vertices':4}}
 
 
 # # Read the partitioning info
@@ -537,13 +566,10 @@ if my_rank == 0:
     fields = []
     iteration_numbers = []
     for filename in field_filelist:
-        if not 'MATER' in filename:
-            s1 = filename.split('-');
-            fields = fields + [s1[1]]
-            iteration_numbers =  iteration_numbers + [ int(s1[2].split('.')[0]) ] #this will be long in python 3
-            new_field_filelist = new_field_filelist + [filename]
-        else:
-            print('*** Skipping MATER file')
+        s1 = filename.split('-');
+        fields = fields + [s1[1]]
+        iteration_numbers =  iteration_numbers + [ int(s1[2].split('.')[0]) ] #this will be long in python 3
+        new_field_filelist = new_field_filelist + [filename]
 
     variable_info = pandas.DataFrame({'field':fields, 'iteration':iteration_numbers,'filename':new_field_filelist})
     variable_info['time_int'] = 0
@@ -553,6 +579,9 @@ if my_rank == 0:
 
 
 inverse_pt_correspondence = None
+element_types = None
+#inverse_el_correspondence = None
+
 if my_rank == 0:    
     #read correct element arrangement
     LNINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNINV.post.alyabin'), \
@@ -567,7 +596,20 @@ if my_rank == 0:
     assert (pt_ids>0).all(), "Some points in the mesh do not have a correspondence in the parittions"
     pt_ids = None #free memeory
 
+
+#    LEINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LEINV.post.alyabin'), \
+#                          number_of_blocks, alya_id_type)
+#    inverse_el_correspondence = (LEINV['tuples']-1).ravel(); #convert ids to python
+
+    LTYPE = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPE.post.alyabin'),  \
+                                    number_of_blocks, alya_id_type)
+    element_types =    LTYPE['tuples'].ravel()
+
+
+
 inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
+element_types = comm.bcast(element_types, root=0)
+#inverse_el_correspondence = comm.bcast(inverse_el_correspondence, root=0)
 
 
 # # Unknown stuff
@@ -576,8 +618,7 @@ inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
 
 
 #god knows what are these
-#LNINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNINV.post.alyabin'), \
-#                                number_of_blocks, alya_id_type)
+
 #LELCH = read_alya_array(os.path.join(inputfolder,f'{project_name}-LELCH.post.alyabin'), \
 #                                number_of_blocks, alya_id_type)
 #LEINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LEINV.post.alyabin'), \
@@ -639,7 +680,11 @@ def do_work(work):
     if work['filetype'] == 'geometry':
         write_geometry(work['number_of_blocks'])
     elif work['filetype'] == 'variable':
-        info = write_variable_pernode(work['name'], work['iteration'], work['number_of_blocks'])
+        if 'MATER' in work['name']:
+           info = write_variable_percell(work['name'], work['iteration'], work['number_of_blocks'])
+        else:
+           info = write_variable_pernode(work['name'], work['iteration'], work['number_of_blocks'])
+
         info['table_index'] = work['table_index'];       
     else:
         assert False, f'Unsupported file type {work["filetype"]}'
