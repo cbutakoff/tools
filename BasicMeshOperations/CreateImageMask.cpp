@@ -44,6 +44,8 @@ int main(int argc, char **argv) {
         std::cout << "-vx <float> \t\t- voxel dimension x" << std::endl;
         std::cout << "-vy <float> \t\t- voxel dimension y" << std::endl;
         std::cout << "-vz <float> \t\t- voxel dimension z" << std::endl;
+        std::cout << "-pad <int> \t\t- number of pixels to pad to each dimension (10 default)" << std::endl;
+
         return -1;
     }
 
@@ -54,6 +56,7 @@ int main(int argc, char **argv) {
     unsigned char bg = 255;
     unsigned char fg = 0;
     double vx = 1, vy = 1, vz = 1;
+    int padding = 10; //space to add to shape extremes
 
     bool requested_fg = false;
 
@@ -77,6 +80,8 @@ int main(int argc, char **argv) {
             vy = atof(argv[++c]);
         } else if (strcmp(argv[c], "-vz") == 0) {
             vz = atof(argv[++c]);
+        } else if (strcmp(argv[c], "-pad") == 0) {
+            padding = atoi(argv[++c]);
         }
 
     }
@@ -88,7 +93,6 @@ int main(int argc, char **argv) {
     double spacing[3];
     int wextent[6];
 
-    const int padding = 10; //space to add to shape extremes
 
     if (inimagefile != NULL)
         std::cout << "Image: " << inimagefile << std::endl;
@@ -100,7 +104,8 @@ int main(int argc, char **argv) {
     //cout<<"Output shape: "<<outshapefile<<endl;
     std::cout << "Foreground: " << int(fg) << std::endl;
     std::cout << "Background: " << int(bg) << std::endl;
-    std::cout << "Voxel: " << vx << " x " << vy << " x " << vz << std::endl << std::endl;
+    std::cout << "Voxel: " << vx << " x " << vy << " x " << vz << std::endl;
+    std::cout << "Padding (pix): " << padding<< std::endl << std::endl;
 
 
     vtkSmartPointer<vtkImageData> inimage = vtkSmartPointer<vtkImageData>::New();
