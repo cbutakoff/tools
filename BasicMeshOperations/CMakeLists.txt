@@ -34,6 +34,7 @@ nrrd2vtk
 Morphology3D
 chaste2vtk
 S2SError
+SampleUG2Image
 )
 
 set(VTK_PROGRAMS 
