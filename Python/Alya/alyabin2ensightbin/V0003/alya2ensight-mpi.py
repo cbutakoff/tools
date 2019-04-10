@@ -448,14 +448,15 @@ def write_geometry(number_of_blocks):
     
     #Ensight groups elements by type. Create grouping
     element_alya2ensi = {37:{'Name':b'hexa8','Vertices':8}, 30:{'Name':b'tetra4','Vertices':4}, \
-                         32:{'Name':b'pyramid5','Vertices':5}, 34:{'Name':b'penta6','Vertices':6}}
+                         32:{'Name':b'pyramid5','Vertices':5}, 34:{'Name':b'penta6','Vertices':6},\
+                         10:{'Name':b'tria3','Vertices':3}, 12:{'Name':b'quad4','Vertices':4}}
     
 
     
     point_coordinates1 = point_coordinates['tuples']
 
-
-    point_coordinates2 = np.zeros( (inverse_pt_correspondence.max()+1,3), dtype=ensight_float_type)
+    ndim = point_coordinates1.shape[1]
+    point_coordinates2 = np.zeros( (inverse_pt_correspondence.max()+1, ndim ), dtype=ensight_float_type)
     point_coordinates2[inverse_pt_correspondence,:] = point_coordinates1 
     #print('Point ',inverse_pt_correspondence[0], ', ', point_coordinates2[inverse_pt_correspondence[0],:])
     
@@ -483,9 +484,19 @@ def write_geometry(number_of_blocks):
         number_of_points = point_coordinates.shape[0]
         f.write(np.array([number_of_points], dtype=ensight_id_type))   #int
         f.write(np.arange(1,number_of_points+1, dtype=ensight_id_type))
-        f.write( point_coordinates[:,0].ravel().astype(ensight_float_type) )  #x coord
-        f.write( point_coordinates[:,1].ravel().astype(ensight_float_type) )  #y coord
-        f.write( point_coordinates[:,2].ravel().astype(ensight_float_type) )  #z coord
+
+        ndim = point_coordinates.shape[1]
+
+        iii = 0
+        while iii<ndim:
+            f.write( point_coordinates[:,iii].ravel().astype(ensight_float_type) )  #x coord
+            iii = iii+1
+
+        #fill the rest with 0
+        while iii<3:
+            f.write( 0*point_coordinates[:,0].ravel().astype(ensight_float_type) )  #x coord
+            iii = iii+1
+
 
         for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
             #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
@@ -594,7 +605,8 @@ def write_variable_pernode(varname, iteration, number_of_blocks):
             #vz_n1 vz_n2 ... vz_nn nn floats
             #Rearrange the  matrix
             data2write = np.zeros( [inverse_pt_correspondence.max()+1, 3], dtype = ensight_float_type)
-            data2write[inverse_pt_correspondence,:] = data['tuples']
+            ncomponents = data['tuples'].shape[1] #for 1d, 2d and 3d problems
+            data2write[inverse_pt_correspondence,0:ncomponents] = data['tuples']
             f.write( data2write.ravel(order='F').astype(ensight_float_type) )  #z coord    
         else:
             assert False, f"Unknown varibale type: {data['variabletype']}"
