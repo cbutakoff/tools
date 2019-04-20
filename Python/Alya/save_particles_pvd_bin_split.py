@@ -125,7 +125,7 @@ with open(main_filename,'w') as f:
     for filenumber in progressbar.progressbar(filenumbers):
         filename = "pts_{:010d}.vtp".format(filenumber)
         if isfile(filename):
-            f.write(f'<DataSet timestep="{filenumber*timestep}" group="" part="0"\n')
+            f.write(f'<DataSet timestep="{np.round(filenumber*timestep,10)}" group="" part="0"\n')
             f.write(f'     file="{filename}"/>\n')
     
 
