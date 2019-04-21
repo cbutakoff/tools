@@ -689,7 +689,7 @@ if my_rank == 0:
     fields = []
     iteration_numbers = []
     for filename in field_filelist:
-        s1 = filename.split('-');
+        s1 = filename[len(project_name):].split('-');
         fields = fields + [s1[1]]
         iteration_numbers =  iteration_numbers + [ int(s1[2].split('.')[0]) ] #this will be long in python 3
         new_field_filelist = new_field_filelist + [filename]
