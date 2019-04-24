@@ -17,6 +17,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkDataSet.h>
 #include <vtkDataSetReader.h>
 #include <vtkDataSetWriter.h>
+#include <vtkMetaImageWriter.h>
 
 #include <vtkSmartPointer.h>
 
@@ -27,6 +28,9 @@ PURPOSE.  See the above copyright notice for more information.
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
+#include <string>
+
+using namespace std;
 
 int main(int argc, char **argv) {
     std::cout << "Version 1.1" << std::endl;
@@ -35,7 +39,7 @@ int main(int argc, char **argv) {
         std::cout << "Params: " << std::endl;
         std::cout << "-shape <shape.vtk> \t\t- shape" << std::endl;
         std::cout << "-image <image.vtk> \t\t- image, voxels outside the shape are replaced with bg value" << std::endl;
-        std::cout << "-out_image <image.vtk> \t\t- resulting image" << std::endl;
+        std::cout << "-out_image <image.vtk|image.mhd> \t\t- resulting image" << std::endl;
         std::cout << "-bg <int> \t\t- value to replace background voxels" << std::endl;
         std::cout << "-fg <int> \t\t- value to replace foreground voxels [optional]. If not specified - foreground is not changed." << std::endl;        
         std::cout << std::endl;
@@ -198,11 +202,25 @@ int main(int argc, char **argv) {
     stencil->Update();
 
 
-    vtkSmartPointer<vtkDataSetWriter> writer = vtkSmartPointer<vtkDataSetWriter>::New();
-    writer->SetInputData(stencil->GetOutput());
-    writer->SetFileTypeToBinary();
-    writer->SetFileName(outimagefile);
-    writer->Update();
+    if (outimagefile[ strlen(outimagefile)-1 ] == 'k')  //vtk
+    {
+        vtkSmartPointer<vtkDataSetWriter> writer = vtkSmartPointer<vtkDataSetWriter>::New();
+        writer->SetInputData(stencil->GetOutput());
+        writer->SetFileTypeToBinary();
+        writer->SetFileName(outimagefile);
+        writer->Update();
+    }
+    else
+    {
+        std::string filePath = string(outimagefile)+string(".mhd");
+        std::string filePathRaw =  string(outimagefile)+string(".raw");
+        vtkSmartPointer<vtkMetaImageWriter> writer =
+          vtkSmartPointer<vtkMetaImageWriter>::New();
+        writer->SetInputData(stencil->GetOutput());
+        writer->SetFileName(filePath.c_str());
+        writer->SetRAWFileName(filePathRaw.c_str());
+        writer->Write();
+    }
 
     return 0;
 }
