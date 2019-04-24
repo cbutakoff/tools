@@ -12,6 +12,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkImageCast.h>
 #include <vtkPolyDataWriter.h>
 #include <vtkMarchingCubes.h>
+#include <vtkMetaImageReader.h>
+#include <vtkImageData.h>
 
 int main(int argc, char** argv)
 {
@@ -20,7 +22,7 @@ int main(int argc, char** argv)
     if( argc<2 ) 
     {
             std::cout << "Params: "<< std::endl;
-            std::cout << "-i <image.vtk> \t\t- input"<< std::endl;
+            std::cout << "-i <image.vtk|image.mhd> \t\t- input"<< std::endl;
             std::cout << "-o <mesh.vtk> \t\t- output"<< std::endl;
             std::cout << "-s <float> \t\t- smoothing sigma"<< std::endl;
             std::cout << "-l <float> \t\t- isolevel"<< std::endl;
@@ -59,16 +61,34 @@ int main(int argc, char** argv)
     std::cout<<"Gaussian sigma: "<<sigma<<std::endl;
     std::cout<<"Isosurface level: "<<level<<std::endl;
     
-    
-    vtkSmartPointer<vtkDataSetReader> rdr = vtkSmartPointer<vtkDataSetReader>::New();
-    rdr->SetFileName(inputimagefile);
-    rdr->Update();
-    
-    std::cout<<"Casting image to float"<<std::endl;
+
     vtkSmartPointer<vtkImageCast> caster = vtkSmartPointer<vtkImageCast>::New();
-    caster->SetInputData(rdr->GetOutput());
-    caster->SetOutputScalarTypeToFloat();
-    caster->Update();
+
+    if( inputimagefile[strlen(inputimagefile)-1]=='k' ) //vtk
+    {
+        std::cout<<"Reading image as vtkDataSetReader"<<std::endl;
+        vtkSmartPointer<vtkDataSetReader> rdr = vtkSmartPointer<vtkDataSetReader>::New();
+        rdr->SetFileName(inputimagefile);
+        rdr->Update();
+
+        std::cout<<"Casting image to float"<<std::endl;
+        caster->SetInputData(rdr->GetOutput());
+        caster->SetOutputScalarTypeToFloat();
+        caster->Update();
+    }
+    else
+    {
+        std::cout<<"Reading image with vtkMetaImageReader"<<std::endl;
+        vtkSmartPointer<vtkMetaImageReader> rdr = vtkSmartPointer<vtkMetaImageReader>::New();
+        rdr->SetFileName(inputimagefile);
+        rdr->Update();
+
+        std::cout<<"Casting image to float"<<std::endl;
+        caster->SetInputData(rdr->GetOutput());
+        caster->SetOutputScalarTypeToFloat();
+        caster->Update();
+    }        
+
     
     std::cout<<"Smoothing the image"<<std::endl;
     vtkSmartPointer<vtkImageGaussianSmooth> smooth = vtkSmartPointer<vtkImageGaussianSmooth>::New();
