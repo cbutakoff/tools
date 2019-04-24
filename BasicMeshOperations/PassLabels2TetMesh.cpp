@@ -22,6 +22,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyDataReader.h>
 #include <vtkCellData.h>
 #include <vtkCell.h>
+#include <vtkXMLUnstructuredGridReader.h>
 #include <fstream>
 
 #include <vtkCallbackCommand.h>
@@ -46,7 +47,7 @@ typedef struct __bsc_entry {
     
 int main(int argc, char** argv)
 {
-    std::cout<<"exec volmesh.vtk surfmesh.vtk out_labels.txt arrayname volmesh_out.vtk scale correct_orientation(0|1)"<<std::endl;
+    std::cout<<"exec volmesh.vtk|vtu surfmesh.vtk out_labels.txt arrayname volmesh_out.vtk scale correct_orientation(0|1)"<<std::endl;
     std::cout<<"Scale - rescale mesh by this factor, !!! for now works only for ALYA, for everything else put 1"<<std::endl;
     std::cout<<"correct_orientation - 1 or 0 whether to correct cell orientation or not"<<std::endl;
     std::cout<<"Labels must be celldata"<<std::endl;
@@ -92,14 +93,29 @@ int main(int argc, char** argv)
             alyaoutput_mesh = true;
     }
 
-    vtkSmartPointer<vtkDataSetReader> vol_rdr = vtkSmartPointer<vtkDataSetReader>::New();
-    CommonTools::AssociateProgressFunction(vol_rdr);
 
-    vol_rdr->SetFileName(volmesh_file);
-    vol_rdr->Update();
-    vtkUnstructuredGrid* volmesh = (vtkUnstructuredGrid*)vol_rdr->GetOutput();
-    
-    
+    vtkSmartPointer<vtkUnstructuredGrid> volmesh =     vtkSmartPointer<vtkUnstructuredGrid>::New();
+    if (volmesh_file[ strlen(volmesh_file)-1 ] == 'k') //vtk
+    {
+
+        vtkSmartPointer<vtkDataSetReader> vol_rdr = vtkSmartPointer<vtkDataSetReader>::New();
+        CommonTools::AssociateProgressFunction(vol_rdr);
+
+        vol_rdr->SetFileName(volmesh_file);
+        vol_rdr->Update();
+        volmesh->DeepCopy( (vtkUnstructuredGrid*)vol_rdr->GetOutput() );
+    }    
+    else
+    {
+        vtkSmartPointer<vtkXMLUnstructuredGridReader> vol_rdr = vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
+        CommonTools::AssociateProgressFunction(vol_rdr);
+
+        vol_rdr->SetFileName(volmesh_file);
+        vol_rdr->Update();
+        volmesh->DeepCopy( (vtkUnstructuredGrid*)vol_rdr->GetOutput() );
+     }
+
+
     if(volmesh->GetCell(0)->GetNumberOfPoints()<4)
     {
         std::cout<<"Supplied volumetric mesh has cells with : "<<volmesh->GetCell(0)->GetNumberOfPoints()<<" vertices"<<std::endl;
