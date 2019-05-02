@@ -578,13 +578,13 @@ AreaAngleMeasureType SurfaceHoleFiller::SumAreaTriangleMeasures(const AreaAngleM
 
 bool SurfaceHoleFiller::AreaTriangleMeasureLess(const AreaAngleMeasureType& m1,
         const AreaAngleMeasureType& m2) const {
-    bool less = false;
-    if (std::real(m1) < std::real(m2))
-        less = true;
-    else if (std::imag(m1) < std::imag(m2))
-        less = true;
 
-    return less;
+    const double a = std::real(m1);
+    const double b = std::imag(m1);
+    const double c = std::real(m2);
+    const double d = std::imag(m2);
+
+    return (a < c || (a == c && b < d));
 }
 
 
