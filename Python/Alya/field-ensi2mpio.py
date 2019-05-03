@@ -14,33 +14,16 @@ import os
 # In[3]:
 
 
-problem_name = '2d'
-path = f'ensi/{problem_name}.ensi.case'
-outpath = 'fields/'
+problem_name = 'fluidda'
+path = f'../ensi/{problem_name}.ensi.case'
+outpath = './'
 varname = 'VELOC'
-ndimensions = 2
-starttime = 5
-endtime = 6
+ndimensions = 3
+starttime = 1
+endtime = 2
 field_id = 1
 
 
-
-#figure out the timeline for the variable
-timeset_id = -1
-with open(path,'r') as f:
-    for line in f:
-        if varname in line:
-            digits = [int(s) for s in line.split() if s.isdigit()]
-            timeset_id = digits[0]
-            break
-
-if timeset_id<0:
-    print('Timeset of the variable ',varname, ' not found in the case. Check the spelling of the variable name')
-    exit()
-
-timeset_id = timeset_id-1 #vtk makes them start from 0
-
-print(f'Found {varname} in timeset {timeset_id}')
 
 assert( os.path.isfile(path) )
 
@@ -53,6 +36,20 @@ rdr.ReadAllVariablesOn()
 rdr.Update()
 
 
+
+#figure out the timeline for the variable
+timeset_id = -1
+
+for i in range(rdr.GetTimeSets().GetNumberOfItems()):
+    if varname in rdr.GetPointArrayName(i):
+        timeset_id = i
+
+if timeset_id<0:
+    print('Timeset of the variable ',varname, ' not found in the case. Check the spelling of the variable name')
+    exit()
+
+
+print(f'Found {varname} in timeset {timeset_id}')
 
 ntimesteps = rdr.GetTimeSets().GetItem(timeset_id).GetNumberOfTuples()
 print(f'Number of timesteps: {ntimesteps}')
