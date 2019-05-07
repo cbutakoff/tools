@@ -3,17 +3,39 @@ import pandas as pd
 import  progressbar 
 import multiprocessing as mp
 import numpy as np
-from os.path import isfile
+from os.path import isfile, join
+from os import listdir
 from sys import exit
+import re
 
-main_filename = 'fluidda.pvd'
-pts_filename0 = '../fluidda.pts.res'
-pts_filename = '../fluidda.pts.{:08d}.res'
+case_name = 'fluidda'
+case_path = '../'
+main_filename = f'{case_name}.pvd'
+dat_file = join(case_path, f'{case_name}.dat')
+pts_filename0 = join(case_path, f'{case_name}.pts.res')
+pts_filename = join(case_path, f'{case_name}'+'.pts.{:08d}.res')
 ncpus = 10
 
-timestep = 5e-2
+#extract the timestep from the dat
+timestep = -1
+with open(dat_file,'r') as f:
+    for line in f:
+        if "time_step_size" in line.lower():
+            numbers = [float(s) for s in line.split() if s[0].isdigit()]
+            timestep = numbers[-1]
 
-filenumbers = range(10,40010,10)
+if timestep<0:
+    print ('Error extracting timestep')
+    exit            
+
+#extract filenumbers
+filenumbers = []
+for f in listdir(case_path):
+    m = re.match(f'{case_name}.pts.(\d+).res',f) 
+    if m:
+        filenumbers.append( int(m.group(1)) )
+
+ 
 
 
 def read_file( filename ):
