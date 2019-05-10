@@ -1,4 +1,5 @@
 FIND_PACKAGE(ITK 4 REQUIRED)
+FIND_PACKAGE(VTK)
 
 
 INCLUDE(${ITK_USE_FILE})
@@ -15,11 +16,23 @@ RotateImage3D
 CaclulateEntropyFiberAngles
 )
 
+set(ITK_VTK_PROGRAMS 
+ParticleDensityImage
+)
 
 foreach(program ${ITK_PROGRAMS})
   add_executable(${program} ${program}.cpp)
   target_link_libraries(${program} ${ITK_LIBRARIES})
 endforeach(program)
+
+IF (VTK_FOUND)
+  INCLUDE(${VTK_USE_FILE})
+
+  foreach(program ${ITK_VTK_PROGRAMS})
+      add_executable(${program} ${MYCOMMON_FILES} ${program}.cpp)
+      target_link_libraries(${program} ${ITK_LIBRARIES} ${VTK_LIBRARIES})
+  endforeach(program)
+ENDIF(VTK_FOUND)
 
 
 
