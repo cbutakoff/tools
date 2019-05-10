@@ -104,6 +104,16 @@ int main(int argc, char** argv) {
     }
 
 
+
+    typedef itk::ImageRegionIterator<OutputImageType> ImageIteratorType;
+    ImageIteratorType it(outputImage, outputImage->GetLargestPossibleRegion());
+    for( it = it.Begin(); !it.IsAtEnd(); ++it)
+    {
+        if(it.Get()>0)
+            it.Set( -log(it.Get()) ); //initialize image to 0
+    }
+    
+
     WriterType::Pointer writer = WriterType::New();
     writer->SetFileName(outputfilename);
     writer->SetInput(outputImage);
