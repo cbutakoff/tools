@@ -10,6 +10,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkDataSetReader.h>
 #include <vtkDataSetWriter.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkXMLUnstructuredGridReader.h>
 #include <vtkCell.h>
 #include <vector>
 #include <vtkCellArray.h>
@@ -22,7 +23,7 @@ int main(int argc, char **argv)
     std::cout<<"Removes elements that are not tetrahedra v1.0"<<std::endl;
     if(argc<2)
     {
-        std::cout<<"Usage: CheckTetraMesh -i inputmesh.vtk -o outputmessh.vtk -clean -flip(p|n)"<<std::endl;
+        std::cout<<"Usage: CheckTetraMesh -i inputmesh.vtk|vtu -o outputmessh.vtu -clean -flip(p|n)"<<std::endl;
         std::cout<<"-clean -- removes non-tetrahedra"<<std::endl;
         std::cout<<"-flipp -- flips tetra (ABCD) with positive dot product (ABxAC).AD"<<std::endl;
         std::cout<<"-flipn -- flips tetra (ABCD) with negative dot product (ABxAC).AD"<<std::endl;
@@ -96,10 +97,21 @@ int main(int argc, char **argv)
     
     std::cout<<"Loading mesh"<<std::endl;
     vtkSmartPointer<vtkDataSetReader> rdr = vtkSmartPointer<vtkDataSetReader>::New();
-    rdr->SetFileName(input_volmesh_filename);
-    rdr->Update();
-    
-    vtkUnstructuredGrid *mesh = (vtkUnstructuredGrid *)rdr->GetOutput();
+    vtkSmartPointer<vtkXMLUnstructuredGridReader> vturdr = vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
+    vtkUnstructuredGrid *mesh;
+
+    if( input_volmesh_filename[strlen(input_volmesh_filename)-1]=='k' )
+    {
+        rdr->SetFileName(input_volmesh_filename);
+        rdr->Update();
+        mesh = (vtkUnstructuredGrid *)rdr->GetOutput();
+    }
+    else
+    {
+        vturdr->SetFileName(input_volmesh_filename);
+        vturdr->Update();
+        mesh = vturdr->GetOutput();
+    }
     
     if(clean)
     {
