@@ -44,7 +44,8 @@ DistTransform
 LaplaceBasedVolMesh
 ImageFeatures
 TMap
-) 
+Image2Hexmesh
+)
 
 foreach(program ${MYPROJECTS})
 	option(BUILD_${program} "Build ${program}" ON)
