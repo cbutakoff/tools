@@ -11,9 +11,11 @@
 #include <vtkFloatArray.h>
 
 #include <itkImageRegionConstIteratorWithIndex.h>
+#include <itkImageRegionIteratorWithIndex.h>
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkImageIOBase.h"
+
 
 template <unsigned int VDimension>
 int ReadScalarImage(const char *inputFileName,
@@ -37,7 +39,8 @@ int main(int argc, char *argv[])
     {
         std::cerr << "Usage: " << std::endl;
         std::cerr << argv[0];
-        std::cerr << " <InputImage.mhd> <OutputMesh.vtu>";
+        std::cerr << " <InputImage.mhd> <OutputMesh.vtu>"<<std::endl;
+        std::cerr << "Value 0 in the image is reserved for the background"<<std::endl;
         std::cerr << std::endl;
         return EXIT_FAILURE;
     }
@@ -320,38 +323,77 @@ int CreateHexMeshFromImage(const char *outputFileName,
     using IteratorType = itk::ImageRegionConstIteratorWithIndex<TImage>;
     using PointType = TImage::PointType;
 
+    using idtype = int64_t;
+
     auto spacing = image->GetSpacing();
     auto size = image->GetLargestPossibleRegion().GetSize();
 
+    const idtype sx = size[0];
+    const idtype sy = size[1];
+    const idtype sz = size[2];
+
+
+    std::cout<<"Creating elements"<<std::endl;
+
+    vtkSmartPointer<vtkCellArray> hexas =     vtkSmartPointer<vtkCellArray> ::New();
+
+    //create a mask to know which elements exist
+    const idtype nvertices_max = sx*sy*(sz+1) + sy*(sy+1) + sx+1 +1;
+    char* mask = new char[ nvertices_max ];
+    memset(mask, 0, nvertices_max);
+
     IteratorType it(image, image->GetLargestPossibleRegion());
     it.Begin();
+
     while (!it.IsAtEnd())
     {
         auto label = it.Get();
-        auto index = it.GetIndex();
 
-        PointType point;
+        if (label!=0) 
+        {
+            auto index = it.GetIndex();
 
-        image->TransformIndexToPhysicalPoint( index, point );
+            //the order in which the vetices of the mesh will be generated : cols(x), then rows(y), then slices (z)
+            const idtype x = index[0];
+            const idtype y = index[1];
+            const idtype z = index[2];
 
-        //the order in which the vetices of the mesh will be generated (o - center of the pixel): cols(x), then rows(y), then slices (z)
-        //        15    16   17   18   19
-        //      0    1    2    3    4
-        //        o    o    o    o
-        //      5    6    7    8    9
-        //        o    o    o    o 
-        //     10   11   12   13   14
+            hexas->InsertNextCell(8);
+            hexas->InsertCellPoint( sx*sy*z + sy*(y+1) + x );
+            hexas->InsertCellPoint( sx*sy*z + sy*(y+1) + (x+1) );
+            hexas->InsertCellPoint( sx*sy*(z+1) + sy*(y+1) + (x+1) );
+            hexas->InsertCellPoint( sx*sy*(z+1) + sy*(y+1) + x );
 
-        auto col = index[0];
-        auto row = index[1];
-        auto slice = index[2];
+            hexas->InsertCellPoint( sx*sy*z + sy*y + x );
+            hexas->InsertCellPoint( sx*sy*z + sy*y + (x+1) );
+            hexas->InsertCellPoint( sx*sy*(z+1) + sy*y + (x+1) );
+            hexas->InsertCellPoint( sx*sy*(z+1) + sy*y + x );
 
-        pt[0]_col = row*size[0]
-
+            mask[ sx*sy*z + sy*(y+1) + x ] = 1;
+            mask[ sx*sy*z + sy*(y+1) + (x+1) ] = 1;
+            mask[ sx*sy*(z+1) + sy*(y+1) + (x+1) ] = 1;
+            mask[ sx*sy*(z+1) + sy*(y+1) + x ] = 1;
+            mask[ sx*sy*z + sy*y + x ] = 1;
+            mask[ sx*sy*z + sy*y + (x+1) ] = 1;
+            mask[ sx*sy*(z+1) + sy*y + (x+1) ] = 1;
+            mask[ sx*sy*(z+1) + sy*y + x ] = 1;
+        }
+        
         ++it;
     }
 
+    //see which vertices were added and generate coordintes
+    for(idtype i=0; i<nvertices_max; i++)
+    {
+        if(mask>0)
+        {
+            
+        }
+    }
 
+
+
+    delete[] mask;
 
     return EXIT_SUCCESS;
 }
