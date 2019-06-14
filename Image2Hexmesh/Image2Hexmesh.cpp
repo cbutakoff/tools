@@ -360,7 +360,7 @@ int CreateHexMeshFromImage(const char *outputFileName,
     {
         auto label = it.Get();
 
-        if (label!=0) 
+        //if (label!=0) 
         {
             auto index = it.GetIndex();
 
@@ -385,14 +385,16 @@ int CreateHexMeshFromImage(const char *outputFileName,
                 std::cout<<ids[kk]<<", ";
             std::cout<<std::endl;
 
+            std::cout<<"inserting cell "<<std::endl;
 
-            hexas.push_back( );
-            std::cout<<"inserting cell "<<cellid<<std::endl;
+            std::vector<IdType> cell(8);
             for(int kk=0; kk<8; kk++)
             {
-                hexas->InsertCellPoint( ids[kk] );
+                cell[kk] = ids[kk];
                 mask[ ids[kk] ] = 1;
             }
+
+            hexas.push_back( cell );
 
             labels->InsertNextTuple1( label );
 
@@ -471,41 +473,38 @@ int CreateHexMeshFromImage(const char *outputFileName,
 
     std::cout<<"Renumbering elements and creating mesh"<<std::endl;
 
-    vtkSmartPointer<vtkCellArray> hexas =     vtkSmartPointer<vtkCellArray> ::New();
+    vtkSmartPointer<vtkCellArray> cells =     vtkSmartPointer<vtkCellArray> ::New();
 
-    for(IdType elno = 0; elno<hexas->GetNumberOfCells(); elno++)
+    for(IdType elno = 0; elno<hexas.size(); elno++)
     {
         if( elno%50000 ==0 )
-            std::cout<<"Progress: "<<elno*100/hexas->GetNumberOfCells()<<"\r";
+            std::cout<<"Progress: "<<elno*100/hexas.size()<<"\r";
 
-        vtkSmartPointer<vtkIdList> oldids =         vtkSmartPointer<vtkIdList> ::New();
-        hexas->GetCell(elno, oldids);
+        auto oldids = hexas[elno];
         std::cout<<"Element "<<elno<<" old ids: ";
         for(int kk=0; kk<8; kk++)
-            std::cout<<oldids->GetId(kk)<<", " ; 
+            std::cout<<oldids[kk]<<", " ; 
         std::cout<<std::endl;
 
 
-        vtkIdType newIds[8];
-
         assert(oldids->GetNumberOfIds()==8);
 
+        cells->InsertNextCell(8);
         for(int kk=0; kk<8; kk++)
         {
-            newIds[kk] =  pt_permutation[ oldids->GetId(kk) ] ;
+            cells->InsertCellPoint( pt_permutation[ oldids[kk] ] );
 
-            if ( pt_permutation[ oldids->GetId(kk) ]<0 )
-                std::cout<<"Bad old id: "<<oldids->GetId(kk)<<std::endl; 
+            if ( pt_permutation[ oldids[kk] ]<0 )
+                std::cout<<"Bad old id: "<<oldids[kk]<<std::endl; 
         }
 
-        //hexas->ReplaceCell(elno, 8, newIds);
     }
     std::cout<<std::endl;
 
     std::cout<<"Saving the mesh "<<outputFileName<<std::endl;
     vtkSmartPointer<vtkUnstructuredGrid> ug =     vtkSmartPointer<vtkUnstructuredGrid> ::New();
     ug->SetPoints(coord);
-    ug->SetCells(VTK_HEXAHEDRON,hexas);
+    ug->SetCells(VTK_HEXAHEDRON,cells);
     ug->GetCellData()->AddArray(labels);
 
     vtkSmartPointer<vtkXMLUnstructuredGridWriter> wr =     vtkSmartPointer<vtkXMLUnstructuredGridWriter> ::New();
