@@ -44,7 +44,6 @@ DistTransform
 LaplaceBasedVolMesh
 ImageFeatures
 TMap
-Image2Hexmesh
 )
 
 foreach(program ${MYPROJECTS})
