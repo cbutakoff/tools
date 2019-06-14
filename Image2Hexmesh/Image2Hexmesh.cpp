@@ -336,7 +336,6 @@ int CreateHexMeshFromImage(const char *outputFileName,
 
     std::cout<<"Creating elements"<<std::endl;
 
-    vtkSmartPointer<vtkCellArray> hexas =     vtkSmartPointer<vtkCellArray> ::New();
 
     //create a mask to know which elements exist
     //alternatively: sx sy (sz-1) + sx (sy-1) + sx-1 + 1, 
@@ -344,11 +343,12 @@ int CreateHexMeshFromImage(const char *outputFileName,
     const IdType nvertices_max = sx*sy*sz; 
     const IdType ncells_max = (sx-1)*(sy-1)*(sz-1); 
 
-    char* mask = new char[ nvertices_max ];
-    memset(mask, 0, nvertices_max);
+    std::vector<char>  mask( nvertices_max, 0 );
 
     IteratorType it(image, image->GetLargestPossibleRegion());
     it.GoToBegin();
+
+    std::vector<std::vector<IdType> > hexas;
 
 
     vtkSmartPointer<vtkFloatArray> labels =     vtkSmartPointer<vtkFloatArray> ::New();
@@ -380,8 +380,14 @@ int CreateHexMeshFromImage(const char *outputFileName,
             ids[6] = sx*sy*(z+1) + sx*y + x ;
             ids[7] = sx*sy*z + sx*(y+1) + x ;
 
+            std::cout<<"Pixel "<<x<<","<<y<<","<<z<<". Ids: ";
+            for (int kk=0; kk<8; kk++)
+                std::cout<<ids[kk]<<", ";
+            std::cout<<std::endl;
 
-            hexas->InsertNextCell(8);
+
+            hexas.push_back( );
+            std::cout<<"inserting cell "<<cellid<<std::endl;
             for(int kk=0; kk<8; kk++)
             {
                 hexas->InsertCellPoint( ids[kk] );
@@ -399,6 +405,15 @@ int CreateHexMeshFromImage(const char *outputFileName,
     }
 
     std::cout<<std::endl;
+
+
+    std::cout<<"Mask: ";
+    for(int kk=0; kk<nvertices_max; kk++)
+    {
+        std::cout<<(int) mask[kk]<<", ";
+    }
+    std::cout<<std::endl;
+
 
     //go over the mask and create the points
     //the vertices can be interpreted as pixel centers padded by one row/col/slice at the end and shifted 
@@ -445,8 +460,18 @@ int CreateHexMeshFromImage(const char *outputFileName,
     std::cout<<std::endl;
 
 
+    std::cout<<"Permutations: ";
+    for(int kk=0; kk<nvertices_max; kk++)
+    {
+        std::cout<<pt_permutation[kk]<<", ";
+    }
+    std::cout<<std::endl;
+
+
+
     std::cout<<"Renumbering elements and creating mesh"<<std::endl;
 
+    vtkSmartPointer<vtkCellArray> hexas =     vtkSmartPointer<vtkCellArray> ::New();
 
     for(IdType elno = 0; elno<hexas->GetNumberOfCells(); elno++)
     {
@@ -455,15 +480,25 @@ int CreateHexMeshFromImage(const char *outputFileName,
 
         vtkSmartPointer<vtkIdList> oldids =         vtkSmartPointer<vtkIdList> ::New();
         hexas->GetCell(elno, oldids);
+        std::cout<<"Element "<<elno<<" old ids: ";
+        for(int kk=0; kk<8; kk++)
+            std::cout<<oldids->GetId(kk)<<", " ; 
+        std::cout<<std::endl;
+
 
         vtkIdType newIds[8];
 
         assert(oldids->GetNumberOfIds()==8);
 
         for(int kk=0; kk<8; kk++)
+        {
             newIds[kk] =  pt_permutation[ oldids->GetId(kk) ] ;
 
-        hexas->ReplaceCell(elno, 8, newIds);
+            if ( pt_permutation[ oldids->GetId(kk) ]<0 )
+                std::cout<<"Bad old id: "<<oldids->GetId(kk)<<std::endl; 
+        }
+
+        //hexas->ReplaceCell(elno, 8, newIds);
     }
     std::cout<<std::endl;
 
@@ -478,7 +513,7 @@ int CreateHexMeshFromImage(const char *outputFileName,
     wr->SetInputData(ug);
     wr->Write();
 
-    delete[] mask;
+
 
     return EXIT_SUCCESS;
 }
