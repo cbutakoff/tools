@@ -360,7 +360,7 @@ int CreateHexMeshFromImage(const char *outputFileName,
     {
         auto label = it.Get();
 
-        //if (label!=0) 
+        if (label!=0) 
         {
             auto index = it.GetIndex();
 
@@ -371,21 +371,21 @@ int CreateHexMeshFromImage(const char *outputFileName,
             const IdType z = index[2];
 
             IdType ids[8];
-            ids[0] = sx*sy*z + sx*(y+1) + (x+1) ;
-            ids[1] = sx*sy*(z+1) + sx*(y+1) + (x+1) ;
-            ids[2] = sx*sy*(z+1) + sx*(y+1) + x ;
-            ids[3] = sx*sy*z + sx*y + x ;
-            ids[4] = sx*sy*z + sx*y + (x+1) ;
-            ids[5] = sx*sy*(z+1) + sx*y + (x+1) ;
-            ids[6] = sx*sy*(z+1) + sx*y + x ;
-            ids[7] = sx*sy*z + sx*(y+1) + x ;
+            ids[0] = sx*sy*z + sx*(y+1) + x ;
+            ids[1] = sx*sy*z + sx*(y+1) + (x+1) ;
+            ids[2] = sx*sy*(z+1) + sx*(y+1) + (x+1) ;
+            ids[3] = sx*sy*(z+1) + sx*(y+1) + x ;
+            ids[4] = sx*sy*z + sx*y + x ;
+            ids[5] = sx*sy*z + sx*y + (x+1) ;
+            ids[6] = sx*sy*(z+1) + sx*y + (x+1) ;
+            ids[7] = sx*sy*(z+1) + sx*y + x ;
 
-            std::cout<<"Pixel "<<x<<","<<y<<","<<z<<". Ids: ";
-            for (int kk=0; kk<8; kk++)
-                std::cout<<ids[kk]<<", ";
-            std::cout<<std::endl;
+            //std::cout<<"Pixel "<<x<<","<<y<<","<<z<<". Ids: ";
+            //for (int kk=0; kk<8; kk++)
+            //    std::cout<<ids[kk]<<", ";
+            //std::cout<<std::endl;
 
-            std::cout<<"inserting cell "<<std::endl;
+            //std::cout<<"inserting cell "<<std::endl;
 
             std::vector<IdType> cell(8);
             for(int kk=0; kk<8; kk++)
@@ -409,12 +409,12 @@ int CreateHexMeshFromImage(const char *outputFileName,
     std::cout<<std::endl;
 
 
-    std::cout<<"Mask: ";
-    for(int kk=0; kk<nvertices_max; kk++)
-    {
-        std::cout<<(int) mask[kk]<<", ";
-    }
-    std::cout<<std::endl;
+    //std::cout<<"Mask: ";
+    //for(int kk=0; kk<nvertices_max; kk++)
+    //{
+    //    std::cout<<(int) mask[kk]<<", ";
+    //}
+    //std::cout<<std::endl;
 
 
     //go over the mask and create the points
@@ -462,12 +462,12 @@ int CreateHexMeshFromImage(const char *outputFileName,
     std::cout<<std::endl;
 
 
-    std::cout<<"Permutations: ";
-    for(int kk=0; kk<nvertices_max; kk++)
-    {
-        std::cout<<pt_permutation[kk]<<", ";
-    }
-    std::cout<<std::endl;
+    //std::cout<<"Permutations: ";
+    //for(int kk=0; kk<nvertices_max; kk++)
+    //{
+    //    std::cout<<pt_permutation[kk]<<", ";
+    //}
+    //std::cout<<std::endl;
 
 
 
@@ -481,13 +481,13 @@ int CreateHexMeshFromImage(const char *outputFileName,
             std::cout<<"Progress: "<<elno*100/hexas.size()<<"\r";
 
         auto oldids = hexas[elno];
-        std::cout<<"Element "<<elno<<" old ids: ";
-        for(int kk=0; kk<8; kk++)
-            std::cout<<oldids[kk]<<", " ; 
-        std::cout<<std::endl;
+        //std::cout<<"Element "<<elno<<" old ids: ";
+        //for(int kk=0; kk<8; kk++)
+        //    std::cout<<oldids[kk]<<", " ; 
+        //std::cout<<std::endl;
 
 
-        assert(oldids->GetNumberOfIds()==8);
+        //assert(oldids->GetNumberOfIds()==8);
 
         cells->InsertNextCell(8);
         for(int kk=0; kk<8; kk++)
@@ -495,7 +495,7 @@ int CreateHexMeshFromImage(const char *outputFileName,
             cells->InsertCellPoint( pt_permutation[ oldids[kk] ] );
 
             if ( pt_permutation[ oldids[kk] ]<0 )
-                std::cout<<"Bad old id: "<<oldids[kk]<<std::endl; 
+                std::cout<<"Bad old id: "<<oldids[kk]<<". Trying to use the vertex that was not created. This should not have happened. Report the bug."<<std::endl; 
         }
 
     }
