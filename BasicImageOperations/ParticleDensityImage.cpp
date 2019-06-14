@@ -76,9 +76,11 @@ int main(int argc, char** argv) {
 
         typedef itk::ImageRegionIterator<OutputImageType> ImageIteratorType;
         ImageIteratorType it(outputImage, outputImage->GetLargestPossibleRegion());
-        for( it = it.Begin(); !it.IsAtEnd(); ++it)
+		it.GoToBegin();
+        while( !it.IsAtEnd() )
         {
             it.Set(0); //initialize image to 0
+			++it;
         }
 
     }
@@ -107,10 +109,13 @@ int main(int argc, char** argv) {
 
     typedef itk::ImageRegionIterator<OutputImageType> ImageIteratorType;
     ImageIteratorType it(outputImage, outputImage->GetLargestPossibleRegion());
-    for( it = it.Begin(); !it.IsAtEnd(); ++it)
+	it.GoToBegin();
+    while( !it.IsAtEnd() )
     {
         if(it.Get()>0)
             it.Set( -log(it.Get()) ); //initialize image to 0
+
+		++it;
     }
     
 
