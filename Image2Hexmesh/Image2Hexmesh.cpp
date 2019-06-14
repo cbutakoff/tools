@@ -18,7 +18,7 @@
 
 
 template <unsigned int VDimension>
-int ReadScalarImage(const char *inputFileName,
+int ReadScalarImage(const char *inputFileName, const char *outputFileName,
                     const itk::ImageIOBase::IOComponentType componentType);
 
 template <class TImage>
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     {
         if (imageDimension == 3)
         {
-            return ReadScalarImage<3>(inputFileName, componentType);
+            return ReadScalarImage<3>(inputFileName, outputFileName, componentType);
         }
         else 
         {
@@ -128,7 +128,7 @@ int ReadImage(const char *fileName,
 }
 
 template <unsigned int VDimension>
-int ReadScalarImage(const char *inputFileName, const char *outputFileName
+int ReadScalarImage(const char *inputFileName, const char *outputFileName,
                     const itk::ImageIOBase::IOComponentType componentType)
 {
     switch (componentType)
@@ -151,7 +151,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -168,7 +168,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -185,7 +185,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -202,7 +202,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -219,7 +219,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -236,7 +236,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -253,7 +253,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -270,7 +270,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -287,7 +287,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
 
@@ -304,7 +304,7 @@ int ReadScalarImage(const char *inputFileName, const char *outputFileName
         }
 
         std::cout << image << std::endl;
-        CreateHexMeshFromImage(outputFileName, image);
+        CreateHexMeshFromImage<ImageType>(outputFileName, image);
         break;
     }
     }
@@ -321,16 +321,17 @@ int CreateHexMeshFromImage(const char *outputFileName,
               typename TImage::Pointer image)
 {
     using IteratorType = itk::ImageRegionConstIteratorWithIndex<TImage>;
-    using PointType = TImage::PointType;
+    using PointType = typename TImage::PointType;
 
-    using idtype = int64_t;
+    using IdType = int64_t;
+    using CoordType = float_t;
 
     auto spacing = image->GetSpacing();
     auto size = image->GetLargestPossibleRegion().GetSize();
 
-    const idtype sx = size[0];
-    const idtype sy = size[1];
-    const idtype sz = size[2];
+    const IdType sx = size[0]+1;
+    const IdType sy = size[1]+1;
+    const IdType sz = size[2]+1;
 
 
     std::cout<<"Creating elements"<<std::endl;
@@ -338,12 +339,22 @@ int CreateHexMeshFromImage(const char *outputFileName,
     vtkSmartPointer<vtkCellArray> hexas =     vtkSmartPointer<vtkCellArray> ::New();
 
     //create a mask to know which elements exist
-    const idtype nvertices_max = sx*sy*(sz+1) + sy*(sy+1) + sx+1 +1;
+    //alternatively: sx sy (sz-1) + sx (sy-1) + sx-1 + 1, 
+    //note that with these sx,sy,sz, the last image coordinate is sx-2, sy-2, sz-2
+    const IdType nvertices_max = sx*sy*sz; 
+    const IdType ncells_max = (sx-1)*(sy-1)*(sz-1); 
+
     char* mask = new char[ nvertices_max ];
     memset(mask, 0, nvertices_max);
 
     IteratorType it(image, image->GetLargestPossibleRegion());
-    it.Begin();
+    it.GoToBegin();
+
+
+    vtkSmartPointer<vtkFloatArray> labels =     vtkSmartPointer<vtkFloatArray> ::New();
+    labels->SetName( "Label" );
+    labels->SetNumberOfComponents( 1 );
+    labels->Allocate( ncells_max );
 
     while (!it.IsAtEnd())
     {
@@ -353,45 +364,119 @@ int CreateHexMeshFromImage(const char *outputFileName,
         {
             auto index = it.GetIndex();
 
+
             //the order in which the vetices of the mesh will be generated : cols(x), then rows(y), then slices (z)
-            const idtype x = index[0];
-            const idtype y = index[1];
-            const idtype z = index[2];
+            const IdType x = index[0];
+            const IdType y = index[1];
+            const IdType z = index[2];
+
+            IdType ids[8];
+            ids[0] = sx*sy*z + sx*(y+1) + (x+1) ;
+            ids[1] = sx*sy*(z+1) + sx*(y+1) + (x+1) ;
+            ids[2] = sx*sy*(z+1) + sx*(y+1) + x ;
+            ids[3] = sx*sy*z + sx*y + x ;
+            ids[4] = sx*sy*z + sx*y + (x+1) ;
+            ids[5] = sx*sy*(z+1) + sx*y + (x+1) ;
+            ids[6] = sx*sy*(z+1) + sx*y + x ;
+            ids[7] = sx*sy*z + sx*(y+1) + x ;
+
 
             hexas->InsertNextCell(8);
-            hexas->InsertCellPoint( sx*sy*z + sy*(y+1) + x );
-            hexas->InsertCellPoint( sx*sy*z + sy*(y+1) + (x+1) );
-            hexas->InsertCellPoint( sx*sy*(z+1) + sy*(y+1) + (x+1) );
-            hexas->InsertCellPoint( sx*sy*(z+1) + sy*(y+1) + x );
+            for(int kk=0; kk<8; kk++)
+            {
+                hexas->InsertCellPoint( ids[kk] );
+                mask[ ids[kk] ] = 1;
+            }
 
-            hexas->InsertCellPoint( sx*sy*z + sy*y + x );
-            hexas->InsertCellPoint( sx*sy*z + sy*y + (x+1) );
-            hexas->InsertCellPoint( sx*sy*(z+1) + sy*y + (x+1) );
-            hexas->InsertCellPoint( sx*sy*(z+1) + sy*y + x );
+            labels->InsertNextTuple1( label );
 
-            mask[ sx*sy*z + sy*(y+1) + x ] = 1;
-            mask[ sx*sy*z + sy*(y+1) + (x+1) ] = 1;
-            mask[ sx*sy*(z+1) + sy*(y+1) + (x+1) ] = 1;
-            mask[ sx*sy*(z+1) + sy*(y+1) + x ] = 1;
-            mask[ sx*sy*z + sy*y + x ] = 1;
-            mask[ sx*sy*z + sy*y + (x+1) ] = 1;
-            mask[ sx*sy*(z+1) + sy*y + (x+1) ] = 1;
-            mask[ sx*sy*(z+1) + sy*y + x ] = 1;
+
+            if( ids[3]%50000 ==0 )
+                std::cout<<"Progress: "<<ids[3]*100/nvertices_max<<"\r";
         }
         
         ++it;
     }
 
-    //see which vertices were added and generate coordintes
-    for(idtype i=0; i<nvertices_max; i++)
+    std::cout<<std::endl;
+
+    //go over the mask and create the points
+    //the vertices can be interpreted as pixel centers padded by one row/col/slice at the end and shifted 
+    //half voxel 
+
+    std::cout<<"Generating vertex coordinates"<<std::endl;
+
+
+    vtkSmartPointer<vtkPoints> coord =     vtkSmartPointer<vtkPoints> ::New();
+    coord->Allocate(nvertices_max);
+
+    //this permutation is for renumbering the points. To skip nonexisting points. Initialize to -1
+    std::vector<IdType> pt_permutation(nvertices_max, -1);
+
+    IdType c=0;
+    for(IdType x=0; x<sx; x++)
     {
-        if(mask>0)
+        for(IdType y=0; y<sy; y++)
         {
-            
+            for(IdType z=0; z<sz; z++)
+            {
+                typename TImage::PointType point;
+                typename TImage::IndexType idx;
+
+                idx[0] = x;
+                idx[1] = y;
+                idx[2] = z;
+
+                const IdType linear_idx = sx*sy*z + sx*y + x;
+                if( mask[linear_idx]>0 )
+                {
+                    image->TransformIndexToPhysicalPoint( idx, point );
+
+                    coord->InsertNextPoint(point[0] - spacing[0]/2.0, point[1] - spacing[1]/2.0, point[2] - spacing[2]/2.0);
+                    pt_permutation[linear_idx] = c++;
+
+                    if( linear_idx%50000 ==0 )
+                        std::cout<<"Progress: "<<linear_idx*100/nvertices_max<<"\r";
+                }
+            }
         }
     }
 
+    std::cout<<std::endl;
 
+
+    std::cout<<"Renumbering elements and creating mesh"<<std::endl;
+
+
+    for(IdType elno = 0; elno<hexas->GetNumberOfCells(); elno++)
+    {
+        if( elno%50000 ==0 )
+            std::cout<<"Progress: "<<elno*100/hexas->GetNumberOfCells()<<"\r";
+
+        vtkSmartPointer<vtkIdList> oldids =         vtkSmartPointer<vtkIdList> ::New();
+        hexas->GetCell(elno, oldids);
+
+        vtkIdType newIds[8];
+
+        assert(oldids->GetNumberOfIds()==8);
+
+        for(int kk=0; kk<8; kk++)
+            newIds[kk] =  pt_permutation[ oldids->GetId(kk) ] ;
+
+        hexas->ReplaceCell(elno, 8, newIds);
+    }
+    std::cout<<std::endl;
+
+    std::cout<<"Saving the mesh "<<outputFileName<<std::endl;
+    vtkSmartPointer<vtkUnstructuredGrid> ug =     vtkSmartPointer<vtkUnstructuredGrid> ::New();
+    ug->SetPoints(coord);
+    ug->SetCells(VTK_HEXAHEDRON,hexas);
+    ug->GetCellData()->AddArray(labels);
+
+    vtkSmartPointer<vtkXMLUnstructuredGridWriter> wr =     vtkSmartPointer<vtkXMLUnstructuredGridWriter> ::New();
+    wr->SetFileName(outputFileName);
+    wr->SetInputData(ug);
+    wr->Write();
 
     delete[] mask;
 
