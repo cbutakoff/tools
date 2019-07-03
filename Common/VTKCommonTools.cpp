@@ -59,7 +59,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <stdexcept>
 #include <string>
 #include <algorithm>
-
+#include <iomanip>
+#include <limits>
 
 #include <VTKCommandLineProgress.h>
 
@@ -393,7 +394,9 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
     for(int i=0; i<volmesh->GetNumberOfPoints(); i++)
     {
         double *pt = volmesh->GetPoint(i);
-        node_file<<i+1<<" "<< pt[0]*scale<<" "<< pt[1]*scale<< " "<<pt[2]*scale<<LINEBREAK;
+        node_file<<i+1<<" "<< std::setprecision(std::numeric_limits<double>::digits10 + 1) << pt[0]*scale
+                 <<" "<< std::setprecision(std::numeric_limits<double>::digits10 + 1) << pt[1]*scale
+                 << " "<< std::setprecision(std::numeric_limits<double>::digits10 + 1) << pt[2]*scale << LINEBREAK;
     }
 
     node_file<< "END_COORDINATES"<<std::endl;
