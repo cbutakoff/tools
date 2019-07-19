@@ -406,7 +406,10 @@ def read_alyabin_array(filename, number_of_blocks):
 
 
 def read_alya_variable(variable_name, iteration, number_of_blocks):
-    field_filename = os.path.join(inputfolder, '%s-%s-%08d%s'% (project_name, variable_name, iteration, file_suffix)) 
+    if iteration>=0:
+        field_filename = os.path.join(inputfolder, '%s-%s-%08d%s'% (project_name, variable_name, iteration, file_suffix)) 
+    else:
+        field_filename = os.path.join(inputfolder, '%s-%s%s'% (project_name, variable_name, file_suffix)) 
     #print(field_filename)
     
 
@@ -582,7 +585,15 @@ def write_variable_pernode(varname, iteration, number_of_blocks):
     
     #variable ensight
     fmt = '%s.ensi.%s-'+f'%0{iterationid_number_of_digits}d';
-    with open( os.path.join(outputfolder, fmt % (project_name, varname, iteration)),'wb') as f:
+
+    if iteration>=0:
+        filename = os.path.join(outputfolder, fmt % (project_name, varname, iteration))
+    else:
+        filename = os.path.join(outputfolder, fmt % (project_name, varname, 0))
+        data['header']['Time'] = 0
+        data['header']['TimeStepNo'] = 0
+
+    with open( filename,'wb') as f:
         f.write(b'description line 1'.ljust(80))
         f.write(b'part'.ljust(80))
         f.write(np.array([1], dtype=ensight_id_type))   #int
@@ -694,6 +705,14 @@ if my_rank == 0:
         iteration_numbers =  iteration_numbers + [ int(s1[2].split('.')[0]) ] #this will be long in python 3
         new_field_filelist = new_field_filelist + [filename]
 
+    #add special files if present
+    codnofile = f'{project_name}-CODNO{file_suffix}'
+    if os.path.isfile( os.path.join(inputfolder, codnofile) ):
+        new_field_filelist = new_field_filelist + [codnofile]
+        iteration_numbers =  iteration_numbers + [ -1 ] #this will be long in python 3
+        fields = fields + ['CODNO']
+        
+
     variable_info = pandas.DataFrame({'field':fields, 'iteration':iteration_numbers,'filename':new_field_filelist})
     variable_info['time_int'] = 0
     variable_info['time_real'] = 0
@@ -770,6 +789,13 @@ element_types = comm.bcast(element_types, root=0)
 # # MPI stuff
 
 # In[ ]:
+
+
+#
+#
+#   Functions in the middle of the code. The queue is filled before
+#
+#
 
 
 class Work(object):
@@ -852,7 +878,7 @@ def master(comm):
         comm.send(work, dest=rank, tag=WORKTAG)
         sent_jobs = sent_jobs+1
     
-    print('Submitted the first batch')
+    print('Submitted the first batch of jobs')
     sys.stdout.flush()
     # Loop over getting new work requests until there is no more work to be done
     while True:
@@ -913,6 +939,15 @@ def slave(comm):
         # Send the result back
         comm.send(result, dest=0, tag=0)
         #print(f'Proc {my_rank}: sent')
+
+
+#
+#
+#   End of functions in the middle of the code. The queue is filled before
+#
+#
+
+
 
 
 # In[ ]:
