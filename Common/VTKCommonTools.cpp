@@ -51,6 +51,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkIVWriter.h>
 #include <vtkCellLocator.h>
 #include <vtkUnstructuredGridWriter.h>
+#include <vtkOBJReader.h>
+#include <vtkOBJWriter.h>
 
 #include "VTKCommonTools.h"
 #include <stdio.h>
@@ -116,6 +118,18 @@ vtkPolyData* CommonTools::LoadShapeFromFile(const char *shapeFileName)
         case CommonTools::VTKXMLPolyDataType:
         {
             vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
+            reader -> SetFileName(shapeFileName);
+            reader -> Update();
+            if (reader->GetOutput()) {
+                shapePt = vtkPolyData::New();
+                shapePt -> ShallowCopy(reader->GetOutput());
+            }
+        }
+            break;
+
+        case CommonTools::OBJType:
+        {
+            vtkSmartPointer<vtkOBJReader> reader = vtkSmartPointer<vtkOBJReader>::New();
             reader -> SetFileName(shapeFileName);
             reader -> Update();
             if (reader->GetOutput()) {
@@ -235,6 +249,12 @@ void CommonTools::SaveShapeToFile(
         writer -> SetInputData(shapePt);
         writer -> Write();
     }
+    if (ext == ".obj") {
+        vtkSmartPointer<vtkOBJWriter> writer = vtkSmartPointer<vtkOBJWriter>::New();
+        writer -> SetFileName(shapeFileName);
+        writer -> SetInputData(shapePt);
+        writer -> Write();
+    }
 
 }
 
@@ -325,6 +345,13 @@ CommonTools::VTKSurfaceMeshFormats CommonTools::GetTypeOfVTKData(const char *sha
         if (reader->GetOutput())
             type = CommonTools::VTKXMLPolyDataType;
     }
+    if (ext == ".obj") {
+        vtkSmartPointer<vtkOBJReader> reader = vtkSmartPointer<vtkOBJReader>::New();
+        reader->SetFileName(shapeFileName);
+        if (reader->GetOutput())
+            type = CommonTools::OBJType;
+    }
+
 
     return type;
 }

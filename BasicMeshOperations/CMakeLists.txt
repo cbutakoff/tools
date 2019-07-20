@@ -59,6 +59,7 @@ SampleImage2UG
 InterpolateFibers
 RelabelSurfaceMesh
 ThresholdDS
+CalculateEdgeLengths
 )
 
 set(VTKEIGEN_PROGRAMS 

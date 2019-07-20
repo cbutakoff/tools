@@ -49,7 +49,7 @@ namespace CommonTools {
     //! Valid volume formats io functions can handle 
 
     enum VTKSurfaceMeshFormats {
-        UnknownType, VTKPolyDataType, VTKXMLPolyDataType, STLType, PLYType
+        UnknownType, VTKPolyDataType, VTKXMLPolyDataType, STLType, PLYType, OBJType
     };
 
     //! Valid volume formats io functions can handle 

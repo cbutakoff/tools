@@ -88,11 +88,6 @@ int main(int argc, char *argv[]) {
         std::cout<<"Processing volumetric mesh for off format"<<std::endl;
         SaveSurfMeshOFF(inshape, outshape, scale);
     }
-    else if(strcmp(ext,".off")==0)
-    {
-        std::cout<<"Processing volumetric mesh for off format"<<std::endl;
-        SaveSurfMeshOFF(inshape, outshape, scale);
-    }
     else if(strcmp(ext,"mesh")==0)
     {
         std::cout<<"Processing volumetric mesh for .mesh format"<<std::endl;
