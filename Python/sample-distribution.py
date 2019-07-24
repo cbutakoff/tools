@@ -13,8 +13,8 @@ parser.add_argument('NSamples', type=int,
                     help='Number of samples to sample')
 parser.add_argument('Output_Filename', type=str,
                     help='CSV file to save the particles.')
-parser.add_argument('--grid_spacing', '-gs', metavar='N', type=float, default=0.1,
-                    help='Grid spacing to discretize the distribution, default 0.1.')
+parser.add_argument('--grid_nsamples', '-gs', metavar='N', type=int, default=100,
+                    help='Number of samples in along each axis to take in the grid discretizing the distribution, default 100.')
 parser.add_argument('--normal','-n', metavar='N', nargs=3, type=float, default = [0,0,1],
                     help='Normal to the plane of the disc, default plane is XY.')
 parser.add_argument('--center','-c', metavar='N', nargs=3, type=float, default = [0,0,0],
@@ -36,11 +36,8 @@ R = args.Radius
 N = args.NSamples
 M = args.Amplitude
 output_filename = args.Output_Filename
-grid_spacing = args.grid_spacing
+grid_nsamples = args.grid_nsamples
 
-if( 2*R/grid_spacing  < 10 ):
-    print(f'Grid spacing {grid_spacing} will produce the grid with less than 10 samples = very coarse discretization. Reduce grid spacing.')
-    exit(1)
 
 
 ########################################################################################
@@ -110,7 +107,8 @@ def gibbs(X,Y,Z,N):
 
 
 #create a grid of X,Y points for plotting and interpolation
-X,Y = np.meshgrid(np.arange(-R,R,0.1), np.arange(-R, R + grid_spacing, grid_spacing))
+ttt = np.linspace(-R, R, num=grid_nsamples,  endpoint=True)
+X,Y = np.meshgrid( ttt, ttt )
 
 #define the function
 Z = ParabolicProfile(X, Y, M, R)
