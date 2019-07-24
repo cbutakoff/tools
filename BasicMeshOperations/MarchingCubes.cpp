@@ -79,7 +79,7 @@ int main(int argc, char** argv)
     }
     else if( inputimagefile[strlen(inputimagefile)-1]=='d' ) //nrrd
     {
-        std::cout<<"Reading image as vtkDataSetReader"<<std::endl;
+        std::cout<<"Reading image as nrrd"<<std::endl;
         vtkSmartPointer<vtkNrrdReader> rdr = vtkSmartPointer<vtkNrrdReader>::New();
         rdr->SetFileName(inputimagefile);
         rdr->Update();
