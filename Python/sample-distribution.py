@@ -8,12 +8,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('Radius', type=float,
                     help='Radius of the disc within which to sample')
 parser.add_argument('Amplitude', type=float,
-                    help='Amplitude of the parabolic density')
+                    help='Amplitude of the parabolic density. In theory, this value has no effect on the PDF as the PDF is normalized.')
 parser.add_argument('NSamples', type=int,
                     help='Number of samples to sample')
 parser.add_argument('Output_Filename', type=str,
                     help='CSV file to save the particles.')
-parser.add_argument('--grid_nsamples', '-gs', metavar='N', type=int, default=100,
+parser.add_argument('--grid_nsamples', '-gn', metavar='N', type=int, default=100,
                     help='Number of samples in along each axis to take in the grid discretizing the distribution, default 100.')
 parser.add_argument('--normal','-n', metavar='N', nargs=3, type=float, default = [0,0,1],
                     help='Normal to the plane of the disc, default plane is XY.')
@@ -23,10 +23,11 @@ parser.add_argument('--plot','-p', action='store_true',
                     help='Show plot of the distribution of the samples')
 parser.add_argument('--extra_samples', '-e', metavar='N', type=int, default=10000,
                     help='Extra samples, to account for samples removed for being outside of the disc, default 10000.')
+parser.add_argument('--cutoff_distance', '-cd', metavar='N', type=float, default=0,
+                    help='Generate particles that are within the circumference of radius (R-cutoff_distance), default 0.')
 
 args = parser.parse_args()
 
-print (args)
 
 
 
@@ -37,8 +38,12 @@ N = args.NSamples
 M = args.Amplitude
 output_filename = args.Output_Filename
 grid_nsamples = args.grid_nsamples
+cutoff_distance = args.cutoff_distance
 
 
+if ( cutoff_distance >= R ):
+    print(f'cutoff_distance >= R ({cutoff_distance} >= {R}). Set A different cutoff distance')
+    exit(1)
 
 ########################################################################################
 #
@@ -50,7 +55,7 @@ grid_nsamples = args.grid_nsamples
 
 def ParabolicProfile(X, Y, M, R):
     #returns
-    Z = M * (1 - np.sqrt(X**2 + Y**2)/R )
+    Z = M * (1 - (X**2 + Y**2)/(R**2) )
     Z[Z<0]=0
     return  Z
 
@@ -163,7 +168,7 @@ if args.plot:
 
 #remove the particles that are outside the disc
 rr = np.sqrt(xy[:,0]**2+xy[:,1]**2)
-xy_inside = xy[rr<=R,:]
+xy_inside = xy[rr <= R-cutoff_distance,:]
 
 if ( xy_inside.shape[0]<N ):
     print(f'The number of samples {xy_inside.shape[0]} inside the disc is smaller than requested {N}. Increase the extra_samples')
