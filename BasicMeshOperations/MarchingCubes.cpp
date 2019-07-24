@@ -14,6 +14,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkMarchingCubes.h>
 #include <vtkMetaImageReader.h>
 #include <vtkImageData.h>
+#include <vtkNrrdReader.h>
 
 int main(int argc, char** argv)
 {
@@ -68,6 +69,18 @@ int main(int argc, char** argv)
     {
         std::cout<<"Reading image as vtkDataSetReader"<<std::endl;
         vtkSmartPointer<vtkDataSetReader> rdr = vtkSmartPointer<vtkDataSetReader>::New();
+        rdr->SetFileName(inputimagefile);
+        rdr->Update();
+
+        std::cout<<"Casting image to float"<<std::endl;
+        caster->SetInputData(rdr->GetOutput());
+        caster->SetOutputScalarTypeToFloat();
+        caster->Update();
+    }
+    else if( inputimagefile[strlen(inputimagefile)-1]=='d' ) //nrrd
+    {
+        std::cout<<"Reading image as vtkDataSetReader"<<std::endl;
+        vtkSmartPointer<vtkNrrdReader> rdr = vtkSmartPointer<vtkNrrdReader>::New();
         rdr->SetFileName(inputimagefile);
         rdr->Update();
 
