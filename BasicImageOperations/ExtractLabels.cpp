@@ -18,7 +18,7 @@
 #include "itkImage.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
-#include "ImageRegionIterator.h"
+#include "itkImageRegionIterator.h"
 
 #include <set>
 
@@ -27,8 +27,8 @@ using namespace std;
 int main(int argc, char** argv) {
 
     if (argc < 3) {
-        std::cerr << "From an existing labelmap, cteate a new labelmap with only specified labels. 
-        Expected datatype: uint8. Pixels with the indicated labes are set to 255, everythign else to 0." << std::endl;
+        std::cerr << "From an existing labelmap, cteate a new labelmap with only specified labels. "<<
+        "Expected datatype: uint8. Pixels with the indicated labes are set to 255, everythign else to 0." << std::endl;
         std::cerr << "Usage: ExtractLabels inputImageFile outputImageFile [list of labels]" << std::endl;
         std::cerr << "Example: ExtractLabels inputImageFile.nrrd outputImageFile.nrrd 1 2 5 8" << std::endl;
         return EXIT_FAILURE;
@@ -42,24 +42,16 @@ int main(int argc, char** argv) {
     set<int> output_labels;
     for(;c<argc; c++)
     {
-        output_labels.insert( atoi(argc[c] ) );
+        output_labels.insert( atoi(argv[c] ) );
     }
 
 
     const unsigned int Dimension = 3;
-    typedef itk::AffineTransform< double, Dimension > TransformType;
-    TransformType::OutputVectorType axis;
-    axis[0] = atof(argv[c++]);
-    axis[1] = atof(argv[c++]);
-    axis[2] = atof(argv[c++]);
-
-    const double angle = atof(argv[c++]);
-    const int padding = atoi(argv[c++]);
 
     std::cout << "Input: " << imagefilename << std::endl;
     std::cout << "Output: " << outputfilename << std::endl;
     std::cout << "Labels: ";
-    for( lbl:output_labels )
+    for( auto lbl:output_labels )
         cout<<lbl<<", ";
     cout<<endl;
     
@@ -84,7 +76,7 @@ int main(int argc, char** argv) {
 
     
 
-    const InputImageType * inputImage = reader->GetOutput();
+    InputImageType * inputImage = reader->GetOutput();
 
 
     OutputImageType::Pointer outImage = OutputImageType::New();
@@ -99,16 +91,16 @@ int main(int argc, char** argv) {
     for( int i=0; i<size.GetSizeDimension(); i++ ) npixels *= size[i];
 
 
-    InImageIterator  itin( inputImage, inputImage->GetLargestPossibleRegion() );
-    InImageIterator  itout( outImage, outImage->GetLargestPossibleRegion() );
+    InIteratorType  itin( inputImage, inputImage->GetLargestPossibleRegion() );
+    OutIteratorType  itout( outImage, outImage->GetLargestPossibleRegion() );
     itin.GoToBegin();
     itout.GoToBegin();
 
-    uint64_t c=0;
+    uint64_t count=0;
     while( !itin.IsAtEnd() )
     {
-        if( c % 100000 == 0 )
-            cout<<"Progress "<<c*100/npixels<<"\r";
+        if( count % 100000 == 0 )
+            cout<<"Progress "<<count *100/npixels<<"\r";
 
 
         uint8_t v = itin.Get();
@@ -124,7 +116,7 @@ int main(int argc, char** argv) {
 
         ++itin;
         ++itout;
-        ++c;
+        ++count;
     }
     cout<<endl;
 
