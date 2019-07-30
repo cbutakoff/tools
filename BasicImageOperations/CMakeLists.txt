@@ -1,5 +1,5 @@
-FIND_PACKAGE(ITK 4 REQUIRED)
-FIND_PACKAGE(VTK)
+FIND_PACKAGE(ITK 5 REQUIRED)
+FIND_PACKAGE(VTK 8.2)
 
 
 INCLUDE(${ITK_USE_FILE})
@@ -14,6 +14,7 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 set(ITK_PROGRAMS 
 RotateImage3D
 CaclulateEntropyFiberAngles
+ExtractLabels
 )
 
 set(ITK_VTK_PROGRAMS 
