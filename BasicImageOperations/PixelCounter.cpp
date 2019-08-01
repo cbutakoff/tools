@@ -24,7 +24,7 @@ using namespace std;
 
 int main(int argc, char** argv) {
 
-    if (argc < 3) {
+    if (argc < 2) {
         std::cerr << "Count nonzero pixels. Image should be uint8." << std::endl;
         std::cerr << "Usage: PixelCounter inputImageFile" << std::endl;
         return EXIT_FAILURE;

@@ -68,6 +68,8 @@ int main(int argc, char** argv) {
     WriterType::Pointer writer = WriterType::New();
     reader->SetFileName(imagefilename);
     writer->SetFileName(outputfilename);
+
+    cout<<"Reading image"<<endl;
     reader->Update();
 
 
@@ -97,10 +99,11 @@ int main(int argc, char** argv) {
     itout.GoToBegin();
 
     uint64_t count=0;
+    cout<<"Extracting labels"<<endl;
     while( !itin.IsAtEnd() )
     {
-        if( count % 100000 == 0 )
-            cout<<"Progress "<<count *100/npixels<<"\r";
+        if( count % 1000000 == 0 )
+            cout<<"Progress "<<count *100/npixels<<"% \r";
 
 
         uint8_t v = itin.Get();
@@ -121,7 +124,7 @@ int main(int argc, char** argv) {
     cout<<endl;
 
 
-
+    cout<<"saving the result"<<endl;
     try {
         writer->SetInput( outImage );
         writer->Update();
