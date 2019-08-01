@@ -15,6 +15,7 @@ set(ITK_PROGRAMS
 RotateImage3D
 CaclulateEntropyFiberAngles
 ExtractLabels
+PixelCounter
 )
 
 set(ITK_VTK_PROGRAMS 
