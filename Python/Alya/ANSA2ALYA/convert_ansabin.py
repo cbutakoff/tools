@@ -431,5 +431,6 @@ elif outputformat=='alyampio':
     #write LELBO (Boundary elements) volume cell ids, NBOUN, LNODB, scal
     mpio.MPIO_write_matrix( path, mpio_problem_name, boundary_volume_cell_ids, 'LELBO', 'NBOUN' )            
     
-    #write CODBO on NBOUN
+    #write CODBO on NBOUN and LBSET
     mpio.MPIO_write_matrix( path, mpio_problem_name, boundary_ids, 'CODBO', 'NBOUN' )            
+    mpio.MPIO_write_matrix( path, mpio_problem_name, boundary_ids, 'LBSET', 'NBOUN' )            
