@@ -231,7 +231,8 @@ with open(output_filename_info, 'w') as f:
     f.write('============================\n')
     f.write('Volume cell types\n')
     f.write('============================\n')
-    celltype_mames = {4:"TETRA04", 5:"PYRAMID05", 6:"WEDGE06", 8:"HEX08"}
+
+    celltype_mames = {4:"TET04", 5:"PYR05", 6:"PEN06", 8:"HEX08"}
     for m in celltypes:
         f.write( f"{celltype_mames[m]}\n" )
 
