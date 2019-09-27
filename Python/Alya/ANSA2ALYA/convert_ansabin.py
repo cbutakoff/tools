@@ -11,6 +11,7 @@ import pandas as pd
 import progressbar
 import sys
 import os
+import mpio
 
 #need python 3.6 or newer, mostly because ints are now 64bit
 assert sys.version_info >= (3, 6)
@@ -22,10 +23,11 @@ path = '.'
 meshname = 'cylinder'
 nodes_name = 'nodes'
 ext = '.bin'
-outputformat = 'vtk' # 'vtk' or 'alyampio'
+outputformat = 'alyampio' # 'vtk' or 'alyampio'
 output_filename_vtk_boundary = 'boundary.vtk'
 output_filename_vtk_volume = 'volume.vtk'
 output_filename_info = 'info' #to save material and face names
+mpio_problem_name = 'cylinder'
 
 # In[164]:
 
@@ -340,5 +342,57 @@ if outputformat == 'vtk':
     wr.SetInputData(pd)
     wr.Write()
 
+    # ====================================
+    #
+    #          ALYA
+    #
+    # ====================================
+
 elif outputformat=='alyampio':
-    pass
+    # ====================================
+    #
+    #          save points
+    #
+    # ====================================
+    nodes_df.sort_values(by='newPointId', ascending=True, inplace=True)
+
+    mpio.MPIO_write_matrix( path, mpio_problem_name, nodes_df[['x','y','z']].values, 'COORD', 'NPOIN' )
+
+    # ====================================
+    #
+    #          save LNODS, LTYPE, LMATER
+    #
+    # ====================================
+    # TET04 30
+    # PYR05 32
+    # PEN06 34
+    # HEX08 37
+    alya_elem_types = {4:30, 5:32, 6:34, 8:37}
+    cells_df.sort_values(by='newCellId', ascending=True, inplace=True)
+
+    nodes = np.zeros( (cells_df.shape[0], info['Max_nodes_per_solid_cell']), dtype=np.uint64 )
+    nodetypes = np.zeros( cells_df.shape[0], dtype=np.uint64 )
+    materials = np.zeros( cells_df.shape[0], dtype=np.uint64 )
+    print('Extracting volume cells', flush=True)
+    with progressbar.ProgressBar(max_value=cells_df.shape[0]) as bar:
+        for idx, row in enumerate(cells_df.itertuples(index=False, name='Pandas')):
+            nodes_local = getattr(row, "nodes")
+            n : int = len(nodes_local)
+            nodes[idx, 0:n] = nodes_local
+            nodetypes[idx] = alya_elem_types[n]
+            materials[idx] = int(getattr(row, "solidID")) 
+            bar.update(idx)
+
+    #write LTYPE (Element types) on elems
+    mpio.MPIO_write_matrix( path, mpio_problem_name, nodetypes, 'LTYPE', 'NELEM' )
+    #write LNODS (Elements connectivity) on elems
+    mpio.MPIO_write_matrix( path, mpio_problem_name, nodes, 'LNODS', 'NELEM' )            
+    #write LMATE (material) on elems
+    mpio.MPIO_write_matrix( path, mpio_problem_name, materials, 'LMATE', 'NELEM' )            
+
+
+
+
+    #write LNODB (boundary faces) vect
+    #write LELBO (Boundary elements) volume cell ids, NBOUN, LNODB, scal
+    
