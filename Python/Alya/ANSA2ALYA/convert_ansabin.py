@@ -392,7 +392,34 @@ elif outputformat=='alyampio':
 
 
 
+    # ====================================
+    #
+    #          save LNODB, LELBO
+    #
+    # ====================================
+    bound_df.sort_values(by='newFaceId', ascending=True, inplace=True)
+
+    nodes = np.zeros( (bound_df.shape[0], info['Max_nodes_per_boundary_face']), dtype=np.uint64 )
+    boundary_ids = np.zeros( bound_df.shape[0], dtype=np.uint64 )
+    boundary_volume_cell_ids = np.zeros( bound_df.shape[0], dtype=np.uint64 )
+
+    print('Extracting boundary faces', flush=True)
+    with progressbar.ProgressBar(max_value=bound_df.shape[0]) as bar:
+        for idx, row in enumerate(bound_df.itertuples(index=False, name='Pandas')):
+            nodes_local = getattr(row, "nodes")
+            n : int = len(nodes_local)
+            nodes[idx, 0:n] = nodes_local
+               
+
+            boundary_ids[idx] =  int(getattr(row, "boundaryID")) 
+            boundary_volume_cell_ids[idx] = int(getattr(row, "volumeCellId")) 
+            bar.update(idx)
 
     #write LNODB (boundary faces) vect
+    mpio.MPIO_write_matrix( path, mpio_problem_name, nodes, 'LNODB', 'NBOUN' )            
+
     #write LELBO (Boundary elements) volume cell ids, NBOUN, LNODB, scal
+    mpio.MPIO_write_matrix( path, mpio_problem_name, boundary_volume_cell_ids, 'LELBO', 'NBOUN' )            
     
+    #write CODBO on NBOUN
+    mpio.MPIO_write_matrix( path, mpio_problem_name, boundary_ids, 'CODBO', 'NBOUN' )            
