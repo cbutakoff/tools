@@ -213,6 +213,15 @@ bound_df.head()
 
 
 with open(output_filename_info, 'w') as f:
+    f.write('============================\n')
+    f.write('Stats\n')
+    f.write('============================\n')
+    f.write(f'Number of nodes: {nodes_df.shape[0]}\n')
+    f.write(f'Number of vol. cells: {cells_df.shape[0]}\n')
+    f.write(f'Number of boundary faces: {bound_df.shape[0]}\n')
+
+    f.write('\n')
+    f.write('============================\n')
     f.write('Material codes\n')
     f.write('============================\n')
     for m in material_names:
