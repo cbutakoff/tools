@@ -1,5 +1,4 @@
 # PYTHON script
-#use from inside the ansa
 import os
 import ansa
 import numpy as np
@@ -20,7 +19,7 @@ def GetEntityNodes(deck, entity):
 
 def main():
 	writebinary = True
-	path2store = "/home/costa/Downloads/cyl"
+	path2store = "/home/costa/Downloads/cyl/mesh"
 	name_prefix = 'cylinder'
 	properties2extract = ['ext_surf','inlet','outlet','layers','interior']
 	nodes_name = 'nodes'
@@ -75,8 +74,8 @@ def main():
 	print('Solids: ', solids)
 
 	
-	info['Solids'] = 	[s['Name'] for s in solids]
-	info['Boundaries'] = [s['Name'] for s in boundaries] 
+	info['Solids'] = 	[]
+	info['Boundaries'] = []
 
 	#if len(solids)>1:
 	#	print('More than 1 solid. Exitting')
@@ -130,6 +129,8 @@ def main():
 		
 		cells =  base.CollectEntities(deck, properties[solid['Index']], 'SOLID',True)
 		print( solid['Name'], ": number of cells: ", len(cells) )
+		info['Solids'].append( {'Name': solid['Name'], 'NCells' : len(cells) } )
+		
 		
 		utils.MainProgressBarSetValue(0)
 		utils.MainProgressBarSetText( 'Extracting %s' % (solid['Name']) )
@@ -161,6 +162,7 @@ def main():
 		
 	info['Max_nodes_per_solid_cell'] = number_of_nodes_max
 	
+	
 	#----------------------------------------------------------
 	#
 	#process the shells and fing the solid cells that are connected ot the faces
@@ -171,6 +173,9 @@ def main():
 		#get all the faces
 		faces =  base.CollectEntities(deck, properties[ boundary['Index'] ], 'SHELL', True)
 		print( boundary['Name'], ": number of cells: ", len(faces) )
+		info['Boundaries'].append( {'Name': boundary['Name'], 'NCells' : len(faces) } )
+		
+		
 		
 		with open( join( path2store, name_prefix+"_"+boundary['Name']+file_ext), file_flags ) as file:
 			if writebinary:
