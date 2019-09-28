@@ -12,37 +12,74 @@ import progressbar
 import sys
 import os
 import mpio
+import argparse
+import pathlib
+
 
 #need python 3.6 or newer, mostly because ints are now 64bit
 assert sys.version_info >= (3, 6)
 
+supported_formats = ['mpio','vtk']
 
-# In[163]:
+parser = argparse.ArgumentParser()
+parser.add_argument("input_mesh_prefix", help='Prefix of the bin files exported from ANSA')
+parser.add_argument("-op", "--output_mesh_prefix", help='Prefix of output files. For MPIO use problem name. Default = input_mesh_prefix')
+parser.add_argument("-if", "--input_folder",  help='Folder with input bins (default: %(default)s)', default='.')
+parser.add_argument("-of", "--output_folder", help='Folder for the output (default = input_folder)')
+parser.add_argument("-f", "--format", help='Format of the data to export: %(choices)s', default = 'mpio', choices=supported_formats)
+args = parser.parse_args()
 
-path = '.'
-meshname = 'cylinder'
+input_path = args.input_folder
+output_path = args.output_folder
+if output_path is None:
+    output_path = input_path
+
+input_mesh_prefix = args.input_mesh_prefix
+
+output_mesh_prefix = args.output_mesh_prefix
+if output_mesh_prefix is None:
+    output_mesh_prefix = input_mesh_prefix
+
 nodes_name = 'nodes'
 ext = '.bin'
-outputformat = 'alyampio' # 'vtk' or 'alyampio'
-output_filename_vtk_boundary = 'boundary.vtk'
-output_filename_vtk_volume = 'volume.vtk'
-output_filename_info = 'info' #to save material and face names
-mpio_problem_name = 'cylinder'
-
-# In[164]:
+outputformat = args.format.lower() # 'vtk' or 'alyampio'
 
 
-with open( os.path.join(path, meshname+'.json'),'r') as file:
+
+#print('input_path = ', input_path)
+#print('output_path = ', output_path)
+#print('input_mesh_prefix = ', input_mesh_prefix)
+#print('output_mesh_prefix = ', output_mesh_prefix)
+#print('outputformat = ', outputformat)
+
+assert (outputformat in supported_formats), f'Format {outputformat} is not supported. Supported formats are {supported_formats}'
+
+
+assert os.path.exists(input_path), f'{input_path} does not exist'
+
+os.makedirs(output_path, exist_ok=True)
+
+
+output_filename_vtk_boundary = os.path.join(output_path, f'{output_mesh_prefix}-boundary.vtk')
+output_filename_vtk_volume = os.path.join(output_path, f'{output_mesh_prefix}-volume.vtk')
+output_filename_info = os.path.join(output_path, f'{output_mesh_prefix}.info') #to save material and face names
+
+input_jsonfile = os.path.join(input_path, input_mesh_prefix+'.json')
+imput_nodesfilename = os.path.join(input_path, f"{input_mesh_prefix}_{nodes_name}{ext}")
+
+
+assert os.path.exists(input_jsonfile), f"Can't find {input_mesh_prefix}.json in {input_path}"
+assert os.path.exists(imput_nodesfilename), f"Can't find {imput_nodesfilename}.json in {input_path}"
+
+
+
+with open( input_jsonfile, 'r') as file:
     info = json.load(file)
 
 
-# In[165]:
-
-
 #read nodes
-nodesfilename = meshname+"_"+nodes_name+ext
 nodes_df = None
-with open( os.path.join(path, nodesfilename), 'rb') as f:
+with open( imput_nodesfilename, 'rb') as f:
     header = f.read(255)
     data = np.fromfile(f, dtype=np.dtype([('id', np.uint64), ('x', np.float64), ('y', np.float64), ('z', np.float64)]))
     nodes_df = pd.DataFrame(data, columns=data.dtype.names)
@@ -53,19 +90,7 @@ print('Nodes')
 nodes_df.head()
 
 
-# In[ ]:
 
-
-
-
-
-# In[166]:
-
-
-
-
-
-# In[167]:
 
 
 def ReadVolumeCellBIN( filename, ncells, nodemask ):
@@ -126,8 +151,6 @@ def ReadBoundaryCellBIN( filename, ncells ):
     return pd.DataFrame({'nodes':data_pp_nodes, 'volumeCellId':data_pp_volume_ids}, index=data_pp_ids)
 
 
-# In[168]:
-
 
 #read solid cells
 cells_df = pd.DataFrame()
@@ -140,10 +163,10 @@ material_names = []
 
 celltypes = set()
 for solid_idx, solid_info in enumerate( info['Solids'] ):
-    filename = meshname + '_' + solid_info['Name'] + ext
+    filename = f"{input_mesh_prefix}_{solid_info['Name']}{ext}"
     ncells = solid_info['NCells']
     
-    df, celltypes_local = ReadVolumeCellBIN( os.path.join(path, filename), ncells, nodemask )
+    df, celltypes_local = ReadVolumeCellBIN( os.path.join(input_path, filename), ncells, nodemask )
     celltypes = celltypes.union(celltypes_local)
 
     df['solidID'] = solid_idx+1
@@ -168,8 +191,6 @@ nodes_df['newPointId'] = np.arange(1,nodes_df.shape[0]+1,dtype=np.uint64)
 print( nodes_df.head() )
 
 
-# In[169]:
-
 
 #read boundaries
 
@@ -178,10 +199,10 @@ bound_df = pd.DataFrame()
 boundary_names = []
 
 for boundary_idx, boundary_info in enumerate( info['Boundaries'] ):
-    filename = meshname + '_' + boundary_info['Name'] + ext
+    filename = f"{input_mesh_prefix}_{boundary_info['Name']}{ext}"
     ncells = boundary_info['NCells']
     
-    df = ReadBoundaryCellBIN( os.path.join(path, filename), ncells )
+    df = ReadBoundaryCellBIN( os.path.join(input_path, filename), ncells )
     df['boundaryID'] = boundary_idx+1
     bound_df = bound_df.append(df)
 
@@ -196,15 +217,11 @@ bound_df['newFaceId'] = np.arange(1,bound_df.shape[0]+1,dtype=np.uint64)
 bound_df.head()
 
 
-# In[188]:
-
 
 #renumber the nodes in the cells
 cells_df['nodes'] = cells_df['nodes'].apply( lambda x: [ nodes_df.loc[i,'newPointId'] for i in x] )
 bound_df['nodes'] = bound_df['nodes'].apply( lambda x: [ nodes_df.loc[i,'newPointId'] for i in x] )
 
-
-# In[193]:
 
 
 #renumber the volume_cell_ids in the boundary cells
@@ -358,7 +375,7 @@ if outputformat == 'vtk':
     #
     # ====================================
 
-elif outputformat=='alyampio':
+elif outputformat=='mpio':
     # ====================================
     #
     #          save points
@@ -366,7 +383,7 @@ elif outputformat=='alyampio':
     # ====================================
     nodes_df.sort_values(by='newPointId', ascending=True, inplace=True)
 
-    mpio.MPIO_write_matrix( path, mpio_problem_name, nodes_df[['x','y','z']].values, 'COORD', 'NPOIN' )
+    mpio.MPIO_write_matrix( output_path, output_mesh_prefix, nodes_df[['x','y','z']].values, 'COORD', 'NPOIN' )
 
     # ====================================
     #
@@ -394,11 +411,11 @@ elif outputformat=='alyampio':
             bar.update(idx)
 
     #write LTYPE (Element types) on elems
-    mpio.MPIO_write_matrix( path, mpio_problem_name, nodetypes, 'LTYPE', 'NELEM' )
+    mpio.MPIO_write_matrix( output_path, output_mesh_prefix, nodetypes, 'LTYPE', 'NELEM' )
     #write LNODS (Elements connectivity) on elems
-    mpio.MPIO_write_matrix( path, mpio_problem_name, nodes, 'LNODS', 'NELEM' )            
+    mpio.MPIO_write_matrix( output_path, output_mesh_prefix, nodes, 'LNODS', 'NELEM' )            
     #write LMATE (material) on elems
-    mpio.MPIO_write_matrix( path, mpio_problem_name, materials, 'LMATE', 'NELEM' )            
+    mpio.MPIO_write_matrix( output_path, output_mesh_prefix, materials, 'LMATE', 'NELEM' )            
 
 
 
@@ -426,11 +443,11 @@ elif outputformat=='alyampio':
             bar.update(idx)
 
     #write LNODB (boundary faces) vect
-    mpio.MPIO_write_matrix( path, mpio_problem_name, nodes, 'LNODB', 'NBOUN' )            
+    mpio.MPIO_write_matrix( output_path, output_mesh_prefix, nodes, 'LNODB', 'NBOUN' )            
 
     #write LELBO (Boundary elements) volume cell ids, NBOUN, LNODB, scal
-    mpio.MPIO_write_matrix( path, mpio_problem_name, boundary_volume_cell_ids, 'LELBO', 'NBOUN' )            
+    mpio.MPIO_write_matrix( output_path, output_mesh_prefix, boundary_volume_cell_ids, 'LELBO', 'NBOUN' )            
     
     #write CODBO on NBOUN and LBSET
-    mpio.MPIO_write_matrix( path, mpio_problem_name, boundary_ids, 'CODBO', 'NBOUN' )            
-    mpio.MPIO_write_matrix( path, mpio_problem_name, boundary_ids, 'LBSET', 'NBOUN' )            
+    mpio.MPIO_write_matrix( output_path, output_mesh_prefix, boundary_ids, 'CODBO', 'NBOUN' )            
+    mpio.MPIO_write_matrix( output_path, output_mesh_prefix, boundary_ids, 'LBSET', 'NBOUN' )            
