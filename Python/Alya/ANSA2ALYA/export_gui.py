@@ -23,7 +23,7 @@ def appendPartListViewItems(listView):
 	print('Found properties: ', properties)
 
 	rn = [
-	guitk.constants.BCRenameType_String,
+	guitk.constants.BCRenameType_None,
 	]
 
 
@@ -48,7 +48,7 @@ def main():
 
 	controls = {}
 
-	window = guitk.BCWindowCreate("Example LineEditPath", guitk.constants.BCOnExitDestroy)
+	window = guitk.BCWindowCreate("ANSA2BIN", guitk.constants.BCOnExitDestroy)
 	hl = guitk.BCBoxLayoutCreate(window, guitk.constants.BCVertical)
 	guitk.BCLabelCreate(hl, "Path to save to")
 	lineedit = guitk.BCLineEditPathCreate(hl, guitk.constants.BCHistoryFolders, os.path.dirname(currentproject), guitk.constants.BCHistorySelect, "LineEditPath")
@@ -165,7 +165,6 @@ def generatePressed(b, controls):
 	utils.MainProgressBarSetVisible(1)
 
 		
-		
 	#----------------------------------------------------------
 	#
 	#get all nodes
@@ -257,6 +256,7 @@ def generatePressed(b, controls):
 	for boundary in boundaries: #boundary number in the list of boundaries
 		#get all the faces
 		faces =  base.CollectEntities(deck, properties[ boundary['Index'] ], 'SHELL', True)
+		
 		print( boundary['Name'], ": number of cells: ", len(faces) )
 		info['Boundaries'].append( {'Name': boundary['Name'], 'NCells' : len(faces) } )
 		
@@ -268,16 +268,18 @@ def generatePressed(b, controls):
 			else:
 				file.write("BOUNDARY: ID, BOUNDARY_SOLID_CELL_ID, NNODES, N1, N2, ... (all uint64) (this line is 255 chars long)\n")
 			
-			utils.MainProgressBarSetValue(0)
 			utils.MainProgressBarSetText( 'Extracting %s' % (boundary['Name']) )
+			utils.MainProgressBarSetValue(0)
 			progress_i =0
 			progress_t = max( int(len(faces)/100), 1 )
 
-			for face in faces:
+			for face_idx, face in enumerate(faces):
+				
 				if (progress_i > progress_t):
-					utils.MainProgressBarSetValue( 100*cell_idx/len(cells) )
+					utils.MainProgressBarSetValue( 100*face_idx/len(faces) )
 					progress_i = 0
 				progress_i = progress_i+1
+
 
 				nodelist = GetEntityNodes( deck, face )
 				#print('Boundary Face Id :', face._id,'  Nodes:',nodelist)
@@ -287,28 +289,32 @@ def generatePressed(b, controls):
 		
 				#find the tetra using these nodes
 				#tetra sharing at least one of the node ids
-				boundary_tets = base.NodesToElements(nodelist,'entities')
-				boundary_tet = -1
-				for key, values in boundary_tets.items():
-					for value in values:
-						if base.GetEntityType( deck, value )=="SOLID":
-							nodes = GetEntityNodes ( deck, value )
-							if len( set( nodelist) - set(nodes ) ) == 0:
-								boundary_tet = value
-								break;  #there might be several with the same id
+				#this is too slow
+#				boundary_tets = base.NodesToElements(nodelist,'entities')
+#				boundary_tet = -1
+#				for key, values in boundary_tets.items():
+#					for value in values:
+#						if base.GetEntityType( deck, value )=="SOLID":
+#							nodes = GetEntityNodes ( deck, value )
+#							if len( set( nodelist) - set(nodes ) ) == 0:
+#								boundary_tet = value
+#								break;  #there might be several with the same id
+				
 				
 				#print('Boundary tets:',boundary_tet._id, ' touching face :', face._id)
 				if writebinary:
-					np.array( [int(face._id), boundary_tet._id, len(nodelist)] + nodelist, dtype=np.uint64 ).tofile( file )
+#					np.array( [ face._id, boundary_tet._id, len(nodelist)] + nodelist, dtype=np.uint64 ).tofile( file )
+					np.array( [ face._id, 0, len(nodelist)] + nodelist, dtype=np.uint64 ).tofile( file )
 				else:		
-					file.write("%d %d %d %s\n" % (int(face._id), boundary_tet._id, len(nodelist), " ".join(map(str, nodelist))))  
+#					file.write("%d %d %d %s\n" % (int(face._id), boundary_tet._id, len(nodelist), " ".join(map(str, nodelist))))  
+					file.write("%d %d %d %s\n" % (int(face._id), 0, len(nodelist), " ".join(map(str, nodelist))))  
 				
 	info['Max_nodes_per_boundary_face'] = number_of_nodes_max
 
 	with open( join( path2store, name_prefix+'.json'), 'w' ) as file:
 		json.dump(info, file, indent=3)
 
-
+	utils.MainProgressBarSetText( "Finished")
 
 
 
