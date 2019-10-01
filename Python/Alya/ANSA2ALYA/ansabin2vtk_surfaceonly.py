@@ -131,6 +131,9 @@ bound_df = pd.DataFrame()
 
 boundary_names = []
 
+#sort the boundary names, so that they always appear in teh same order
+info['Boundaries'] = sorted(info['Boundaries'], key = lambda i: i['Name']) 
+
 for boundary_idx, boundary_info in enumerate( info['Boundaries'] ):
     filename = f"{input_mesh_prefix}_{boundary_info['Name']}{ext}"
     ncells = boundary_info['NCells']
