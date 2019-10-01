@@ -11,7 +11,6 @@ import pandas as pd
 import progressbar
 import sys
 import os
-import mpio
 import argparse
 import pathlib
 
