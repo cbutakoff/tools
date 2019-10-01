@@ -1,10 +1,4 @@
-
-<<<<<<< Updated upstream
-FillSurfaceHoles/nbproject/
-
-nbproject/
-
-Python/MeshCutter/\.ipynb_checkpoints/
-=======
-nbproject/
->>>>>>> Stashed changes
+nbproject
+.ipynb_checkpoints
+.vscode
+__pycache__

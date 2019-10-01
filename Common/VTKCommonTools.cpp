@@ -399,10 +399,10 @@ void CommonTools::SaveVolMeshBSC(vtkDataSet* volmesh, const char* outfile_prefix
     std::string outfile_elements(outfile_prefix);
     std::string outfile_gradient(outfile_prefix);
     std::string outfile_elementtype(outfile_prefix);
-    outfile_nodes += ".node";
-    outfile_elements += ".ele";
-    outfile_gradient += ".grad";
-    outfile_elementtype += ".elem_type";    
+    outfile_nodes += ".NODE.in";
+    outfile_elements += ".ELE.in";
+    outfile_gradient += ".GRAD.in";
+    outfile_elementtype += ".ELTYPE.in";    
 
     std::cout<<outfile_nodes<<std::endl;
     std::cout<<outfile_elements<<std::endl;
