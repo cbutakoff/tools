@@ -342,7 +342,7 @@ int main(int argc, char** argv)
             wrwr->SetInputData(tf->GetOutput());
         }
 
-        wrwr->SetDataModeToBinary ();
+        wrwr->SetDataModeToAppended ();
         wrwr->EncodeAppendedDataOff();
         wrwr->SetFileName(filename.c_str());
         wrwr->Write();
