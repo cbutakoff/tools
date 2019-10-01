@@ -37,6 +37,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <fstream>
 #include <vector>
 #include <typeinfo>
+#include <set>
 
 
 using namespace std;
@@ -286,14 +287,14 @@ int main(int argc, char** argv)
     }
     std::cout<<std::endl;
     
-    cout<<"Correspondence:"<<endl;
-    for(auto &face: faceData ){
-        cout<<face.boundary_id;
-        for(auto id: face.pt_id)
-            cout<<" "<<id;
-        cout<<face.vol_cell_id<<endl;
 
-    }
+    //cout<<"Correspondence:"<<endl;
+    //for(auto &face: faceData ){
+    //    cout<<face.boundary_id;
+    //    for(auto id: face.pt_id)
+    //        cout<<" "<<id;
+    //    cout<<face.vol_cell_id<<endl;
+    //}
 
 
     /*===================================================================================
@@ -414,42 +415,78 @@ int main(int argc, char** argv)
             MatrixRXi nodetypes(volmesh->GetNumberOfCells(),1);
 
             for( vtkIdType i=0; i<volmesh->GetNumberOfCells(); i++ ){
-                const auto celltype = volmesh->GetCellType(i);
-                switch ( celltype ) {
-                    case VTK_TETRA:
-                        nodetypes(i,0) = 30; //TET04
-                    case VTK_HEXAHEDRON:
-                        max_nodes_per_solid_cell = max(8, max_nodes_per_solid_cell);
-                        nodetypes(i,0) = 37; //HEX08
-                        break;
-                    case VTK_WEDGE:
-                        max_nodes_per_solid_cell = max(6, max_nodes_per_solid_cell);
-                        nodetypes(i,0) = 34; //PEN06
-                        break;
-                    case VTK_PYRAMID:
-                        max_nodes_per_solid_cell = max(5, max_nodes_per_solid_cell);
-                        nodetypes(i,0) = 32; //PYR05
-                        break;
-                    default:
-                        cout<<"Found unsupported element id="<<i<<" type="<<celltype<<endl;
-                        throw;
+                const auto cell = volmesh->GetCell(i);
+
+
+                if(cell->GetNumberOfPoints()==4) { //TET04
+                    nodetypes(i,0) = 30; //TET04
                 }
+                else if(cell->GetNumberOfPoints()==8){ //HEX08
+                    max_nodes_per_solid_cell = max(8, max_nodes_per_solid_cell);
+                    nodetypes(i,0) = 37; //HEX08
+                }
+                else if(cell->GetNumberOfPoints()==5) { //PYR05
+                    max_nodes_per_solid_cell = max(5, max_nodes_per_solid_cell);
+                    nodetypes(i,0) = 32; //PYR05
+                }
+                else if(cell->GetNumberOfPoints()==6) {//PEN06
+                    max_nodes_per_solid_cell = max(6, max_nodes_per_solid_cell);
+                    nodetypes(i,0) = 34; //PEN06
+                }
+                else
+                {
+                    cout<<"Volume element "<<i<<" has "<<cell->GetNumberOfPoints()<<" vertices, unsupported"<<endl;
+                    throw;
+                }
+                
             }
 
             cout<<"Extracting elements"<<endl;
             MatrixRXi nodes = MatrixRXi::Zero(volmesh->GetNumberOfCells(), max_nodes_per_solid_cell);
             vtkSmartPointer<vtkIdList> ptIds = vtkSmartPointer<vtkIdList>::New();
+
+            set<int> unique_elements;
+
             for( vtkIdType i=0; i<volmesh->GetNumberOfCells(); i++ ){
                 volmesh->GetCellPoints(i, ptIds);	
                 for( int jj=0; jj<ptIds->GetNumberOfIds(); jj++ ){
-                    nodes(i, jj) = ptIds->GetId(jj);
+                    nodes(i, jj) = ptIds->GetId(jj)+1;
                 }
+
+                unique_elements.insert(ptIds->GetNumberOfIds());
             }
 
             cout<<"Writing LTYPE (Element types) on elems"<<endl;
-            WriteMPIOMatrix( nodes, outfile_prefix, "LTYPE", "NELEM", "INTEG" );
+            WriteMPIOMatrix( nodes, outfile_prefix, "LNODS", "NELEM", "INTEG" );
             cout<<"Writing LNODS (Elements connectivity) on elems"<<endl;
-            WriteMPIOMatrix( nodetypes, outfile_prefix, "LNODS", "NELEM", "INTEG" );
+            WriteMPIOMatrix( nodetypes, outfile_prefix, "LTYPE", "NELEM", "INTEG" );
+
+
+            //write info
+            string info_filename = string(outfile_prefix) + "-INFO.in";
+            ofstream info_file(info_filename);
+            info_file << "Element types: ";
+            for( auto value: unique_elements ){
+                switch (value) {
+                    case 4:
+                        info_file<<"TET04, ";
+                        break; 
+                    case 5:
+                        info_file<<"PYR05, ";
+                        break;
+                    case 6: 
+                        info_file<<"PEN06, ";
+                        break;
+                    case 8:
+                        info_file<<"HEX08, ";
+                        break;
+                }        
+            }
+            info_file<<endl;
+
+            info_file << "Number of boundary faces: "<< faceData.size() <<endl;
+            info_file << "Number of volume cells: "<< volmesh->GetNumberOfCells() <<endl;
+            info_file << "Number of points: "<< volmesh->GetNumberOfPoints() <<endl;
 
         }
 
@@ -562,11 +599,11 @@ void WriteMPIOMatrix( MatrixRX<T>& m, const char* problem_name, const char *vari
     char mpio_assoc[8] = "0000000";
     char mpio_dtype[8] = "0000000";
     for( int i=0; i<min(strlen(variable), (size_t)7); i++ ) mpio_var[i] = variable[i];
-    for( int i=0; i<min(strlen(variable), (size_t)7); i++ ) mpio_assoc[i] = association[i];
-    for( int i=0; i<min(strlen(variable), (size_t)7); i++ ) mpio_dtype[i] = dtype[i];
+    for( int i=0; i<min(strlen(association), (size_t)7); i++ ) mpio_assoc[i] = association[i];
+    for( int i=0; i<min(strlen(dtype), (size_t)7); i++ ) mpio_dtype[i] = dtype[i];
 
 
-    string filename = string(problem_name)+ string(variable) + ".mpio.bin";
+    string filename = string(problem_name)+"-"+ string(variable) + ".mpio.bin";
 
     std::ofstream file(filename.c_str(), ios::binary);
     int64_t file_id = 27093;
