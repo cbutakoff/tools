@@ -411,7 +411,7 @@ int main(int argc, char** argv)
             //# HEX08 37
 
             cout<<"Finding cell with largest number of nodes"<<endl;
-            int max_nodes_per_solid_cell = 3; //default tetra
+            int max_nodes_per_solid_cell = 4; //default tetra
             MatrixRXi nodetypes(volmesh->GetNumberOfCells(),1);
 
             for( vtkIdType i=0; i<volmesh->GetNumberOfCells(); i++ ){
