@@ -19,6 +19,8 @@ import pathlib
 #need python 3.6 or newer, mostly because ints are now 64bit
 assert sys.version_info >= (3, 6)
 
+
+
 supported_formats = ['mpio','vtk']
 
 parser = argparse.ArgumentParser()
@@ -128,27 +130,46 @@ def ReadVolumeCellBIN( filename, ncells, nodemask ):
 
 def ReadBoundaryCellBIN( filename, ncells ):
         
+
     print('Reading ', filename)
     with open(filename, 'rb') as f:
         header = f.read(255)
         data = np.fromfile(f, dtype=np.uint64 ) #id, nnodes
 
+    use_volumeCellId = "BOUNDARY_SOLID_CELL_ID" in header
+
     cell_count : int = 0
     data_count : int = 0
     data_pp_ids = np.empty(shape=(ncells,), dtype=np.uint64)
-    data_pp_volume_ids = np.empty(shape=(ncells,), dtype=np.uint64)
+
+    if use_volumeCellId:
+        data_pp_volume_ids = np.empty(shape=(ncells,), dtype=np.uint64)
+
     data_pp_nodes = np.empty(shape=(ncells,), dtype=object)
     print('Processing ncells = ', ncells)
+
     while cell_count<ncells:
         data_pp_ids[cell_count] = data[data_count]
-        data_pp_volume_ids [cell_count] = data[data_count+1] #reference to the volume mesh cell
-        n :int = int( data[data_count+2] )
 
-        data_pp_nodes[cell_count] = data[(data_count + 3):(data_count + 3 + n)] 
-        data_count += 3+n
+        if use_volumeCellId:
+            data_pp_volume_ids [cell_count] = data[data_count+1] #reference to the volume mesh cell
+            n :int = int( data[data_count+2] )
+            data_pp_nodes[cell_count] = data[(data_count + 3):(data_count + 3 + n)] 
+            data_count += 3+n
+        else:
+            n :int = int( data[data_count+1] )
+            data_pp_nodes[cell_count] = data[(data_count + 2):(data_count + 2 + n)] 
+            data_count += 2+n
+
+
         cell_count += 1
-    
-    return pd.DataFrame({'nodes':data_pp_nodes, 'volumeCellId':data_pp_volume_ids}, index=data_pp_ids)
+
+    if use_volumeCellId:
+       return pd.DataFrame({'nodes':data_pp_nodes, 'volumeCellId':data_pp_volume_ids}, index=data_pp_ids)
+    else:    
+       return pd.DataFrame({'nodes':data_pp_nodes}, index=data_pp_ids)
+
+
 
 
 
@@ -225,8 +246,9 @@ bound_df['nodes'] = bound_df['nodes'].apply( lambda x: [ nodes_df.loc[i,'newPoin
 
 
 #renumber the volume_cell_ids in the boundary cells
-bound_df['volumeCellId'] = bound_df['volumeCellId'].apply( lambda x: cells_df.loc[x,'newCellId'] ) 
-bound_df.head()
+if 'volumeCellId' in bound_df.columns.values:
+    bound_df['volumeCellId'] = bound_df['volumeCellId'].apply( lambda x: cells_df.loc[x,'newCellId'] ) 
+    bound_df.head()
 
 
 with open(output_filename_info, 'w') as f:
@@ -376,6 +398,9 @@ if outputformat == 'vtk':
     # ====================================
 
 elif outputformat=='mpio':
+    assert( 'volumeCellId' in bound_df.columns.values ), 'MPIO requires BOUNDARY_SOLID_CELL_ID in the booundary binary files. Aborting.'
+        
+
     # ====================================
     #
     #          save points
