@@ -391,7 +391,7 @@ int main(int argc, char** argv)
         cout<<"================================================================="<<endl;
 
         {
-            cout<<"Saving nodes"<<endl;
+            cout<<"Saving "<<volmesh->GetNumberOfPoints()<<" nodes"<<endl;
             MatrixRXd nodes(volmesh->GetNumberOfPoints(),3);
             for( vtkIdType ptid =0; ptid<nodes.rows(); ptid++ ) {
                 double pt[3];
