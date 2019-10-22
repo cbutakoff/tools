@@ -297,6 +297,7 @@ if outputformat == 'vtk':
     nodes_df.sort_values(by='newPointId', ascending=True, inplace=True)
 
     pts = vtk.vtkPoints()
+    pts.SetDataTypeToDouble()
     print('Extracting points', flush=True)
     with progressbar.ProgressBar(max_value=nodes_df.shape[0]) as bar:
         for idx, row in enumerate(nodes_df.itertuples(index=False, name='Pandas')):
