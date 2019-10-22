@@ -10,9 +10,21 @@ import numpy as np   #needs install
 import os
 import pandas #needs install
 import sys
-
 from mpi4py import MPI #needs install
 from queue import Queue
+
+
+vtk_installed = True
+try:
+    import vtk #needs install
+except:
+    vtk_installed = False
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print("Failed to load VTK, will not save VTK with double precision for point coordinates")
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+
+
 
 WORKTAG = 1
 DIETAG = 0
@@ -422,6 +434,49 @@ def read_alya_variable(variable_name, iteration, number_of_blocks):
 
 # In[14]:
 
+def write_geometry_vtk_double(point_coordinates, elements, element_types):
+
+    print('Saving VTK mesh with double precision')
+
+    element_alya2vtk = {37:{'vtkid':vtk.VTK_HEXAHEDRON,'Vertices':8}, 30:{'vtkid':vtk.VTK_TETRA,'Vertices':4}, \
+                         32:{'vtkid':vtk.VTK_PYRAMID,'Vertices':5}, 34:{'vtkid':vtk.VTK_WEDGE,'Vertices':6},\
+                         10:{'vtkid':vtk.VTK_TRIANGLE ,'Vertices':3}, 12:{'vtkid':vtk.VTK_QUAD,'Vertices':4}}
+
+
+
+    pts = vtk.vtkPoints()
+    pts.SetDataTypeToDouble()
+    pts.SetNumberOfPoints( point_coordinates.shape[0] )
+    
+    if point_coordinates.shape[1]==2:
+        for i in range(point_coordinates.shape[0]):
+            pts.SetPoint(i, point_coordinates[i,0], point_coordinates[i,1], 0)
+    else:
+        for i in range(point_coordinates.shape[0]):
+            pts.SetPoint(i, point_coordinates[i,:])
+
+    elems = vtk.vtkCellArray()
+    celltypes = []
+    for i in range(elements.shape[0]):
+        eltype = element_types[i]
+        el = elements[ i, 0:element_alya2vtk[ eltype ]['Vertices'] ]
+        celltypes.append( element_alya2vtk[ eltype ]['vtkid'] )
+        elems.InsertNextCell( el.shape[0] )
+        for j in range( el.shape[0] ):
+            elems.InsertCellPoint( el[j]-1 )
+
+    ug = vtk.vtkUnstructuredGrid()
+    ug.SetPoints(pts)
+    ug.SetCells( celltypes, elems )
+    
+    wr = vtk.vtkXMLUnstructuredGridWriter()
+    wr.SetFileName( os.path.join(outputfolder, f'{project_name}.vtu') )
+    wr.SetInputData(ug)
+    wr.SetDataModeToAppended()
+    wr.EncodeAppendedDataOff()	
+    wr.Write()
+
+
 
 def write_geometry(number_of_blocks):
     point_coordinates = read_alya_array(os.path.join(inputfolder,f'{project_name}-COORD{file_suffix}'), \
@@ -470,6 +525,10 @@ def write_geometry(number_of_blocks):
         #here -1 to transform to python array, and +1 to ensight array indexing
         connectivity[:,i] = inverse_pt_correspondence[connectivity[:,i]-1]+1                 
     
+
+    #dump vtk mesh witoh double precision, since ENSIGHT supports only single precision
+    if(vtk_installed):
+        write_geometry_vtk_double( point_coordinates, connectivity, element_types['tuples'].ravel() )
 
     
     #geometry ensight
