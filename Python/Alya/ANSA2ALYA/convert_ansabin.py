@@ -136,7 +136,7 @@ def ReadBoundaryCellBIN( filename, ncells ):
         header = f.read(255)
         data = np.fromfile(f, dtype=np.uint64 ) #id, nnodes
 
-    use_volumeCellId = "BOUNDARY_SOLID_CELL_ID" in header
+    use_volumeCellId = b"BOUNDARY_SOLID_CELL_ID" in header
 
     cell_count : int = 0
     data_count : int = 0
