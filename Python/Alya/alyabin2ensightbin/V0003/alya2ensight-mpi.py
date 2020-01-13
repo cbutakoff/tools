@@ -1049,26 +1049,20 @@ if my_rank == 0:
         #define dataframe for each variable
         #define timeline for each variable base on the number of timesteps
         variable_info_per_variable = []
-        max_timeline_id = 1
+        timeline_id = 1
         timelines = {}; #each timeline will be identified only by the number of elements
         c = 0
         for varname in variables:
             df = variable_info[variable_info.field==varname]
             ntimesteps = df.shape[0]
-            if ntimesteps in timelines:
-                timeline_id = timelines[ntimesteps]['timeline']
-            else:
-                timeline_id = max_timeline_id
-                timelines[ntimesteps] = {'timeline':timeline_id, 'array_loc':c}
-                max_timeline_id = max_timeline_id+1
 
             variable_info_per_variable = variable_info_per_variable + \
                 [{'varname':varname, \
                   'data':variable_info[variable_info.field==varname].sort_values(by='iteration'),\
                   'timeline':timeline_id}]
             c=c+1        
-    
-    
+            timeline_id += 1
+  
         for var_data in variable_info_per_variable:
             varname = var_data['varname']
             timeline_id = var_data['timeline']
@@ -1085,8 +1079,7 @@ if my_rank == 0:
 
         f.write('\n')
         f.write('TIME\n')
-        for timeset in timelines:
-            var_data = variable_info_per_variable[ timelines[timeset]['array_loc'] ]
+        for var_data in variable_info_per_variable:
             f.write(f'time set: {var_data["timeline"]}\n')
             number_of_timesteps = var_data['data'].shape[0]
             f.write(f'number of steps: {number_of_timesteps}\n')
