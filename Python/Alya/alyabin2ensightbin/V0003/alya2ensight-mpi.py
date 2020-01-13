@@ -23,6 +23,8 @@ except:
     print("Failed to load VTK, will not save VTK with double precision for point coordinates")
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
+#Generally you don't need VTK double precision for point coordinates
+vtk_installed = False
 
 
 
