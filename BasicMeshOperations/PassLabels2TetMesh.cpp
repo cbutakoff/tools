@@ -396,9 +396,9 @@ int main(int argc, char** argv)
             for( vtkIdType ptid =0; ptid<nodes.rows(); ptid++ ) {
                 double pt[3];
                 volmesh->GetPoint(ptid, pt);
-                nodes( ptid, 0 ) = pt[0];
-                nodes( ptid, 1 ) = pt[1];
-                nodes( ptid, 2 ) = pt[2];
+                nodes( ptid, 0 ) = pt[0]*scale;
+                nodes( ptid, 1 ) = pt[1]*scale;
+                nodes( ptid, 2 ) = pt[2]*scale;
             }
             WriteMPIOMatrix( nodes, outfile_prefix, "COORD", "NPOIN", "REAL" );
         }
