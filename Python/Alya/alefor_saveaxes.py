@@ -9,7 +9,7 @@ import numpy as np
 import progressbar
 import io
 import os
-
+import sys
 
 
 def write_vector_mpio(filename, vector, time):
@@ -54,12 +54,9 @@ def write_vector_mpio(filename, vector, time):
 
 
 
-surface_filename = "moving_boundary.vtk" #only the surfaec that is to be moving. Contains pointdata: V1(normal), V2(tangent), V3=V1xV2. 
-problem_name = "piece"
-volume_filename = "piece/piece_0_0.vtu"
-v1_name = "V1"
-v2_name = "V2"
-v3_name = "V3"
+surface_filename = sys.argv[1] #"moving_boundary.vtk" #only the surface that is to be moving. 
+volume_filename = sys.argv[2] #"piece/piece_0_0.vtu"
+problem_name = sys.argv[3] #"piece"
 
 
 print("Reading volume")
@@ -72,11 +69,16 @@ print("Reading surface")
 rdr = vtk.vtkPolyDataReader()
 rdr.SetFileName(surface_filename)
 rdr.Update()
-mesh = rdr.GetOutput()
 
-v1a = mesh.GetPointData().GetArray( v1_name )
-v2a = mesh.GetPointData().GetArray( v2_name )
-v3a = mesh.GetPointData().GetArray( v3_name )
+
+print("Calculating normals")
+normalgen = vtk.vtkPolyDataNormals()
+normalgen.SetInputData(rdr.GetOutput())
+normalgen.SplittingOff()
+normalgen.Update()
+mesh = normalgen.GetOutput()
+
+normals = mesh.GetPointData().GetNormals()
 
 
 matrix = np.zeros( (vol.GetNumberOfPoints(), 9) )
@@ -87,9 +89,16 @@ loc.BuildLocator()
 for i in progressbar.progressbar(range(mesh.GetNumberOfPoints())):
     pt = mesh.GetPoint(i)
     ptid = loc.FindClosestPoint(pt) 
-    matrix[ptid, 0:3] = v1a.GetTuple(i)
-    matrix[ptid, 3:6] = v2a.GetTuple(i)
-    matrix[ptid, 6:9] = v3a.GetTuple(i)
+
+    n = normals.GetTuple(i)
+    t1 = np.roll(n,1) #create random vector != n
+    t2 = np.cross(n, t1) #find orthogonal vector
+    t1 = t2/np.linalg.norm(t2) #normalise
+    t2 = np.cross(n,t1) #find the 3rd vector
+
+    matrix[ptid, 0:3] = n 
+    matrix[ptid, 3:6] = t1
+    matrix[ptid, 6:9] = t2
     
 print("1st row: ",matrix[0,:])
 
