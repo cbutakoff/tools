@@ -9,172 +9,97 @@ import pandas as pd
 import glob
 import matplotlib.pyplot as plt
 from math import ceil
-
+import sys
 import numpy
 
 
-density = 1.817  #g/cm3
-flowrate_cm2s = True
-
+density = 1.06  #g/cm3
+flowrate_cm2s = False
+set2plot = int(sys.argv[1])
+meanp_column = 2
+flowrate_column = 3
+columns_per_table = 4 #deault number of cols in .set
 
 # In[2]:
 
 
 #find the results file
-nsi_cvg_file = glob.glob('*.nsi.cvg', recursive=False)
 nsi_set_file = glob.glob('*.nsi.set', recursive=False)
 
-if nsi_cvg_file!=[]:
-    for filename in nsi_cvg_file:
-        if not 'sgs' in filename:            
-            nsi_cvg_file = filename
-            break
-    print(f'Using input from {nsi_cvg_file}')
-    
-if nsi_set_file!=[]:
-    nsi_set_file = nsi_set_file[0]
-    print(f'Using input from {nsi_set_file}')    
-
-
-# In[5]:
-
-
-if nsi_cvg_file!=[]:
-    nsi_cvg = pd.read_csv(nsi_cvg_file, comment='#', header=None, delim_whitespace=True)
-    nsi_cvg = nsi_cvg[nsi_cvg[2]==1]
-    nsi_cvg.sort_values(by=0)
-
-    nsi_cvg['Timestep']=nsi_cvg[3].diff()*1000
-    
-    
-    #plot convergence data
-    fig, axes = plt.subplots(1, 3, figsize=(20,5))
-    axes[0].plot(nsi_cvg[0], nsi_cvg[15], label='Momentum')
-    axes[0].plot(nsi_cvg[0], nsi_cvg[16], label='Continuity')
-    axes[0].set_yscale('log')
-    axes[0].set_xlabel('Iteration')
-    axes[0].set_ylabel('Residual')
-    axes[0].legend()
-
-    axes[1].plot(nsi_cvg[0], nsi_cvg[4], label='Velocity')
-    axes[1].plot(nsi_cvg[0], nsi_cvg[5], label='Pressure')
-    axes[1].set_yscale('log')
-    axes[1].set_ylabel('Linf')
-    axes[1].set_xlabel('Iteration')
-    axes[1].legend()
-
-    axes[2].plot(nsi_cvg[0], nsi_cvg['Timestep'])
-    axes[2].set_ylabel('Timestep (ms)')
-    axes[2].set_xlabel('Iteration')
+nsi_set_file = nsi_set_file[0]
+print(f'Using input from {nsi_set_file}')    
 
 
 
-#    plt.show()
-    
+#read header
+numsets = 0
+with open(nsi_set_file, 'r') as f:
+    data = f.readlines()    
 
-
-# In[20]:
-
-
-#plot the flowrates
-if nsi_set_file!=[]:
-
-    #read header
-    numsets = 0
-    with open(nsi_set_file, 'r') as f:
-        data = f.readlines()    
-
-    for line in data:
+time = 0
+reading_set_table = False
+flowrates = []
+meanp = []
+times = []
+for line in data:
+    if numsets==0:
         if 'NUMSETS' in line:
             numsets = int(line.split(':')[1])
-            break
 
-    #extracts the fow rate -- last column
-    initial_time = 11
-    step = numsets+2
-    i = 0
-    offset = 0*step+initial_time
-    times = []
-    flowrates = {}
-
-    #get the times and the number of time instants
-    with progressbar.ProgressBar(max_value=len(data)) as bar:
-        while offset<len(data):  
-            time = float(data[offset].split(' ')[-1])
-            #print(time)
-            times = times+[time]
-            i=i+1
-            bar.update(offset)
-            offset = i*step+initial_time
-
-
-
-    #get the ids of boundaries and initialize the sotrage       
-    offset = 0*step+initial_time
-    for j in range(step-2):
-        boundary = data[offset+j+1].strip().split(' ')[0]
-        flowrates[boundary] = [None] * len(times)
-
-
-    #fill the flowrates  
-    i = 0
-    with progressbar.ProgressBar(max_value=len(data)) as bar:
-        while offset<len(data):          
-            for j in range(step-2):
-                boundary = data[offset+j+1].strip().split(' ')[0]    
-                flowrate = data[offset+j+1].strip().split(' ')[-1]
-                flowrates[boundary][i] = flowrate
-
-            i=i+1
-            bar.update(offset)
-            offset = i*step+initial_time
-
-    df = pd.DataFrame(flowrates, dtype=float)
-    
-    if flowrate_cm2s:
-        df = df/density
-    
-    df['Time']=times
-
-    df = df.reindex(sorted(df.columns), axis=1)
-
-    df['Time'] = df['Time']*1000
-
-    tmax = df['Time'].max()
-    mask = (df['Time']>=tmax/2) & (df['Time']<=tmax)
-    df_middletime = df.loc[mask,:]
-    stats = df_middletime.describe();
-
-    pd.set_option('display.max_rows', 1000)
-    pd.set_option('display.max_columns', 500)
-    print(stats.T)
-
-    m = 3
-    n = ceil(df.shape[1]/3)
-
-    fig, axes = plt.subplots(n, m, figsize=(20,5*n), sharex=True)
-
-
-    i =0
-    j =0
-    for col in df.columns:
-        if col=='Time':
-            continue
-
-        axes[j,i].plot(df['Time'],df[col])
+    if 'Time' in line:
+        time = float(line.split(' ')[-1])
+        times.append(time)
+    elif line[0]=='#':
+        pass
+    else:
+        try:
+            row = line.strip().split()
+            boundary = int(row[0])
+            if boundary == set2plot:   
+                flowrates.append( row[flowrate_column] )
+                meanp.append( row[meanp_column] )
+        except:
+            pass
         
-        if flowrate_cm2s:
-            axes[j,i].set_ylabel('Flowrate[cm3/s]')
-        else:
-            axes[j,i].set_ylabel('Flowrate[g/s]')
-            
-        axes[j,i].set_xlabel('Time[ms]')
-        axes[j,i].hlines(y=stats.loc['mean',col], xmin=0, xmax=tmax)
-        axes[j,i].set_title(f'Boundary {col}')
-        i=i+1
-        if i==m:
-            j=j+1
-            i=0
 
-    plt.show()
+
+df = pd.DataFrame({'Time':times, 'Flowrate':flowrates, 'Mean P':meanp}, dtype=float)
+
+
+if flowrate_cm2s:
+    df['Flowrate'] = df['Flowrate']/density
+
+#df['Time'] = df['Time']*1000
+
+# create figure and axis objects with subplots()
+fig,ax = plt.subplots()
+# make a plot
+ax.plot(df['Time'],-df['Flowrate'], color="red")
+ax.set_xlabel('Time[s]')
+
+# set y-axis label
+if flowrate_cm2s:
+    ax.set_ylabel("Flowrate[cm3/s]",color="red")
+else:
+    ax.set_ylabel("Flowrate[g/s]",color="red")
+
+# twin object for two different y-axis on the sample plot
+ax2=ax.twinx()
+# make a plot with different y-axis using second axis object
+ax2.plot(df['Time'],df['Mean P'],color="blue")
+ax2.set_ylabel("Mean Pressure [Baryes]",color="blue")
+
+plt.title(f'Set {set2plot}')
+fig.tight_layout()
+plt.show()
+
+# save the plot as a file
+#fig.savefig('two_different_y_axis_for_single_python_plot_with_twinx.jpg',
+#            format='jpeg',
+#            dpi=100,
+#            bbox_inches='tight')
+
+
+
+    
 
