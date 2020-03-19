@@ -48,7 +48,7 @@ print("R std: ", np.std(r))
 cn = -c
 print( "SPACE_&_TIME_FUNCTIONS")
 print( "   FUNCTION=...")
-print(f"      V * (1- ( (x {cn[0]:+})^2 + (y {cn[1]:+})^2 + (z {cn[2]:+})^2)/({np.mean(r)}^2)" )  
+print(f"      V * (1- ( (x {cn[0]:+})^2 + (y {cn[1]:+})^2 + (z {cn[2]:+})^2)/({np.mean(r)}^2) )")  
 print( "   END_FUNCTION")
 print( "END_SPACE_&_TIME_FUNCTIONS")
 
