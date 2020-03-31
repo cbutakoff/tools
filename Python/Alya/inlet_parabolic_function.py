@@ -5,9 +5,9 @@ import sys
 surface_filename = sys.argv[1]
 boundary_array = sys.argv[2]
 boundary_id = int(sys.argv[3])
-volmesh_filename = sys.argv[4]
-volmesh_scale = 1
-radius_decimals = 2
+volmesh_filename = sys.argv[4] #volumetric mesh that corresponds to the surface mesh 
+volmesh_scale = 1 #if volmesh has a scale different to the surface mesh, put here the scaling factor for the transform
+radius_decimals = 2 #how many decimals of the radius to keep in the output
 
 print("Reading surface mesh")
 rd = vtk.vtkPolyDataReader()
