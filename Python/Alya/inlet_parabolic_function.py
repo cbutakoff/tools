@@ -6,7 +6,7 @@ surface_filename = sys.argv[1]
 boundary_array = sys.argv[2]
 boundary_id = int(sys.argv[3])
 volmesh_filename = sys.argv[4]
-volmesh_scale = 0.01
+volmesh_scale = 1
 radius_decimals = 2
 
 print("Reading surface mesh")

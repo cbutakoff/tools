@@ -14,13 +14,13 @@ import os
 # In[3]:
 
 
-problem_name = 'fluidda'
-path = f'../ensi/{problem_name}.ensi.case'
+problem_name = 'geo200216_c6c7_straight'
+path = f'/media/gpfs_bsc/gpfs/projects/bsc21/WORK-BEATRIZ/spinal/catheters/C6-C7/straight/ensi/geo200216_c6c7_straight.ensi.case'
 outpath = './'
 varname = 'VELOC'
 ndimensions = 3
-starttime = 1
-endtime = 2
+starttime = 9
+endtime = 10
 field_id = 1
 
 
