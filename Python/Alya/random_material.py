@@ -15,9 +15,8 @@ import sys
 
 
 problem_name = sys.argv[1]
-field_id = int(sys.argv[2])
-npoints = int(sys.argv[3])
-nmaterials = int(sys.argv[4])
+nele = int(sys.argv[2])
+nmaterials = int(sys.argv[3])
 
 
 
@@ -29,10 +28,10 @@ def write_vector_mpio(filename, vector, time):
         np.array([27093], dtype=np.int64).tofile(f)
         f.write(b'MPIAL00\0')
         f.write(b'V000400\0')
-        f.write(b'XFIEL00\0')
-        f.write(b'VECTO00\0')
-        f.write(b'NPOIN00\0')
-        f.write(b'REAL000\0')
+        f.write(b'LMATE00\0')
+        f.write(b'SCALA00\0')
+        f.write(b'NELEM00\0')
+        f.write(b'INTEG00\0')
         f.write(b'8BYTE00\0')
         f.write(b'SEQUE00\0')
         f.write(b'NOFIL00\0')
@@ -58,12 +57,12 @@ def write_vector_mpio(filename, vector, time):
         f.write(b'NONE000\0') #8
         f.write(b'NONE000\0') #9
         f.write(b'NONE000\0') #10
-        vector.astype('float64').tofile(f)
+        vector.astype('int64').tofile(f)
 
 
 
-filename = '{:s}-XFIEL.{:08d}.{:08d}.mpio.bin'.format(problem_name, field_id, 1)
-v = np.random.randint(1,nmaterials+1,[npoints,1])
+filename = '{:s}-LMATE.mpio.bin'.format(problem_name)
+v = np.random.randint(1,nmaterials+1,[nele,1])
 write_vector_mpio( filename, v, 0 )
 
 
