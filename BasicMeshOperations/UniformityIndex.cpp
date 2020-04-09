@@ -143,6 +143,8 @@ int main(int argc, char** argv)
 
     for(int i=0; i<n_timesteps; i++)
     {
+        if ( rdr->GetTimeSets()->GetItem(timeline)->GetTuple1(i)<0 ) continue;
+
         std::cout<<"==================================================="<<std::endl;
         std::cout<<"Timestep "<<i<<"/"<<n_timesteps<<std::endl;
         std::cout<<"Time "<<rdr->GetTimeSets()->GetItem(timeline)->GetTuple1(i)<<std::endl;
