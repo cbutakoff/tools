@@ -29,9 +29,6 @@ print("Time values for timeset ",timeline)
 n_timesteps = rdr.GetTimeSets().GetItem(timeline).GetNumberOfTuples()
 times = []
 for i in range(n_timesteps):
-    if rdr.GetTimeSets().GetItem(timeline).GetTuple1(i)<0:
-      continue
-
     times.append( rdr.GetTimeSets().GetItem(timeline).GetTuple1(i));
 
 print("Times: ",times)
