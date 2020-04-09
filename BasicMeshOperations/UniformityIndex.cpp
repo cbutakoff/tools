@@ -51,6 +51,7 @@ int main(int argc, char** argv)
         std::cout<<"Options: "<<std::endl;
         std::cout<<"-case <filename> -- filename of the ensight casefile of TETRA mesh"<<std::endl;
         std::cout<<"-a <name> -- point data array on which uniformity is calculated"<<std::endl;
+        std::cout<<"-l <int> -- timeline of the variable in ensi.case (>=1)"<<std::endl;
         std::cout<<"-o <filename.csv> -- filename for the output index table"<<std::endl;
         std::cout<<"-t [BIN|ASCII] -- binary or ascii ensight case"<<std::endl;
         return -1;
@@ -60,12 +61,15 @@ int main(int argc, char** argv)
     std::string output_filename = "index.csv";
     const char *arrayname = nullptr;
     bool isbinary = false;
+    int timeline = 0;
     
     for (int c = 1; c < argc; c++) {
         if (strcmp(argv[c], "-case") == 0) 
             filename.assign( argv[++c] );
         else if (strcmp(argv[c], "-a") == 0) 
             arrayname = argv[++c];
+        else if (strcmp(argv[c], "-l") == 0) 
+            timeline = atoi(argv[++c])-1;
         else if (strcmp(argv[c], "-o") == 0) 
             output_filename.assign( argv[++c] );
         else if (strcmp(argv[c], "-t") == 0) 
@@ -108,19 +112,16 @@ int main(int argc, char** argv)
     rdr->Update();
 
     std::cout<<"Number of timesets: "<<rdr->GetTimeSets()->GetNumberOfItems()<<std::endl;
-    //std::cout<<"Number of tuples, timeset 0: "<<rdr->GetTimeSets()->GetItem(0)->GetNumberOfTuples()<<std::endl;
-    //std::cout<<"Number of components/tuple, timeset 0: "<<rdr->GetTimeSets()->GetItem(0)->GetNumberOfComponents()<<std::endl;
-    std::cout<<"Time values for timeset 0: ";
+    std::cout<<"Time values for timeset "<<timeline<<": ";
     
-    const int n_timesteps = rdr->GetTimeSets()->GetItem(0)->GetNumberOfTuples();
+    const int n_timesteps = rdr->GetTimeSets()->GetItem(timeline)->GetNumberOfTuples();
     for(int i=0; i<n_timesteps; i++)
     {
-        std::cout<<rdr->GetTimeSets()->GetItem(0)->GetTuple1(i)<<" ";
+        std::cout<<rdr->GetTimeSets()->GetItem(timeline)->GetTuple1(i)<<" ";
     }
     std::cout<<std::endl;
     int n = rdr->GetNumberOfOutputPorts();
     
-    //std::cout<<"Output class: "<< rdr->GetOutput(0)->GetClassName()<<std::endl;
     std::cout<<"Number of outputs: "<<n<<std::endl;
 
     vtkMultiBlockDataSet *ds = rdr->GetOutput();
@@ -143,8 +144,8 @@ int main(int argc, char** argv)
     for(int i=0; i<n_timesteps; i++)
     {
         std::cout<<"==================================================="<<std::endl;
-        std::cout<<"Time "<<rdr->GetTimeSets()->GetItem(0)->GetTuple1(i)<<std::endl;
-        rdr->SetTimeValue(rdr->GetTimeSets()->GetItem(0)->GetTuple1(i));
+        std::cout<<"Time "<<rdr->GetTimeSets()->GetItem(timeline)->GetTuple1(i)<<std::endl;
+        rdr->SetTimeValue(rdr->GetTimeSets()->GetItem(timeline)->GetTuple1(i));
         rdr->Update();
 
         //std::cout<<"Number of blocks: "<<rdr->GetOutput()->GetNumberOfBlocks()<<std::endl;
@@ -160,7 +161,7 @@ int main(int argc, char** argv)
         std::cout<<"Calculating"<<std::endl;
         double ui = UniformityIndex( dynamic_cast<vtkUnstructuredGrid*>(p2c->GetOutput()),  arrayname);
 
-        table<<rdr->GetTimeSets()->GetItem(0)->GetTuple1(i)<<", "<<ui<<std::endl;
+        table<<rdr->GetTimeSets()->GetItem(timeline)->GetTuple1(i)<<", "<<ui<<std::endl;
     }
     
     
@@ -187,7 +188,6 @@ double UniformityIndex(vtkUnstructuredGrid* mesh, const char* cellarrayname)
     vtkSmartPointer<vtkIdList> ptIds = vtkSmartPointer<vtkIdList>::New();
     for(uint64_t cellid=0; cellid<mesh->GetNumberOfCells(); cellid++)
     {
-        std::cout<<"cellid = "<<cellid<<std::endl;
         mesh->GetCellPoints( cellid,  ptIds );
 
         if( ptIds->GetNumberOfIds()!=4 )
@@ -217,6 +217,7 @@ double UniformityIndex(vtkUnstructuredGrid* mesh, const char* cellarrayname)
         ui += abs(scalars->GetTuple1(cellid) - fa)*volume[cellid];
     }
     ui = 1 - ui / (2*abs(fa)*vs);
+    std::cout<<"UI = "<<ui<<std::endl;
 
     return ui;
 }
