@@ -19,11 +19,12 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkDataArray.h>
 #include <vtkDataSetWriter.h>
 #include <vtkEnSightReader.h>
-#include <vtkCellDataToPointData.h>
+#include <vtkPointDataToCellData.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkCellData.h>
 #include <vtkIdList.h>
 #include <vtkTetra.h>
+#include <vtkXMLUnstructuredGridWriter.h>
 
 #include <vtkXMLUnstructuredGridReader.h>
 
@@ -63,13 +64,13 @@ int main(int argc, char** argv)
     for (int c = 1; c < argc; c++) {
         if (strcmp(argv[c], "-case") == 0) 
             filename.assign( argv[++c] );
+        else if (strcmp(argv[c], "-a") == 0) 
+            arrayname = argv[++c];
         else if (strcmp(argv[c], "-o") == 0) 
             output_filename.assign( argv[++c] );
         else if (strcmp(argv[c], "-t") == 0) 
             if (strcmp(argv[++c], "BIN") == 0) 
                 isbinary = true;
-        else if (strcmp(argv[c], "-a") == 0) 
-            arrayname = argv[++c];
     }    
     
         
@@ -129,23 +130,15 @@ int main(int argc, char** argv)
     vtkFieldData* fd = ds->GetFieldData();
             vtkUnstructuredGrid *volmesh = dynamic_cast<vtkUnstructuredGrid*>( rdr->GetOutput()->GetBlock(0) ); 
 
-        std::cout<<"Pointdata to celldata"<<std::endl;
-        auto p2c = vtkSmartPointer<vtkCellDataToPointData>::New();
-        p2c->AddCellDataArray(arrayname);
-        p2c->SetInputData(volmesh);
-        p2c->Update();
-
-        std::cout<<"Calculating"<<std::endl;
-        double ui = UniformityIndex( volmesh,  arrayname);
 
     std::cout<<"Number of arrays: "<<fd->GetNumberOfArrays()<<std::endl;
     std::cout<<"Number of tuples: "<<fd->GetNumberOfTuples()<<std::endl;
 
-    //try to save each timestep in a separate vtk
-    std::cout<<"Saving timesteps in separate vtk files"<<std::endl;
 
     std::ofstream table(output_filename);
     table<<"Time, UniformityIndex"<<std::endl;
+
+    std::cout<<"Number of timesteps: "<<n_timesteps<<std::endl;
 
     for(int i=0; i<n_timesteps; i++)
     {
@@ -159,13 +152,13 @@ int main(int argc, char** argv)
         vtkUnstructuredGrid *volmesh = dynamic_cast<vtkUnstructuredGrid*>( rdr->GetOutput()->GetBlock(0) ); 
 
         std::cout<<"Pointdata to celldata"<<std::endl;
-        auto p2c = vtkSmartPointer<vtkCellDataToPointData>::New();
-        p2c->AddCellDataArray(arrayname);
+        auto p2c = vtkSmartPointer<vtkPointDataToCellData>::New();
+        p2c->AddPointDataArray(arrayname);
         p2c->SetInputData(volmesh);
         p2c->Update();
 
         std::cout<<"Calculating"<<std::endl;
-        double ui = UniformityIndex( volmesh,  arrayname);
+        double ui = UniformityIndex( dynamic_cast<vtkUnstructuredGrid*>(p2c->GetOutput()),  arrayname);
 
         table<<rdr->GetTimeSets()->GetItem(0)->GetTuple1(i)<<", "<<ui<<std::endl;
     }
@@ -185,13 +178,16 @@ double UniformityIndex(vtkUnstructuredGrid* mesh, const char* cellarrayname)
 
     std::vector<double> volume(mesh->GetNumberOfCells());
 
+    std::cout<<"Array "<<cellarrayname <<std::endl;
     auto scalars = mesh->GetCellData()->GetArray( cellarrayname );
+    std::cout<<"Tuples:"<<scalars->GetNumberOfTuples()<<std::endl;
 
     double vs = 0;
     double fa = 0;
     vtkSmartPointer<vtkIdList> ptIds = vtkSmartPointer<vtkIdList>::New();
     for(uint64_t cellid=0; cellid<mesh->GetNumberOfCells(); cellid++)
     {
+        std::cout<<"cellid = "<<cellid<<std::endl;
         mesh->GetCellPoints( cellid,  ptIds );
 
         if( ptIds->GetNumberOfIds()!=4 )
@@ -208,7 +204,6 @@ double UniformityIndex(vtkUnstructuredGrid* mesh, const char* cellarrayname)
         volume[cellid] = vtkTetra::ComputeVolume ( p1, p2, p3, p4 );
         vs += volume[cellid];
         fa += volume[cellid] * scalars->GetTuple1(cellid);
-        std::cout<<"cell "<<cellid<<" vol= "<<volume[cellid]<<" scalar="<<scalars->GetTuple1(cellid)<<std::endl;
     }
     fa /= vs;
 
