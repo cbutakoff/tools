@@ -62,7 +62,7 @@ int main(int argc, char** argv)
     const char *arrayname = nullptr;
     bool isbinary = false;
     int timeline = 0;
-    
+
     for (int c = 1; c < argc; c++) {
         if (strcmp(argv[c], "-case") == 0) 
             filename.assign( argv[++c] );
@@ -144,6 +144,7 @@ int main(int argc, char** argv)
     for(int i=0; i<n_timesteps; i++)
     {
         std::cout<<"==================================================="<<std::endl;
+        std::cout<<"Timestep "<<i<<"/"<<n_timesteps<<std::endl;
         std::cout<<"Time "<<rdr->GetTimeSets()->GetItem(timeline)->GetTuple1(i)<<std::endl;
         rdr->SetTimeValue(rdr->GetTimeSets()->GetItem(timeline)->GetTuple1(i));
         rdr->Update();
