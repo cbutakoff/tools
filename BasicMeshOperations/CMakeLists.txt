@@ -60,6 +60,7 @@ InterpolateFibers
 RelabelSurfaceMesh
 ThresholdDS
 CalculateEdgeLengths
+UniformityIndex
 )
 
 set(VTKEIGEN_PROGRAMS 
