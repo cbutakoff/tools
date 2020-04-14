@@ -123,6 +123,7 @@ finally:
     project_name = comm.bcast(project_name, root=0)
     outputfolder = comm.bcast(outputfolder, root=0)
     MPIO = comm.bcast(MPIO, root=0)
+    vtk_installed = comm.bcast(vtk_installed, root=0)
 
 
 
