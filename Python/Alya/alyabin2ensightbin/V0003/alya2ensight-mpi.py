@@ -24,7 +24,6 @@ except:
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 #Generally you don't need VTK double precision for point coordinates
-vtk_installed = False
 
 
 
@@ -63,8 +62,16 @@ try:
         parser.add_argument("task_name", help='Name of the alya task')
         parser.add_argument("input_folder", help='Folder with input alyabins')
         parser.add_argument("output_folder", help='Folder for the output ensight case')
-        parser.add_argument("--format", help='Format of the data to expect: mpio, alyabin, auto(default)', default = 'auto')
+        parser.add_argument("-f","--format", help='Format of the data to expect: mpio, alyabin, auto(default)', default = 'auto')
+        parser.add_argument("-v","--vtu", action='store_true', required=False, help='Generate VTU with double precision of coordinates?')
         args = parser.parse_args()
+
+        vtk_installed = vtk_installed & args.vtu
+        if vtk_installed:
+            print("VTU will be generated")
+        else:
+            print("VTU will NOT be generated")
+
 
         inputfolder = args.input_folder
         project_name = args.task_name
