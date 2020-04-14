@@ -139,7 +139,10 @@ for boundary_idx, boundary_info in enumerate( info['Boundaries'] ):
     ncells = boundary_info['NCells']
     
     df = ReadBoundaryCellBIN( os.path.join(input_path, filename), ncells, nodemask )
-    df['boundaryID'] = boundary_idx+1
+    if 'Code' in boundary_info:
+        df['boundaryID'] = boundary_info['Code']
+    else:
+        df['boundaryID'] = boundary_idx+1
     bound_df = bound_df.append(df)
 
     boundary_names.append( {'Name':boundary_info['Name'], 'Id':boundary_idx+1 } )
