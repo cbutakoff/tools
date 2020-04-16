@@ -84,17 +84,12 @@ df['L1'] = df['LA']-df['RA']
 df['L2'] = df['LL']-df['RA']
 df['L3'] = df['LL']-df['LA']
 
-l_interp = interp1d( df['t'], df['L1'] )
-l1_new = l_interp(times)   # use interpolation function returned by `interp1d`
-
-l_interp = interp1d( df['t'], df['L2'] )
-l2_new = l_interp(times)   # use interpolation function returned by `interp1d`
-
-l_interp = interp1d( df['t'], df['L3'] )
-l3_new = l_interp(times)   # use interpolation function returned by `interp1d`
+l1_new = np.interp(times, df['t'], df['L1'])   # use interpolation function returned by `interp1d`
+l2_new = np.interp(times, df['t'], df['L2'])   # use interpolation function returned by `interp1d`
+l3_new = l_interp(times, df['t'], df['L3'])   # use interpolation function returned by `interp1d`
 
 df_interp = pd.DataFrame( {'Time':times, 'L1':l1_new, 'L2':l2_new, 'L3':l3_new} )
-df_interp.to_csv(output_csv)
+df_interp.to_csv(output_csv, index=False)
 
 
 df_interp.plot(x='Time',y=['L1','L2','L3'])
