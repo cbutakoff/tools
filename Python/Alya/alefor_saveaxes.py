@@ -58,12 +58,28 @@ surface_filename = sys.argv[1] #"moving_boundary.vtk" #only the surface that is 
 volume_filename = sys.argv[2] #"piece/piece_0_0.vtu"
 problem_name = sys.argv[3] #"piece"
 
+surface_label = 5
+savevtk = True
+volmesh_scale = 0.01 #if volmesh has a scale different to the surface mesh, put here the scaling factor for the transform
+
 
 print("Reading volume")
 vr = vtk.vtkXMLUnstructuredGridReader()
 vr.SetFileName(volume_filename)
 vr.Update()
-vol = vr.GetOutput()
+
+
+tff = vtk.vtkTransform()
+tff.Scale(volmesh_scale,volmesh_scale,volmesh_scale)
+
+print("Rescaling vol mesh")
+tf = vtk.vtkTransformFilter()
+tf.SetInputData(vr.GetOutput())
+tf.SetTransform(tff)
+tf.Update()
+
+vol = tf.GetOutput()
+
 
 print("Reading surface")
 rdr = vtk.vtkPolyDataReader()
@@ -71,9 +87,22 @@ rdr.SetFileName(surface_filename)
 rdr.Update()
 
 
+print(f"Extracting suurface {surface_label}")
+th = vtk.vtkThreshold()
+th.SetInputData(normals.GetOutput())
+th.SetInputArrayToProcess(0,0,0, vtk.vtkDataObject.FIELD_ASSOCIATION_CELLS, boundary_array)
+th.ThresholdBetween(surface_label-0.1, surface_label+0.1)
+th.Update()
+
+sf = vtk.vtkDataSetSurfaceFilter()
+sf.SetInputData(th.GetOutput())
+sf.Update()
+
+
+
 print("Calculating normals")
 normalgen = vtk.vtkPolyDataNormals()
-normalgen.SetInputData(rdr.GetOutput())
+normalgen.SetInputData(sf.GetOutput())
 normalgen.SplittingOff()
 normalgen.Update()
 mesh = normalgen.GetOutput()
@@ -131,6 +160,23 @@ print("1st row: ",matrix[0,:])
 filename = '{:s}-XFIEL.{:08d}.{:08d}.mpio.bin'.format(problem_name, 1, 1)
 print('Saving ', filename)
 write_vector_mpio(  filename, matrix, 0 )
+
+if savevtk:
+    normals = vtk.vtkFloatArray()
+    normals.SetName('MyNormal')
+    normals.SetNumberOfComponents(3)
+    normals.SetNumberOfTuples(vol.GetNumberOfPoints())
+    for i in progressbar.progressbar(range(vol.GetNumberOfPoints())):
+        normals.SetTuple(i, matrix[i,  0:3])
+
+    vol.GetPointData().AddArray(normals)
+
+    wwr = vtk.vtkDataSetWriter()
+    wwr.SetFileTypeToBinary()
+    wwr.SetFileName('volnormals.vtk')
+    wwr.SetInputData(vol)
+    wwr.Write()
+
 
 
 
