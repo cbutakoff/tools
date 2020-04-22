@@ -59,8 +59,9 @@ volume_filename = sys.argv[2] #"piece/piece_0_0.vtu"
 problem_name = sys.argv[3] #"piece"
 
 surface_label = 5
-savevtk = True
+savevtk =  False
 volmesh_scale = 0.01 #if volmesh has a scale different to the surface mesh, put here the scaling factor for the transform
+boundary_array = 'BoundaryId'
 
 
 print("Reading volume")
@@ -89,7 +90,7 @@ rdr.Update()
 
 print(f"Extracting suurface {surface_label}")
 th = vtk.vtkThreshold()
-th.SetInputData(normals.GetOutput())
+th.SetInputData(rdr.GetOutput())
 th.SetInputArrayToProcess(0,0,0, vtk.vtkDataObject.FIELD_ASSOCIATION_CELLS, boundary_array)
 th.ThresholdBetween(surface_label-0.1, surface_label+0.1)
 th.Update()
@@ -111,17 +112,19 @@ normals = mesh.GetPointData().GetNormals()
 
 
 matrix = np.zeros( (vol.GetNumberOfPoints(), 9) )
-loc = vtk.vtkPointLocator()
-loc.SetDataSet(vol)
-loc.BuildLocator()
 
 normal_coeff = 1
 #check if normals need to be flipped
 #the normals will point inside, for now
 d = 0.001
+
+loc = vtk.vtkCellLocator()
+loc.SetDataSet(vol)
+loc.BuildLocator()
+
 for i in progressbar.progressbar(range(mesh.GetNumberOfPoints())):
-    pt = mesh.GetPoint(i)
-    n = normals.GetTuple(i)
+    c = np.array(mesh.GetPoint(i))
+    n = np.array(normals.GetTuple(i))
     pt1 = c+n*d
     pt2 = c-n*d
 
@@ -140,6 +143,10 @@ for i in progressbar.progressbar(range(mesh.GetNumberOfPoints())):
            normal_coeff = -1
            break
 
+
+loc = vtk.vtkPointLocator()
+loc.SetDataSet(vol)
+loc.BuildLocator()
 
 for i in progressbar.progressbar(range(mesh.GetNumberOfPoints())):
     pt = mesh.GetPoint(i)
