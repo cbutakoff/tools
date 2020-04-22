@@ -86,11 +86,37 @@ loc = vtk.vtkPointLocator()
 loc.SetDataSet(vol)
 loc.BuildLocator()
 
+normal_coeff = 1
+#check if normals need to be flipped
+#the normals will point inside, for now
+d = 0.001
+for i in progressbar.progressbar(range(mesh.GetNumberOfPoints())):
+    pt = mesh.GetPoint(i)
+    n = normals.GetTuple(i)
+    pt1 = c+n*d
+    pt2 = c-n*d
+
+    GenCell = vtk.vtkGenericCell()
+    pcoords = [0,0,0]
+    weights = [0,0,0,0,0,0,0,0,0,0,0,0]
+    cellid1 = loc.FindCell ( pt1, 1e-10, GenCell, pcoords, weights) 
+    cellid2 = loc.FindCell ( pt2, 1e-10, GenCell, pcoords, weights) 
+    if ((cellid1<0) and (cellid2<0)) or ((cellid1>=0) and (cellid2>=0)):
+        continue
+    else:
+        if cellid1>0:
+           normal_coeff = 1
+           break
+        else:
+           normal_coeff = -1
+           break
+
+
 for i in progressbar.progressbar(range(mesh.GetNumberOfPoints())):
     pt = mesh.GetPoint(i)
     ptid = loc.FindClosestPoint(pt) 
 
-    n = normals.GetTuple(i)
+    n = normals.GetTuple(i)*normal_coeff
     t1 = np.roll(n,1) #create random vector != n
     t2 = np.cross(n, t1) #find orthogonal vector
     t1 = t2/np.linalg.norm(t2) #normalise
