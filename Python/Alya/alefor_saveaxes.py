@@ -54,14 +54,33 @@ def write_vector_mpio(filename, vector, time):
 
 
 
-surface_filename = sys.argv[1] #"moving_boundary.vtk" #only the surface that is to be moving. 
-volume_filename = sys.argv[2] #"piece/piece_0_0.vtu"
-problem_name = sys.argv[3] #"piece"
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("volmesh", metavar='file.vtu', help='Volumetric mesh, vtk XML UGrid')
+parser.add_argument("surfmesh", metavar="file.vtk", help='Surface mesh, corresponding to the volumetric mesh, VTK PolyData. If label parameter is passed, this mesh needs labeled cells')
+parser.add_argument("problem_name", help='Problem name to be used as a prefix in the generated filename')
+parser.add_argument("-f","--format", help='Format of the data to expect: mpio, alyabin, auto(default)', default = 'auto')
+parser.add_argument("-v","--vtu", help='Generate VTU with the normals, for verification', default = '')
+parser.add_argument("-l","--labels", help='Name of the label cell-array in the surfmesh.vtk', default = 'BoundaryId')
+parser.add_argument("-e","--extract", help='Surface with this label will be extracted from surfmesh.vtk', type=int, default = None)
+parser.add_argument("-s","--scale", help='Volmesh scale. Needed if surface and volume meshes have different untis', type=float, default = 1.0)
+parser.add_argument("-d","--dist", help='Distance to check if the normal points inwards or outwards. Number smaller that smallest edge length, preferently.', type=float, default = 0.0001)
 
-surface_label = 5
-savevtk =  False
-volmesh_scale = 0.01 #if volmesh has a scale different to the surface mesh, put here the scaling factor for the transform
-boundary_array = 'BoundaryId'
+
+args = parser.parse_args()
+
+
+savevtk =  len(args.vtu)>0 #save vtk if there is a filename provided
+
+surface_filename = args.surfmesh #"moving_boundary.vtk" #only the surface that is to be moving. 
+volume_filename = args.volmesh #"piece/piece_0_0.vtu"
+problem_name = args.problem_name #"piece"
+
+surface_label = args.extract
+
+volmesh_scale = args.scale #if volmesh has a scale different to the surface mesh, put here the scaling factor for the transform
+boundary_array = args.labels
+d = args.dist
 
 
 print("Reading volume")
@@ -87,23 +106,26 @@ rdr = vtk.vtkPolyDataReader()
 rdr.SetFileName(surface_filename)
 rdr.Update()
 
+surf = rdr.GetOutput()
 
-print(f"Extracting suurface {surface_label}")
-th = vtk.vtkThreshold()
-th.SetInputData(rdr.GetOutput())
-th.SetInputArrayToProcess(0,0,0, vtk.vtkDataObject.FIELD_ASSOCIATION_CELLS, boundary_array)
-th.ThresholdBetween(surface_label-0.1, surface_label+0.1)
-th.Update()
+if surface_label is not None:
+    print(f"Extracting suurface {surface_label}")
+    th = vtk.vtkThreshold()
+    th.SetInputData(rdr.GetOutput())
+    th.SetInputArrayToProcess(0,0,0, vtk.vtkDataObject.FIELD_ASSOCIATION_CELLS, boundary_array)
+    th.ThresholdBetween(surface_label-0.1, surface_label+0.1)
+    th.Update()
 
-sf = vtk.vtkDataSetSurfaceFilter()
-sf.SetInputData(th.GetOutput())
-sf.Update()
+    sf = vtk.vtkDataSetSurfaceFilter()
+    sf.SetInputData(th.GetOutput())
+    sf.Update()
 
+    surf = sf.GetOutput()
 
 
 print("Calculating normals")
 normalgen = vtk.vtkPolyDataNormals()
-normalgen.SetInputData(sf.GetOutput())
+normalgen.SetInputData(surf)
 normalgen.SplittingOff()
 normalgen.Update()
 mesh = normalgen.GetOutput()
@@ -113,10 +135,9 @@ normals = mesh.GetPointData().GetNormals()
 
 matrix = np.zeros( (vol.GetNumberOfPoints(), 9) )
 
-normal_coeff = 1
+normal_coeff = -1
 #check if normals need to be flipped
 #the normals will point inside, for now
-d = 0.001
 
 loc = vtk.vtkCellLocator()
 loc.SetDataSet(vol)
@@ -137,10 +158,10 @@ for i in progressbar.progressbar(range(mesh.GetNumberOfPoints())):
         continue
     else:
         if cellid1>0:
-           normal_coeff = 1
+#           normal_coeff = 1
            break
         else:
-           normal_coeff = -1
+           normal_coeff = normal_coeff*(-1)
            break
 
 
@@ -162,13 +183,13 @@ for i in progressbar.progressbar(range(mesh.GetNumberOfPoints())):
     matrix[ptid, 3:6] = t1
     matrix[ptid, 6:9] = t2
     
-print("1st row: ",matrix[0,:])
 
 filename = '{:s}-XFIEL.{:08d}.{:08d}.mpio.bin'.format(problem_name, 1, 1)
 print('Saving ', filename)
 write_vector_mpio(  filename, matrix, 0 )
 
 if savevtk:
+    print(f'Saving VTU to {args.vtu}')
     normals = vtk.vtkFloatArray()
     normals.SetName('MyNormal')
     normals.SetNumberOfComponents(3)
@@ -178,12 +199,12 @@ if savevtk:
 
     vol.GetPointData().AddArray(normals)
 
-    wwr = vtk.vtkDataSetWriter()
-    wwr.SetFileTypeToBinary()
-    wwr.SetFileName('volnormals.vtk')
-    wwr.SetInputData(vol)
-    wwr.Write()
-
+    wr = vtk.vtkXMLUnstructuredGridWriter()
+    wr.SetFileName( args.vtu )
+    wr.SetInputData(vol)
+    wr.SetDataModeToAppended()
+    wr.EncodeAppendedDataOff()	
+    wr.Write()
 
 
 
