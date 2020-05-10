@@ -2,13 +2,13 @@ import numpy as np   #needs install
 import os
 import pandas #needs install
 import sys
-from mpi4py import MPI #needs install
-from queue import Queue
 import vtk #needs install
 from progressbar import progressbar
 
 file_suffix = ".post.mpio.bin"
-alya_id_type = np.int64
+ncpus = 10
+time_roundoff = 12
+
 
 def read_header_mpio(f):
     magic = np.fromfile(f,count=1, dtype=np.int64)[0]
@@ -138,7 +138,7 @@ def read_partitions(inputfolder, project_name):
     #read the partitioning info
     partition_filename = os.path.join(inputfolder,f'{project_name}.post.alyapar')
     with open(partition_filename) as f:
-        partitions = np.fromstring(f.read(), dtype=alya_id_type, sep=' ')
+        partitions = np.fromstring(f.read(), dtype=np.int64, sep=' ')
 
     #describes the mesh partitions
     #partition_id,  NumberOfElementsInPartition,  NumberOfPointsInPartition, NumberOfBoundariesInPartition
@@ -180,7 +180,6 @@ def read_alyampio_array(filename, partition_id, partition_table):
 
 
         this_part = partition_table[partition_table['id']==partition_id]
-        print("this_part = ", this_part.iloc[0,:]['Elements'])
 
         #skip to the block start depending association
 
@@ -240,8 +239,6 @@ def numpyarray2vtkarray(data, name, arraytype):
     a.SetNumberOfTuples(data.shape[0])
     a.SetName(name)
 
-    print('data = ', data)
-
     for i, values in enumerate(data):
         a.SetTuple(i, values)
         
@@ -251,13 +248,13 @@ def numpyarray2vtkarray(data, name, arraytype):
 
 def read_mpio_partition_geometry(inputfolder, project_name, partition_id, partition_table):
     
-    coords = read_alyampio_array(f'{project_name}-COORD{file_suffix}', partition_id, part)
+    coords = read_alyampio_array( os.path.join(inputfolder, f'{project_name}-COORD{file_suffix}'), partition_id, part)
     coords = coords['tuples']
 
-    elem = read_alyampio_array(f'{project_name}-LNODS{file_suffix}', partition_id, part)
+    elem = read_alyampio_array( os.path.join(inputfolder, f'{project_name}-LNODS{file_suffix}'), partition_id, part)
     elem = elem['tuples']
 
-    eltype = read_alyampio_array(f'{project_name}-LTYPE{file_suffix}', partition_id, part)
+    eltype = read_alyampio_array( os.path.join(inputfolder, f'{project_name}-LTYPE{file_suffix}'), partition_id, part)
     eltype = eltype['tuples']
 
 
@@ -297,7 +294,6 @@ def write_vtk_all_arrays(input_folder, project_name, output_folder, partition_id
 
     #extarct all variables for this timestep
     vars_this_step = variable_table[variable_table['iteration']==iteration]
-    print(vars_this_step)
 
     if( vars_this_step.shape[0]==0 ):
         return  #nothing to save
@@ -327,15 +323,59 @@ def write_vtk_all_arrays(input_folder, project_name, output_folder, partition_id
     wr.EncodeAppendedDataOff()
     wr.Write()  
 
+    return array['header']['Time']
 
 
 path = sys.argv[1]
 name = sys.argv[2]
+outpath = sys.argv[3]
+
 vars = generate_variables_table(path, name)
 part = read_partitions(path, name)
 
-write_vtk_all_arrays(path, name, './', 1, part, 0, vars)
+iterations = vars['iteration'].unique()
+partition_ids = part['id'].unique()
 
 
+iter_step = {}
+for iter in iterations:
+    subpath = os.path.join(outpath, f"vtk/{iter:08d}") 
+    os.makedirs( subpath, exist_ok=True )
+    for part_id in partition_ids:
+        #print('Iter = ',iter,', part_id = ',part_id)
+        time = write_vtk_all_arrays(path, name, subpath, part_id, part, iter, vars)
+        iter_step[iter] = np.round(time,time_roundoff)
+        print(iter_step)
+    
+
+with open(os.path.join(outpath,'vtk',f'{name}.pvd')) as ff:
+    ff.write('<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">\n')
+    ff.write('<Collection>\n')
+
+    for iter, time in iter_step.items():
+        iter_filename = f"{name}_{iter:08d}.pvtu"
+        ff.write(f'   <DataSet timestep="{iter}" file="{iter_filename}"/>')
+
+        with open(os.path.join(outpath,iter_filename)) as ff_pvtu:
+            ff_pvtu.write( "<?xml version="1.0"?>\n" )
+            ff_pvtu.write( '<VTKFile type="PUnstructuredGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">\n') 
+            ff_pvtu.write( '<PUnstructuredGrid GhostLevel="0">' )
+            ff_pvtu.write( '<PPointData>\n' )
+                  <PDataArray type="Float64" Name="INTRA"/>
+                </PPointData>
+                <PPoints>
+                  <PDataArray type="Float32" Name="Points" NumberOfComponents="3"/>
+                </PPoints>
+                <Piece Source="EP_141_00218400/EP_141_00218400_0.vtu"/>
+                <Piece Source="EP_141_00218400/EP_141_00218400_622.vtu"/>
+              </PUnstructuredGrid>
+            </VTKFile>
+
+    ff.write('</Collection>\n')
+    ff.write('</VTKFile>\n')
+        
 
     
+
+
+
