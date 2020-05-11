@@ -8,6 +8,7 @@ from progressbar import progressbar
 file_suffix = ".post.mpio.bin"
 ncpus = 10
 time_roundoff = 12
+output_partitions = 48
 
 
 def read_header_mpio(f):
@@ -336,43 +337,54 @@ part = read_partitions(path, name)
 iterations = vars['iteration'].unique()
 partition_ids = part['id'].unique()
 
+print(partition_ids)
 
-iter_step = {}
-for iter in iterations:
-    subpath = os.path.join(outpath, f"vtk/{iter:08d}") 
-    os.makedirs( subpath, exist_ok=True )
-    for part_id in partition_ids:
-        #print('Iter = ',iter,', part_id = ',part_id)
-        time = write_vtk_all_arrays(path, name, subpath, part_id, part, iter, vars)
-        iter_step[iter] = np.round(time,time_roundoff)
-        print(iter_step)
+joined_partitions = [  partition_ids[i::output_partitions] for i in range(output_partitions) ]
+print(joined_partitions)
+print(len(joined_partitions))
+
+
+#iter_step = {}
+#for iter in iterations:
+#    subpath = os.path.join(outpath, f"vtk/{iter:08d}") 
+#    os.makedirs( subpath, exist_ok=True )
+#    for part_id in partition_ids:
+#        #print('Iter = ',iter,', part_id = ',part_id)
+#        time = write_vtk_all_arrays(path, name, subpath, part_id, part, iter, vars)
+#        iter_step[iter] = np.round(time,time_roundoff)
+#        print(iter_step)
     
 
-with open(os.path.join(outpath,'vtk',f'{name}.pvd')) as ff:
-    ff.write('<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">\n')
-    ff.write('<Collection>\n')
-
-    for iter, time in iter_step.items():
-        iter_filename = f"{name}_{iter:08d}.pvtu"
-        ff.write(f'   <DataSet timestep="{iter}" file="{iter_filename}"/>')
-
-        with open(os.path.join(outpath,iter_filename)) as ff_pvtu:
-            ff_pvtu.write( "<?xml version="1.0"?>\n" )
-            ff_pvtu.write( '<VTKFile type="PUnstructuredGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">\n') 
-            ff_pvtu.write( '<PUnstructuredGrid GhostLevel="0">' )
-            ff_pvtu.write( '<PPointData>\n' )
-                  <PDataArray type="Float64" Name="INTRA"/>
-                </PPointData>
-                <PPoints>
-                  <PDataArray type="Float32" Name="Points" NumberOfComponents="3"/>
-                </PPoints>
-                <Piece Source="EP_141_00218400/EP_141_00218400_0.vtu"/>
-                <Piece Source="EP_141_00218400/EP_141_00218400_622.vtu"/>
-              </PUnstructuredGrid>
-            </VTKFile>
-
-    ff.write('</Collection>\n')
-    ff.write('</VTKFile>\n')
+#with open(os.path.join(outpath,'vtk',f'{name}.pvd')) as ff:
+#    ff.write('<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">\n')
+#    ff.write('<Collection>\n')
+#
+#    for iter, time in iter_step.items():
+#        iter_filename = f"{name}_{iter:08d}.pvtu"
+#        ff.write(f'   <DataSet timestep="{iter}" file="{iter_filename}"/>')
+#
+#        with open(os.path.join(outpath,iter_filename)) as ff_pvtu:
+#            ff_pvtu.write( "<?xml version="1.0"?>\n" )
+#            ff_pvtu.write( '<VTKFile type="PUnstructuredGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">\n') 
+#            ff_pvtu.write( '<PUnstructuredGrid GhostLevel="0">' )
+#    <PPointData>
+#      <PDataArray type="Float64" Name="INTRA"/>
+#      <PDataArray type="Float64" Name="ISOCH"/>
+#      <PDataArray type="Float64" Name="XFIEL"/>
+#    </PPointData>
+#    <PCellData>
+#      <PDataArray type="Float64" Name="MATER"/>
+#    </PCellData>
+#                <PPoints>
+#                  <PDataArray type="Float32" Name="Points" NumberOfComponents="3"/>
+#                </PPoints>
+#                <Piece Source="EP_141_00218400/EP_141_00218400_0.vtu"/>
+#                <Piece Source="EP_141_00218400/EP_141_00218400_622.vtu"/>
+#              </PUnstructuredGrid>
+#            </VTKFile>
+#
+#    ff.write('</Collection>\n')
+#    ff.write('</VTKFile>\n')
         
 
     
