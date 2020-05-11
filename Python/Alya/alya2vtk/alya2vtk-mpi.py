@@ -8,7 +8,7 @@ from progressbar import progressbar
 file_suffix = ".post.mpio.bin"
 ncpus = 10
 time_roundoff = 12
-output_partitions = 48
+output_partitions = 2
 
 
 def read_header_mpio(f):
@@ -166,6 +166,9 @@ def read_block_allvars(inputfolder, project_name, iteration, blockid, variable_t
 
 #partition_id is the number from the table, not index
 def read_alyampio_array(filename, partition_id, partition_table):
+    if partition_id<1:
+        raise ValueError("partition_id must be > 0")
+
     if not os.path.isfile(filename):
         raise ValueError(f"File does not exist: {filename}")
 
@@ -175,9 +178,9 @@ def read_alyampio_array(filename, partition_id, partition_table):
         #get subtable to calculate cumulative sum of the number of rows per partition
         if partition_id > 1:
             subt = partition_table[partition_table['id']<partition_id]
-            cumsum = subt.cumsum(axis=0)    
+            cumsum = subt.sum(axis=0)    
         else:
-            cumsum = pandas.DataFrame({'Elements':[0],'Points':[0]})
+            cumsum = {'Elements':0,'Points':0}
 
 
         this_part = partition_table[partition_table['id']==partition_id]
@@ -199,10 +202,10 @@ def read_alyampio_array(filename, partition_id, partition_table):
 
         #Elements  Points 
         if header['Association'] == 'element':
-            rows2skip = cumsum['Elements'].values[0]
+            rows2skip = cumsum['Elements']
             rows2read =  this_part.iloc[0,:]['Elements']
         elif header['Association'] == 'node':
-            rows2skip = cumsum['Points'].values[0] 
+            rows2skip = cumsum['Points'] 
             rows2read =  this_part.iloc[0,:]['Points']
         else:
             raise ValueError(f"Unsupported association in {filename}")
@@ -289,37 +292,45 @@ def read_mpio_partition_geometry(inputfolder, project_name, partition_id, partit
     return ug
 
 
-def write_vtk_all_arrays(input_folder, project_name, output_folder, partition_id, partition_table, iteration, variable_table):
+def write_vtk_all_arrays(input_folder, project_name, output_folder, partition_id_list, partition_table, iteration, variable_table):
 
-    ug = read_mpio_partition_geometry(input_folder, project_name, partition_id, partition_table)
+    af = vtk.vtkAppendFilter()
 
-    #extarct all variables for this timestep
-    vars_this_step = variable_table[variable_table['iteration']==iteration]
+    for partition_id in partition_id_list:
+        ug = read_mpio_partition_geometry(input_folder, project_name, partition_id, partition_table)
 
-    if( vars_this_step.shape[0]==0 ):
-        return  #nothing to save
+        #extarct all variables for this timestep
+        vars_this_step = variable_table[variable_table['iteration']==iteration]
 
-    for index, row in vars_this_step.iterrows():
-        filename = row['filename']
-        varname = row['field']
-        
-        array = read_alyampio_array(os.path.join(input_folder, filename), partition_id, partition_table)
-        
-        if( 'int' in array['header']['DataType'] ):
-            vtkarray = numpyarray2vtkarray(array['tuples'], varname, 'short')
-        else:
-            vtkarray = numpyarray2vtkarray(array['tuples'], varname, 'double')
+        if( vars_this_step.shape[0]==0 ):
+            return  #nothing to save
 
-        if array['header']['Association'] == 'element':
-            ug.GetCellData().AddArray( vtkarray )
-        elif array['header']['Association'] == 'node':
-            ug.GetPointData().AddArray( vtkarray )
+        for index, row in vars_this_step.iterrows():
+            filename = row['filename']
+            varname = row['field']
+            
+            array = read_alyampio_array(os.path.join(input_folder, filename), partition_id, partition_table)
+            
+            if( 'int' in array['header']['DataType'] ):
+                vtkarray = numpyarray2vtkarray(array['tuples'], varname, 'short')
+            else:
+                vtkarray = numpyarray2vtkarray(array['tuples'], varname, 'double')
+
+            if array['header']['Association'] == 'element':
+                ug.GetCellData().AddArray( vtkarray )
+            elif array['header']['Association'] == 'node':
+                ug.GetPointData().AddArray( vtkarray )
 
 
+
+        af.AddInputData(ug)
+
+
+    af.Update()
 
     wr = vtk.vtkXMLUnstructuredGridWriter()
-    wr.SetFileName( os.path.join(output_folder, f"{project_name}_{partition_id}.vtu" ) )
-    wr.SetInputData( ug )
+    wr.SetFileName( os.path.join(output_folder, f"{project_name}_{partition_id_list[0]}.vtu" ) )
+    wr.SetInputData( af.GetOutput() )
     wr.SetDataModeToAppended()
     wr.EncodeAppendedDataOff()
     wr.Write()  
@@ -337,22 +348,21 @@ part = read_partitions(path, name)
 iterations = vars['iteration'].unique()
 partition_ids = part['id'].unique()
 
-print(partition_ids)
 
 joined_partitions = [  partition_ids[i::output_partitions] for i in range(output_partitions) ]
-print(joined_partitions)
-print(len(joined_partitions))
+#print(joined_partitions)
+#print(len(joined_partitions))
 
 
-#iter_step = {}
-#for iter in iterations:
-#    subpath = os.path.join(outpath, f"vtk/{iter:08d}") 
-#    os.makedirs( subpath, exist_ok=True )
-#    for part_id in partition_ids:
-#        #print('Iter = ',iter,', part_id = ',part_id)
-#        time = write_vtk_all_arrays(path, name, subpath, part_id, part, iter, vars)
-#        iter_step[iter] = np.round(time,time_roundoff)
-#        print(iter_step)
+iter_step = {}
+for iter in iterations:
+    subpath = os.path.join(outpath, f"vtk/{iter:08d}") 
+    os.makedirs( subpath, exist_ok=True )
+    for part_list in joined_partitions:
+        print('Iter = ',iter,', part = ',part_list)
+        time = write_vtk_all_arrays(path, name, subpath, part_list, part, iter, vars)
+        iter_step[iter] = np.round(time,time_roundoff)
+        print(iter_step)
     
 
 #with open(os.path.join(outpath,'vtk',f'{name}.pvd')) as ff:
