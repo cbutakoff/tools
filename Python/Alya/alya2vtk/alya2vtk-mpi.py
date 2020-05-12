@@ -8,6 +8,7 @@ from mpi4py import MPI
 file_suffix = ".post.mpio.bin"
 ncpus = 10
 time_roundoff = 12
+points_as_double = True
 
 
 def read_header_mpio(f):
@@ -267,6 +268,10 @@ def read_mpio_partition_geometry(inputfolder, project_name, partition_id, partit
 
 
     pts = vtk.vtkPoints()
+
+    if points_as_double:
+        pts.SetDataTypeToDouble()
+
     pts.SetNumberOfPoints(coords.shape[0])
     for ptid, xyz in enumerate(coords):
         pts.SetPoint(ptid, xyz)
@@ -491,7 +496,12 @@ if rank == 0:
                     ff_pvtu.write(line.decode('utf-8').replace('PointData','PPointData').replace('CellData','PCellData'))
                     
                 ff_pvtu.write( '<PPoints>\n')
-                ff_pvtu.write( '    <PDataArray type="Float32" Name="Points" NumberOfComponents="3"/>\n')
+
+                if points_as_double:
+                    ff_pvtu.write( '    <PDataArray type="Float64" Name="Points" NumberOfComponents="3"/>\n')
+                else:
+                    ff_pvtu.write( '    <PDataArray type="Float32" Name="Points" NumberOfComponents="3"/>\n')
+
                 ff_pvtu.write( '</PPoints>\n')
                 for pp in joined_partitions:
                     ff_pvtu.write( f'<Piece Source="{iter:08d}/{name}_{pp[0]}.vtu"/>\n')
