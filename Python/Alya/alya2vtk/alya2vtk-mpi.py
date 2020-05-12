@@ -3,12 +3,11 @@ import os
 import pandas #needs install
 import sys
 import vtk #needs install
-from progressbar import progressbar
+from mpi4py import MPI
 
 file_suffix = ".post.mpio.bin"
 ncpus = 10
 time_roundoff = 12
-output_partitions = 2
 
 
 def read_header_mpio(f):
@@ -296,6 +295,7 @@ def write_vtk_all_arrays(input_folder, project_name, output_folder, partition_id
 
     af = vtk.vtkAppendFilter()
 
+    variable_pairs = {}
     for partition_id in partition_id_list:
         ug = read_mpio_partition_geometry(input_folder, project_name, partition_id, partition_table)
 
@@ -311,17 +311,18 @@ def write_vtk_all_arrays(input_folder, project_name, output_folder, partition_id
             
             array = read_alyampio_array(os.path.join(input_folder, filename), partition_id, partition_table)
             
-            if( 'int' in array['header']['DataType'] ):
-                vtkarray = numpyarray2vtkarray(array['tuples'], varname, 'short')
-            else:
-                vtkarray = numpyarray2vtkarray(array['tuples'], varname, 'double')
+            #if( 'int' in array['header']['DataType'] ):
+            #    vtkarray = numpyarray2vtkarray(array['tuples'], varname, 'short')
+            #else:
+            vtkarray = numpyarray2vtkarray(array['tuples'], varname, 'double')
 
             if array['header']['Association'] == 'element':
                 ug.GetCellData().AddArray( vtkarray )
             elif array['header']['Association'] == 'node':
                 ug.GetPointData().AddArray( vtkarray )
 
-
+            variable_pairs[varname] = array['header']['Association']
+    
 
         af.AddInputData(ug)
 
@@ -338,63 +339,167 @@ def write_vtk_all_arrays(input_folder, project_name, output_folder, partition_id
     return array['header']['Time']
 
 
-path = sys.argv[1]
-name = sys.argv[2]
-outpath = sys.argv[3]
+def extract_vars_vtu(vtufilename):
+    
+    vars = []
+    extract = False
+    pd = False
+    cd = False
+    with open(vtufilename, 'rb') as f:
+        while 1>0:
+            line = f.readline()
 
-vars = generate_variables_table(path, name)
-part = read_partitions(path, name)
+            if b"<PointData>" in line:
+                extract = True
+            elif b"<CellData>" in line:
+                extract = True
 
-iterations = vars['iteration'].unique()
-partition_ids = part['id'].unique()
+
+            if pd and cd:
+                break
+
+            if extract:
+                vars.append(line)
 
 
-joined_partitions = [  partition_ids[i::output_partitions] for i in range(output_partitions) ]
-#print(joined_partitions)
-#print(len(joined_partitions))
+            if b"</PointData>" in line:
+                pd = True
+                extract = False
+            elif b"</CellData>" in line:
+                cd = True
+                extract = False
 
+
+    return vars
+
+#
+#
+#
+#   MAIN CODE
+#
+#
+#
+#
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+MPIsize = comm.Get_size()
+output_partitions = 2
+
+
+path = None
+name = None
+outpath = None
+vars = None
+joined_partitions = None
+iterations = None
+part = None
+
+if rank == 0:
+    path = sys.argv[1]
+    name = sys.argv[2]
+    outpath = sys.argv[3]
+
+    vars = generate_variables_table(path, name)
+    part = read_partitions(path, name)
+
+    iterations = vars['iteration'].unique()
+    partition_ids = part['id'].unique()
+
+    #python's int is platform dependent and does not have int64. To avoid dealing with numpy scatter, I will use string just for scattering
+    iterations_str = [str(vv) for vv in iterations]
+
+    joined_partitions = [  partition_ids[i::output_partitions] for i in range(output_partitions) ]
+    #print(joined_partitions)
+    #print(len(joined_partitions))
+
+    #print("iterations:",iterations_str)
+    iterations_split = [  iterations_str[i::MPIsize] for i in range(MPIsize) ] 
+    #print("Master iterations_split=",iterations_split)
+    iterations = iterations_split
+    
+
+path = comm.bcast(path, root=0)
+name = comm.bcast(name, root=0)
+outpath = comm.bcast(outpath, root=0)
+vars = comm.bcast(vars, root=0)
+joined_partitions = comm.bcast(joined_partitions, root=0)
+part = comm.bcast(part, root=0)
+
+
+iterations = comm.scatter( iterations, root=0)
+
+iterations = np.array(iterations).astype(np.int64)
+
+#print("Rank =", rank," vars=",iterations)
+
+#
+#
+#
+#   Slaves 
+#
+#
+#
 
 iter_step = {}
 for iter in iterations:
     subpath = os.path.join(outpath, f"vtk/{iter:08d}") 
     os.makedirs( subpath, exist_ok=True )
     for part_list in joined_partitions:
-        print('Iter = ',iter,', part = ',part_list)
+        print("Mpi =", rank, ' Iter = ',iter)
+        #print('Iter = ',iter,', part = ',part_list)
         time = write_vtk_all_arrays(path, name, subpath, part_list, part, iter, vars)
-        iter_step[iter] = np.round(time,time_roundoff)
-        print(iter_step)
-    
 
-#with open(os.path.join(outpath,'vtk',f'{name}.pvd')) as ff:
-#    ff.write('<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">\n')
-#    ff.write('<Collection>\n')
+        if not iter in iter_step:
+            iter_step[iter] = {'Time':np.round(time,time_roundoff)} 
+
+        #print(iter_step)
+
 #
-#    for iter, time in iter_step.items():
-#        iter_filename = f"{name}_{iter:08d}.pvtu"
-#        ff.write(f'   <DataSet timestep="{iter}" file="{iter_filename}"/>')
 #
-#        with open(os.path.join(outpath,iter_filename)) as ff_pvtu:
-#            ff_pvtu.write( "<?xml version="1.0"?>\n" )
-#            ff_pvtu.write( '<VTKFile type="PUnstructuredGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">\n') 
-#            ff_pvtu.write( '<PUnstructuredGrid GhostLevel="0">' )
-#    <PPointData>
-#      <PDataArray type="Float64" Name="INTRA"/>
-#      <PDataArray type="Float64" Name="ISOCH"/>
-#      <PDataArray type="Float64" Name="XFIEL"/>
-#    </PPointData>
-#    <PCellData>
-#      <PDataArray type="Float64" Name="MATER"/>
-#    </PCellData>
-#                <PPoints>
-#                  <PDataArray type="Float32" Name="Points" NumberOfComponents="3"/>
-#                </PPoints>
-#                <Piece Source="EP_141_00218400/EP_141_00218400_0.vtu"/>
-#                <Piece Source="EP_141_00218400/EP_141_00218400_622.vtu"/>
-#              </PUnstructuredGrid>
-#            </VTKFile>
 #
-#    ff.write('</Collection>\n')
-#    ff.write('</VTKFile>\n')
+#
+#
+#
+#
+iter_step = comm.gather(iter_step, root=0)
+
+
+if rank == 0:
+    #at this point iter_step is a list of dicts. Conver to a single dict
+    iter_step = {key: value for d in iter_step for (key, value) in d.items() }
+
+    #print("iter_step= ",iter_step)
+
+    with open(os.path.join(outpath,'vtk',f'{name}.pvd'),'w') as ff:
+        ff.write('<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">\n')
+        ff.write('<Collection>\n')
+
+        for iter, value in iter_step.items():
+
+            iter_filename = f"{name}_{iter:08d}.pvtu"
+            ff.write(f'   <DataSet timestep="{value["Time"]}" file="{iter_filename}"/>\n')
+
+            with open(os.path.join(outpath,'vtk',iter_filename),'w') as ff_pvtu:
+                ff_pvtu.write( '<?xml version="1.0"?>\n' )
+                ff_pvtu.write( '<VTKFile type="PUnstructuredGrid" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">\n') 
+                ff_pvtu.write( '<PUnstructuredGrid GhostLevel="0">\n' )
+
+                #these vars must be in te same order as in vtu
+                allvars = extract_vars_vtu( os.path.join(outpath,'vtk',f"{iter:08d}/{name}_{joined_partitions[0][0]}.vtu") )
+                for line in allvars:
+                    ff_pvtu.write(line.decode('utf-8').replace('PointData','PPointData').replace('CellData','PCellData'))
+                    
+                ff_pvtu.write( '<PPoints>\n')
+                ff_pvtu.write( '    <PDataArray type="Float32" Name="Points" NumberOfComponents="3"/>\n')
+                ff_pvtu.write( '</PPoints>\n')
+                for pp in joined_partitions:
+                    ff_pvtu.write( f'<Piece Source="{iter:08d}/{name}_{pp[0]}.vtu"/>\n')
+                ff_pvtu.write( '</PUnstructuredGrid>\n')
+                ff_pvtu.write( '</VTKFile>\n')
+
+        ff.write('</Collection>\n')
+        ff.write('</VTKFile>\n')
         
 
     
