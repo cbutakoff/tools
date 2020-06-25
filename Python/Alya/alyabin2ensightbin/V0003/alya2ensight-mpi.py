@@ -11,7 +11,7 @@ import os
 import pandas #needs install
 import sys
 from mpi4py import MPI #needs install
-from queue import Queue
+import json
 
 
 vtk_installed = True
@@ -710,7 +710,7 @@ element_alya2ensi = {37:{'Name':b'hexa8','Vertices':8}, 30:{'Name':b'tetra4','Ve
 
 # In[16]:
 
-print(f'My rank:{my_rank}')
+#print(f'My rank:{my_rank}')
 alya_id_type = None
 
 if my_rank == 0:
@@ -867,26 +867,17 @@ element_types = comm.bcast(element_types, root=0)
 #
 
 
-class Work(object):
-    def __init__(self, variable_info, number_of_blocks):
-        #files are tuples of filename_input, filetype
-        #filenames are the
-        q = Queue()
-        q.put({'filetype':'geometry','number_of_blocks':number_of_blocks})
-        for index, row in variable_info.iterrows():
-            q.put({'filetype':'variable','name':row.field, \
-                   'iteration':row.iteration,'table_index':index,\
-                   'number_of_blocks':number_of_blocks, \
-                   'table_index':index})
-        self.work = q
+def CreateWork(variable_info, number_of_blocks):
+    q = []
+    q.append( json.dumps({'filetype':'geometry','number_of_blocks':number_of_blocks}) )
 
-    def get_next(self):
-        if self.work.empty():
-            return None
-        return self.work.get()
+    for index, row in variable_info.iterrows():
+        q.append( json.dumps({'filetype':'variable','name':row.field, \
+               'iteration':row.iteration,'table_index':index,\
+               'number_of_blocks':number_of_blocks, \
+               'table_index':index}) )
 
-    def get_size(self):
-        return self.work.qsize()
+    return q
 
 
 # In[ ]:
@@ -925,90 +916,20 @@ def process_result(result):
 
 # In[ ]:
 
-
-def master(comm):
-    status = MPI.Status()
-    
-    # generate work queue
-    print('Variables')
-    print(variable_info)
-    print('number_of_blocks')
-    print(number_of_blocks)
-    wq = Work(variable_info, number_of_blocks)
-
-    num_procs = min(wq.get_size(), comm.Get_size())
-    print(f'Number of processes: {num_procs}')
-    sys.stdout.flush()
-
-    # Seed the slaves, send one unit of work to each slave (rank)
-    sent_jobs = 0
-    for rank in range(1, num_procs):
-        work = wq.get_next()
-        comm.send(work, dest=rank, tag=WORKTAG)
-        sent_jobs = sent_jobs+1
-    
-    print('Submitted the first batch of jobs')
-    sys.stdout.flush()
-    # Loop over getting new work requests until there is no more work to be done
-    while True:
-        print(f'Jobs in the queue: {wq.get_size()}')
-        sys.stdout.flush()
-
-        work = wq.get_next()
-        if not work: break
-
-        # Receive results from a slave
-        result = comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
-        sent_jobs = sent_jobs-1
-        process_result(result)
-
-        # Send the slave a new work unit
-        comm.send(work, dest=status.Get_source(), tag=WORKTAG)
-        sent_jobs = sent_jobs+1
-    
+class NumpyEncoder(json.JSONEncoder):
+    """ Special json encoder for numpy types """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 
-    # No more work to be done, receive all outstanding results from slaves
-    for rank in range(sent_jobs): 
-        #print(f'Receiving {rank}')
-        result = comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
-        #print(f'Received {rank}')
-        process_result(result)
-
-    print(f'Shutting down')
-    # Tell all the slaves to exit by sending an empty message with DIETAG
-    for rank in range(1, comm.Get_size()):
-        print(f'Shutting down {rank}')
-        comm.send(0, dest=rank, tag=DIETAG)
-
-
-# In[ ]:
-
-
-def slave(comm):
-    my_rank = comm.Get_rank()
-    status = MPI.Status()
-
-    print(f'running processor: {my_rank}')
-
-    while True:
-        # Receive a message from the master
-        #print(f'Proc {my_rank}: receiving')
-        work = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
-        #print(f'Proc {my_rank}: received')
-
-
-        #print(f'Process {my_rank}, kill signal: {status.Get_tag()==DIETAG}')
-        # Check the tag of the received message
-        if status.Get_tag() == DIETAG: break 
-
-        # Do the work
-        result = do_work(work)
-
-        # Send the result back
-        comm.send(result, dest=0, tag=0)
-        #print(f'Proc {my_rank}: sent')
-
+def chunk(xs,n):
+    return [xs[index::n] for index in range(n)]
 
 #
 #
@@ -1018,85 +939,133 @@ def slave(comm):
 
 
 
-
+#=================================================================
+#
+#  Scatter the queue and process
 # In[ ]:
 
 comm.Barrier()
 
+queue2scatter = None
+can_continue = 1
 
 if my_rank == 0:
-    master(comm)
-else:
-    slave(comm)
-
-
-# # Write ensight case file
-
-# In[ ]:
-
-comm.Barrier()
-if my_rank == 0:
+    # generate work queue
+    print('Variables')
     print(variable_info)
-    print('Saving case')
+    print('Number of blocks ', number_of_blocks)
+    queue = CreateWork(variable_info, number_of_blocks)
+
+    num_procs = comm.Get_size()
+    queue2scatter = chunk(queue, num_procs)
+
+    if len(queue)<num_procs:
+        print(f'Number of conversion tasks {len(queue)} smaller than number of CPUs {comm.Get_size()}. Reduce number of CPUs in mpirun.')
+        can_continue = 0
+
     sys.stdout.flush()
     
-    case_file = f'{project_name}.ensi.case'
-    with open(os.path.join(outputfolder, case_file), 'w') as f:
-        f.write('# Converted from Alya\n')
-        f.write('# Ensight Gold Format\n')
-        f.write('#\n')
-        f.write(f'# Problem name: {project_name}\n')
-        f.write('FORMAT\n')
-        f.write('type: ensight gold\n')
-        f.write('\n')
-        f.write('GEOMETRY\n')
-        f.write(f'model: 1 {project_name}.ensi.geo\n')
-        f.write('\n')
-        f.write('VARIABLE\n')
+can_continue = comm.bcast(can_continue, root=0)
 
-        variables = variable_info.field.unique();
+if can_continue>0:
+    if my_rank == 0:
+        print("Scattering work")
 
-        #define dataframe for each variable
-        #define timeline for each variable base on the number of timesteps
-        variable_info_per_variable = []
-        timeline_id = 1
-        timelines = {}; #each timeline will be identified only by the number of elements
-        c = 0
-        for varname in variables:
-            df = variable_info[variable_info.field==varname]
-            ntimesteps = df.shape[0]
+    queue2scatter = comm.scatter(queue2scatter, root=0)
 
-            variable_info_per_variable = variable_info_per_variable + \
-                [{'varname':varname, \
-                  'data':variable_info[variable_info.field==varname].sort_values(by='iteration'),\
-                  'timeline':timeline_id}]
-            c=c+1        
-            timeline_id += 1
-  
-        for var_data in variable_info_per_variable:
-            varname = var_data['varname']
-            timeline_id = var_data['timeline']
-            print(f'Varname {varname}\n')
-            df = var_data['data'].iloc[0] #get one record with this varibale
-            line = f'{df.variabletype} per {df.association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
-            f.write(line)
+
+    results = []
+    for iwork, work in enumerate(queue2scatter):
+        if my_rank == 0:
+            print( f"Master processing {iwork}/{len(queue2scatter)}" )
+
+        results.append( json.dumps( do_work( json.loads(work) ), cls=NumpyEncoder ) )
+
+
+    if my_rank == 0:
+        print("Gathering results")
+
+    results = comm.gather(results, root=0)
+
+
+    if my_rank == 0:
+        for resultset in results:
+            for result in resultset:
+                process_result( json.loads(result) )
 
 
 
-        #to make sure the whole array gets printed
-        #otherwise numpy converts to string a summary, e.g. (1,2,3,...,5,6,7)
-        np.set_printoptions(threshold=np.inf)
 
-        f.write('\n')
-        f.write('TIME\n')
-        for var_data in variable_info_per_variable:
-            f.write(f'time set: {var_data["timeline"]}\n')
-            number_of_timesteps = var_data['data'].shape[0]
-            f.write(f'number of steps: {number_of_timesteps}\n')
-            f.write(f'filename numbers: \n')
-            f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
-            f.write('time values:\n')
-            f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
+
+    #=================================================================
+    #
+    # # Write ensight case file
+
+    # In[ ]:
+
+    comm.Barrier()
+    if my_rank == 0:
+        print(variable_info)
+        print('Saving case')
+        sys.stdout.flush()
+        
+        case_file = f'{project_name}.ensi.case'
+        with open(os.path.join(outputfolder, case_file), 'w') as f:
+            f.write('# Converted from Alya\n')
+            f.write('# Ensight Gold Format\n')
+            f.write('#\n')
+            f.write(f'# Problem name: {project_name}\n')
+            f.write('FORMAT\n')
+            f.write('type: ensight gold\n')
+            f.write('\n')
+            f.write('GEOMETRY\n')
+            f.write(f'model: 1 {project_name}.ensi.geo\n')
+            f.write('\n')
+            f.write('VARIABLE\n')
+
+            variables = variable_info.field.unique();
+
+            #define dataframe for each variable
+            #define timeline for each variable base on the number of timesteps
+            variable_info_per_variable = []
+            timeline_id = 1
+            timelines = {}; #each timeline will be identified only by the number of elements
+            c = 0
+            for varname in variables:
+                df = variable_info[variable_info.field==varname]
+                ntimesteps = df.shape[0]
+
+                variable_info_per_variable = variable_info_per_variable + \
+                    [{'varname':varname, \
+                      'data':variable_info[variable_info.field==varname].sort_values(by='iteration'),\
+                      'timeline':timeline_id}]
+                c=c+1        
+                timeline_id += 1
+      
+            for var_data in variable_info_per_variable:
+                varname = var_data['varname']
+                timeline_id = var_data['timeline']
+                print(f'Varname {varname}\n')
+                df = var_data['data'].iloc[0] #get one record with this varibale
+                line = f'{df.variabletype} per {df.association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
+                f.write(line)
+
+
+
+            #to make sure the whole array gets printed
+            #otherwise numpy converts to string a summary, e.g. (1,2,3,...,5,6,7)
+            np.set_printoptions(threshold=np.inf)
+
+            f.write('\n')
+            f.write('TIME\n')
+            for var_data in variable_info_per_variable:
+                f.write(f'time set: {var_data["timeline"]}\n')
+                number_of_timesteps = var_data['data'].shape[0]
+                f.write(f'number of steps: {number_of_timesteps}\n')
+                f.write(f'filename numbers: \n')
+                f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
+                f.write('time values:\n')
+                f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
 
 
 # In[33]:
