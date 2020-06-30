@@ -951,20 +951,34 @@ can_continue = 1
 
 if my_rank == 0:
     # generate work queue
-    print('Variables')
-    print(variable_info)
-    print('Number of blocks ', number_of_blocks)
+    #print('Variables')
+    #print(variable_info)
+    #print('Number of blocks ', number_of_blocks)
     queue = CreateWork(variable_info, number_of_blocks)
 
     num_procs = comm.Get_size()
-    queue2scatter = chunk(queue, num_procs)
 
+    #if len(queue)<num_procs:
+    #    print(f'Number of conversion tasks {len(queue)} smaller than number of CPUs {comm.Get_size()}. Reduce number of CPUs in mpirun.')
+    #    can_continue = 0
+
+    #if not enough tasks, fill the queue with empty jobs, just not to die if someone submits on too many cores by mistake
     if len(queue)<num_procs:
-        print(f'Number of conversion tasks {len(queue)} smaller than number of CPUs {comm.Get_size()}. Reduce number of CPUs in mpirun.')
-        can_continue = 0
+        print(f'====================================================================================================================================')
+        print(f'== Number of conversion tasks {len(queue)} smaller than number of CPUs {comm.Get_size()}. Reduce number of CPUs in mpirun next time.')
+        print(f'====================================================================================================================================')
+
+
+    while len(queue)<num_procs:
+        queue.append("")
+
+
+    queue2scatter = chunk(queue, num_procs)
 
     sys.stdout.flush()
     
+
+
 can_continue = comm.bcast(can_continue, root=0)
 
 if can_continue>0:
@@ -976,10 +990,11 @@ if can_continue>0:
 
     results = []
     for iwork, work in enumerate(queue2scatter):
-        if my_rank == 0:
-            print( f"Master processing {iwork}/{len(queue2scatter)}" )
+        if work != "":
+            if my_rank == 0:
+                print( f"Master processing {iwork}/{len(queue2scatter)}" )
 
-        results.append( json.dumps( do_work( json.loads(work) ), cls=NumpyEncoder ) )
+            results.append( json.dumps( do_work( json.loads(work) ), cls=NumpyEncoder ) )
 
 
     if my_rank == 0:
