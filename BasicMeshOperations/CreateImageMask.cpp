@@ -18,6 +18,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkDataSetReader.h>
 #include <vtkDataSetWriter.h>
 #include <vtkMetaImageWriter.h>
+#include <vtkMetaImageReader.h>
 
 #include <vtkSmartPointer.h>
 
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
     if (argc < 2) {
         std::cout << "Params: " << std::endl;
         std::cout << "-shape <shape.vtk> \t\t- shape" << std::endl;
-        std::cout << "-image <image.vtk> \t\t- image, voxels outside the shape are replaced with bg value" << std::endl;
+        std::cout << "-image <image.mhd> \t\t- image, voxels outside the shape are replaced with bg value" << std::endl;
         std::cout << "-out_image <image.vtk|image.mhd> \t\t- resulting image" << std::endl;
         std::cout << "-bg <int> \t\t- value to replace background voxels" << std::endl;
         std::cout << "-fg <int> \t\t- value to replace foreground voxels [optional]. If not specified - foreground is not changed." << std::endl;        
@@ -115,7 +116,7 @@ int main(int argc, char **argv) {
     vtkSmartPointer<vtkImageData> inimage = vtkSmartPointer<vtkImageData>::New();
     if (inimagefile != NULL) {
         std::cout << "Creating mask from a supplied image" << std::endl;
-        vtkSmartPointer<vtkDataSetReader> imread = vtkSmartPointer<vtkDataSetReader>::New();
+        vtkSmartPointer<vtkMetaImageReader> imread = vtkSmartPointer<vtkMetaImageReader>::New();
         imread->SetFileName(inimagefile);
         imread->Update();
         inimage->DeepCopy(dynamic_cast<vtkImageData*> (imread->GetOutput()));
