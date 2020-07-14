@@ -53,6 +53,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkUnstructuredGridWriter.h>
 #include <vtkOBJReader.h>
 #include <vtkOBJWriter.h>
+#include <vtkCallbackCommand.h>
 
 #include "VTKCommonTools.h"
 #include <stdio.h>
