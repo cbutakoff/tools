@@ -140,12 +140,14 @@ for boundary_idx, boundary_info in enumerate( info['Boundaries'] ):
     
     df = ReadBoundaryCellBIN( os.path.join(input_path, filename), ncells, nodemask )
     if 'Code' in boundary_info:
-        df['boundaryID'] = boundary_info['Code']
+        boundary_id = boundary_info['Code']
     else:
-        df['boundaryID'] = boundary_idx+1
+        boundary_id = boundary_idx+1
+
+    df['boundaryID'] = boundary_id 
     bound_df = bound_df.append(df)
 
-    boundary_names.append( {'Name':boundary_info['Name'], 'Id':boundary_idx+1 } )
+    boundary_names.append( {'Name':boundary_info['Name'], 'Id':boundary_id } )
 
 #free memory
 df = None
