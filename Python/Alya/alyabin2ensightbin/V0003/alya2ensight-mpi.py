@@ -299,7 +299,7 @@ def read_header_alyabin(file_object):
     strings = [];
     integers = [];
     for i in range(0,9):
-        strings = strings +[read_one_fp90_record(file_object, 8, np.uint8).tostring().decode().strip()]   
+        strings = strings +[read_one_fp90_record(file_object, 8, np.uint8).tobytes().decode().strip()]   
         #read(ii) strings(1) ! AlyaPost, char8bytes
         #read(ii) strings(2) ! Version, char8bytes
         #read(ii) strings(3) ! NAME, char8bytes
