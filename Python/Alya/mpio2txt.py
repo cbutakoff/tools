@@ -17,7 +17,7 @@ def read_alyampio_array(filename):
     with open(filename, 'rb') as f:
         header = read_header_mpio(f)
     
-        tuples = np.reshape( np.fromfile(f, dtype=np.dtype(header['DataType']) ), (header['Lines'], header['Columns']) )
+        tuples = np.reshape( np.fromfile(f, dtype=np.dtype(header['DataTypePython']) ), (header['Lines'], header['Columns']) )
         
         return {'tuples':tuples, 'header':header};
 
@@ -90,17 +90,21 @@ def read_header_mpio(f):
         assert False,f'Unsupported data type length {datatypelen}'
 
 
-    header = {'DataType':dt, 'Lines':lines,'Columns':columns,               'TimeStepNo':timestep_no, 'Time':time, 'NSubdomains':nsubdomains,              'Div':mesh_div}
+    header = {
+        'Version':version, 
+        'Object':obj,
+        'Dimension':dimension,
+        'Columns':columns,
+        'Lines':lines,
+        'Association':association,
+        'DataType':datatype,
+        'DataTypeLength':datatypelen,
+        'TimeStepNo':timestep_no, 
+        'Time':time, 
+        'NSubdomains':nsubdomains,              
+        'Div':mesh_div,
+        'DataTypePython':dt}
 
-    header['Association'] = association
-
-
-    if 'SCALA' in dimension:
-        header['VariableType'] = 'scalar'
-    elif( 'VECTO' in dimension  ):
-        header['VariableType'] = 'vector'
-    else:
-        assert False, f"unsupported type of variable {variabletype}"
 
     assert ('NOFIL' in filt), "Filtered fields are not supported"
 
