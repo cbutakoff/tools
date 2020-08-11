@@ -1065,13 +1065,16 @@ if can_continue>0:
                 c=c+1        
                 timeline_id += 1
       
+
+
             for var_data in variable_info_per_variable:
                 varname = var_data['varname']
                 timeline_id = var_data['timeline']
                 print(f'Varname {varname}\n')
                 df = var_data['data'].iloc[0] #get one record with this varibale
-                line = f'{df.variabletype} per {df.association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
-                f.write(line)
+                if df.association!='FAILED':
+                    line = f'{df.variabletype} per {df.association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
+                    f.write(line)
 
 
 
@@ -1082,13 +1085,15 @@ if can_continue>0:
             f.write('\n')
             f.write('TIME\n')
             for var_data in variable_info_per_variable:
-                f.write(f'time set: {var_data["timeline"]}\n')
-                number_of_timesteps = var_data['data'].shape[0]
-                f.write(f'number of steps: {number_of_timesteps}\n')
-                f.write(f'filename numbers: \n')
-                f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
-                f.write('time values:\n')
-                f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
+                df = var_data['data'].iloc[0] #get one record with this varibale
+                if df.association!='FAILED':
+                    f.write(f'time set: {var_data["timeline"]}\n')
+                    number_of_timesteps = var_data['data'].shape[0]
+                    f.write(f'number of steps: {number_of_timesteps}\n')
+                    f.write(f'filename numbers: \n')
+                    f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
+                    f.write('time values:\n')
+                    f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
 
 
 # In[33]:
