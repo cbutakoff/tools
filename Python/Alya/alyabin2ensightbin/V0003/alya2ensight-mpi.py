@@ -662,34 +662,42 @@ def write_variable_pernode(varname, iteration, number_of_blocks):
         data['header']['Time'] = 0
         data['header']['TimeStepNo'] = 0
 
-    with open( filename,'wb') as f:
-        f.write(b'description line 1'.ljust(80))
-        f.write(b'part'.ljust(80))
-        f.write(np.array([1], dtype=ensight_id_type))   #int
-        f.write(b'coordinates'.ljust(80))
+    
+    try: 
+        with open( filename,'wb') as f:
+            f.write(b'description line 1'.ljust(80))
+            f.write(b'part'.ljust(80))
+            f.write(np.array([1], dtype=ensight_id_type))   #int
+            f.write(b'coordinates'.ljust(80))
 
 
-        if data['header']['VariableType']=='scalar':            
-            data2write = np.zeros(inverse_pt_correspondence.max()+1, dtype = ensight_float_type)
-            #print('Data22write: ',data2write.shape)
-            #print('Ravel: ',data['values']['tuples'].ravel().shape)
-            #print('Corresp:',inverse_pt_correspondence.shape )
-            #print("Writing variable: ",varname)
-            data2write[inverse_pt_correspondence] = data['tuples'].ravel()
-            f.write( data2write )  #z coord    
-        elif data['header']['VariableType']=='vector':
-            #data has coordinates in the order [[x,y,z],[x,y,z],...]
-            #expected order of coordinates
-            #vx_n1 vx_n2 ... vx_nn nn floats
-            #vy_n1 vy_n2 ... vy_nn nn floats
-            #vz_n1 vz_n2 ... vz_nn nn floats
-            #Rearrange the  matrix
-            data2write = np.zeros( [inverse_pt_correspondence.max()+1, 3], dtype = ensight_float_type)
-            ncomponents = data['tuples'].shape[1] #for 1d, 2d and 3d problems
-            data2write[inverse_pt_correspondence,0:ncomponents] = data['tuples']
-            f.write( data2write.ravel(order='F').astype(ensight_float_type) )  #z coord    
-        else:
-            assert False, f"Unknown varibale type: {data['variabletype']}"
+            if data['header']['VariableType']=='scalar':            
+                data2write = np.zeros(inverse_pt_correspondence.max()+1, dtype = ensight_float_type)
+                #print('Data22write: ',data2write.shape)
+                #print('Ravel: ',data['values']['tuples'].ravel().shape)
+                #print('Corresp:',inverse_pt_correspondence.shape )
+                #print("Writing variable: ",varname)
+                data2write[inverse_pt_correspondence] = data['tuples'].ravel()
+                f.write( data2write )  #z coord    
+            elif data['header']['VariableType']=='vector':
+                #data has coordinates in the order [[x,y,z],[x,y,z],...]
+                #expected order of coordinates
+                #vx_n1 vx_n2 ... vx_nn nn floats
+                #vy_n1 vy_n2 ... vy_nn nn floats
+                #vz_n1 vz_n2 ... vz_nn nn floats
+                #Rearrange the  matrix
+                data2write = np.zeros( [inverse_pt_correspondence.max()+1, 3], dtype = ensight_float_type)
+                ncomponents = data['tuples'].shape[1] #for 1d, 2d and 3d problems
+                data2write[inverse_pt_correspondence,0:ncomponents] = data['tuples']
+                f.write( data2write.ravel(order='F').astype(ensight_float_type) )  #z coord    
+            else:
+                assert False, f"Unknown varibale type: {data['variabletype']}"
+    except:
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        print('!!! An error occured writing variable ',varname,' iteration ', iteration, ' filename ', filename)
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        sys.stdout.flush()
+        return {'time_real':-1, 'time_int':-1,             'variable_type':'FAILED', 'variable_association':'FAILED'}
         
         
         
