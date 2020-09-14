@@ -25,6 +25,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkTransform.h>
 #include <vtkTransformFilter.h>
+#include <vtkXMLPolyDataReader.h>
 
 #include <vtkCallbackCommand.h>
 #include <VTKCommonTools.h>
@@ -89,7 +90,7 @@ bool FileExists( const char* filename, bool no_exception=false )
 
 int main(int argc, char** argv)
 {
-    std::cout<<"Parameters: volmesh.vtk|vtu surfmesh.vtk arrayname volmesh_out_prefix -f {VTK,ALYATXT,ALYAMPIO} -s scale -o correct_orientation(0|1)"<<std::endl;
+    std::cout<<"Parameters: volmesh.vtk|vtu surfmesh.vtk|vtp arrayname volmesh_out_prefix -f {VTK,ALYATXT,ALYAMPIO} -s scale -o correct_orientation(0|1)"<<std::endl;
     std::cout<<"Scale - rescale mesh by this factor, !!! for now works only for ALYA, for everything else put 1"<<std::endl;
     std::cout<<"correct_orientation - 1 or 0 whether to correct cell orientation or not (normally 0, default 0)"<<std::endl;
     std::cout<<"Labels - boundary ids stored as celldata in surfmesh.vtk. Ids MUST BE > 0"<<std::endl;
@@ -212,13 +213,22 @@ int main(int argc, char** argv)
 
     
     
-    vtkSmartPointer<vtkPolyDataReader> poly_rdr = vtkSmartPointer<vtkPolyDataReader>::New();
-    CommonTools::AssociateProgressFunction(poly_rdr);
-
-    poly_rdr->SetFileName(surfmesh_file);
-    poly_rdr->Update();
-    vtkPolyData* surfmesh = poly_rdr->GetOutput();
+    vtkSmartPointer<vtkPolyData> surfmesh = vtkSmartPointer<vtkPolyData>::New();
+    if(surfmesh_file[strlen(surfmesh_file)-1] == 'k') {
+        vtkSmartPointer<vtkPolyDataReader> poly_rdr = vtkSmartPointer<vtkPolyDataReader>::New();
+        poly_rdr->SetFileName(surfmesh_file);
+        poly_rdr->Update();
+        surfmesh->DeepCopy( poly_rdr->GetOutput() );
+    }
+    else
+    {
+        vtkSmartPointer<vtkXMLPolyDataReader> poly_rdr = vtkSmartPointer<vtkXMLPolyDataReader>::New();
+        poly_rdr->SetFileName(surfmesh_file);
+        poly_rdr->Update();
+        surfmesh->DeepCopy( poly_rdr->GetOutput() );
+    }
     
+
     //read cell scalars from the surface mesh (labels)
     auto scalars_boundary_id = surfmesh->GetCellData()->GetArray(array_name);
     if ( scalars_boundary_id == nullptr )

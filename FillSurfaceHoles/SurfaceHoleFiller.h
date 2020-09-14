@@ -24,7 +24,7 @@ public:
     void SmoothingOn() {m_performCoverSMoothing=true;};
     void SmoothingOff() {m_performCoverSMoothing=false;};
     bool GetSmoothing(){return m_performCoverSMoothing;};
-    bool SetSmoothing(bool v){ m_performCoverSMoothing = v;};
+    void SetSmoothing(bool v){ m_performCoverSMoothing = v;};
     
     void Update();
 
