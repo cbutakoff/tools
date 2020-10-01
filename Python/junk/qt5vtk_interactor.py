@@ -55,6 +55,7 @@ class MainWindow(Qt.QMainWindow):
         self.planeWidget.AddObserver("InteractionEvent", self.myCallback)
         self.planeWidget.Off() # ImplicitPlaneWidget end
         self.planeWidget.GetPlane(self.plane)
+        self.planeWidget.GetPlaneProperty().SetOpacity(0.5)
 
 
         # Create a mapper
