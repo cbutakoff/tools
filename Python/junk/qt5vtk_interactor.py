@@ -8,12 +8,64 @@ from PyQt5.QtCore import pyqtSlot
 
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
+
+class MyPointPicker(vtk.vtkCellPicker):
+  
+    def __init__(self,parent=None):
+        self.AddObserver(vtk.vtkCommand.EndPickEvent,self.EndPickEvent)
+        self.marker_radius = 1;
+        self.current_point = 0;
+        self.marker_colors = [(1,0,0), (0,1,0)] #different colors for different markers
+        self.selected_points = vtk.vtkPoints()
+        self.selected_point_ids = vtk.vtkIdList()
+        self.selected_points.SetNumberOfPoints(2)
+        self.selected_point_ids.SetNumberOfIds(2)
+    
+
+
+        #define the color of the sphere (pick from the list)
+        self.picker_actors = [vtk.vtkActor(),vtk.vtkActor()]
+        for i in range(len(self.marker_colors )):
+            self.picker_actors[i].GetProperty().SetColor(self.marker_colors[i])
+
+
+
+    def InitRenderer(self, renderer):
+        #rnd = self.GetRenderer()  
+        for i in range(len(self.marker_colors )):
+            renderer.AddActor(self.picker_actors[i])
+
+
+        
+    #callback after every picking event    
+    def EndPickEvent(self,obj,event):
+        
+        #check if anything was picked
+        pt_id = self.GetPointId()
+        if pt_id >= 0:
+            #create a sphere to mark the location
+            sphereSource = vtk.vtkSphereSource();
+            sphereSource.SetRadius(self.marker_radius); 
+            sphereSource.SetCenter(self.GetPickPosition());        
+            
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(sphereSource.GetOutputPort())
+            self.picker_actors[self.current_point].SetMapper(mapper)
+
+            #populate the list of ids and coordinates
+            self.selected_points.SetPoint(self.current_point, self.GetPickPosition())
+            self.selected_point_ids.SetId(self.current_point, pt_id)
+        
+            self.current_point = (self.current_point + 1) % 2
+
+
+
 class MainWindow(Qt.QMainWindow):
 
     def __init__(self, parent = None):
         Qt.QMainWindow.__init__(self, parent)
 
-        self.setGeometry(0, 0, 800, 800)   
+        self.setGeometry(0, 0, 1200, 800)   
 
         self.frame = Qt.QFrame()
         self.vl = Qt.QVBoxLayout()
@@ -66,7 +118,15 @@ class MainWindow(Qt.QMainWindow):
         actor = vtk.vtkActor()
         actor.SetMapper(self.main_mesh_mapper)
 
+        pointPicker = MyPointPicker()
+        pointPicker.AddPickList(actor)
+        pointPicker.PickFromListOn()
+
+
+
         self.iren.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+        self.iren.SetPicker(pointPicker); 
+        pointPicker.InitRenderer(self.ren)
 
         self.ren.AddActor(actor)
 
@@ -94,10 +154,10 @@ class MainWindow(Qt.QMainWindow):
         self.main_toolbar['cut_button'].clicked.connect(self.on_click_cutplane)
 
         left += self.main_toolbar['cut_button'].frameGeometry().width()
-        self.main_toolbar['lv_endo_seed'] = QPushButton('LV Endo', self)
-        self.main_toolbar['lv_endo_seed'].setToolTip('Define LV endo')
-        self.main_toolbar['lv_endo_seed'].move(left,0)
-        self.main_toolbar['lv_endo_seed'].clicked.connect(self.on_click_lvendo)
+        self.main_toolbar['rv_endo_seeds'] = QPushButton('RV Seeds', self)
+        self.main_toolbar['rv_endo_seeds'].setToolTip('Mark RV seeds')
+        self.main_toolbar['rv_endo_seeds'].move(left,0)
+        self.main_toolbar['rv_endo_seeds'].clicked.connect(self.on_click_rvseeds)
 
 
     def create_cut_toolbar(self):
@@ -146,7 +206,7 @@ class MainWindow(Qt.QMainWindow):
         
 
     @pyqtSlot()
-    def on_click_lvendo(self):
+    def on_click_rvseeds(self):
         print('LV endo click')
 
 
