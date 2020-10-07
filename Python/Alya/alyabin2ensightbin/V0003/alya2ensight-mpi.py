@@ -64,6 +64,7 @@ try:
         parser.add_argument("output_folder", help='Folder for the output ensight case')
         parser.add_argument("-f","--format", help='Format of the data to expect: mpio, alyabin, auto(default)', default = 'auto')
         parser.add_argument("-v","--vtu", action='store_true', required=False, help='Generate VTU with double precision of coordinates?')
+        parser.add_argument("-m","--multiples", help='Postprocess only timesteps that are multiples of this value', default = 1, type=int)
         args = parser.parse_args()
 
         vtk_installed = vtk_installed & args.vtu
@@ -778,9 +779,11 @@ if my_rank == 0:
     iteration_numbers = []
     for filename in field_filelist:
         s1 = filename[len(project_name):].split('-');
-        fields = fields + [s1[1]]
-        iteration_numbers =  iteration_numbers + [ int(s1[2].split('.')[0]) ] #this will be long in python 3
-        new_field_filelist = new_field_filelist + [filename]
+        iteration_number = int(s1[2].split('.')[0])
+        if iteration_number % args.multiples==0 :
+            fields = fields + [s1[1]]
+            iteration_numbers =  iteration_numbers + [ iteration_number ] #this will be long in python 3
+            new_field_filelist = new_field_filelist + [filename]
 
     #add special files if present
     codnofile = f'{project_name}-CODNO{file_suffix}'
