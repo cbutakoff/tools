@@ -442,6 +442,7 @@ int main(int argc, char** argv)
                 else if(cell->GetNumberOfPoints()==6) {//PEN06
                     max_nodes_per_solid_cell = max(6, max_nodes_per_solid_cell);
                     nodetypes(i,0) = 34; //PEN06
+                    max_nodes_per_face = 4; //ALya works in misterios ways, it expects 4 columns always if there are pen06 elements
                 }
                 else
                 {
