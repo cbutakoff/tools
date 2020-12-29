@@ -476,7 +476,7 @@ int main(int argc, char** argv)
             //write info
             string info_filename = string(outfile_prefix) + "-INFO.in";
             ofstream info_file(info_filename);
-            info_file << "Element types: ";
+            info_file << "  TYPES_OF_ELEMENTS = ";
             for( auto value: unique_elements ){
                 switch (value) {
                     case 4:
@@ -495,9 +495,9 @@ int main(int argc, char** argv)
             }
             info_file<<endl;
 
-            info_file << "Number of boundary faces: "<< faceData.size() <<endl;
-            info_file << "Number of volume cells: "<< volmesh->GetNumberOfCells() <<endl;
-            info_file << "Number of points: "<< volmesh->GetNumberOfPoints() <<endl;
+            info_file << "  BOUNDARIES   = "<< faceData.size() <<endl;
+            info_file << "  ELEMENTS     = "<< volmesh->GetNumberOfCells() <<endl;
+            info_file << "  NODAL_POINTS = "<< volmesh->GetNumberOfPoints() <<endl;
 
         }
 
