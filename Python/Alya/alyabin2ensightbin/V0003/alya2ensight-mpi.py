@@ -785,12 +785,16 @@ if my_rank == 0:
             iteration_numbers =  iteration_numbers + [ iteration_number ] #this will be long in python 3
             new_field_filelist = new_field_filelist + [filename]
 
+
     #add special files if present
-    codnofile = f'{project_name}-CODNO{file_suffix}'
-    if os.path.isfile( os.path.join(inputfolder, codnofile) ):
-        new_field_filelist = new_field_filelist + [codnofile]
-        iteration_numbers =  iteration_numbers + [ -1 ] #this will be long in python 3
-        fields = fields + ['CODNO']
+    special_variables = ['CODNO','LESET','LNSET']
+
+    for special_variable in special_variables:
+        sfile = f'{project_name}-{special_variable}{file_suffix}'
+        if os.path.isfile( os.path.join(inputfolder, sfile) ):
+            new_field_filelist = new_field_filelist + [sfile]
+            iteration_numbers =  iteration_numbers + [ -1 ] #this will be long in python 3
+            fields = fields + [special_variable]
         
 
     variable_info = pandas.DataFrame({'field':fields, 'iteration':iteration_numbers,'filename':new_field_filelist})
