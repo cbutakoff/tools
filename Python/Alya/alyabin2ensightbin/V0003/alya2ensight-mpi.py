@@ -1038,7 +1038,9 @@ if can_continue>0:
 
     comm.Barrier()
     if my_rank == 0:
-        variable_info = variable_info[ (variable_info["time_real"]>=time_interval[0]) & (variable_info["time_real"]<=time_interval[1]) ]
+        if not time_interval is None:
+            variable_info = variable_info[ (variable_info["time_real"]>=time_interval[0]) & (variable_info["time_real"]<=time_interval[1]) ]
+
         print(variable_info)
         print('Saving case')
         sys.stdout.flush()
