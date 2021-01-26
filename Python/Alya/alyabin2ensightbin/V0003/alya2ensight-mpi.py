@@ -65,6 +65,7 @@ try:
         parser.add_argument("-f","--format", help='Format of the data to expect: mpio, alyabin, auto(default)', default = 'auto')
         parser.add_argument("-v","--vtu", action='store_true', required=False, help='Generate VTU with double precision of coordinates?')
         parser.add_argument("-m","--multiples", help='Postprocess only timesteps that are multiples of this value', default = 1, type=int)
+        parser.add_argument("-i","--interval", help='Postprocess only timesteps in the specified time interval', type=float, nargs=2, metavar=('time_start', 'time_end'))
         args = parser.parse_args()
 
         vtk_installed = vtk_installed & args.vtu
@@ -77,6 +78,8 @@ try:
         inputfolder = args.input_folder
         project_name = args.task_name
         outputfolder = args.output_folder
+        time_interval = args.interval    
+        print("Requested time interval: ",time_interval)
         
         if args.format == 'alyabin':
             MPIO = False
@@ -1035,6 +1038,7 @@ if can_continue>0:
 
     comm.Barrier()
     if my_rank == 0:
+        variable_info = variable_info[ (variable_info["time_real"]>=time_interval[0]) & (variable_info["time_real"]<=time_interval[1]) ]
         print(variable_info)
         print('Saving case')
         sys.stdout.flush()
