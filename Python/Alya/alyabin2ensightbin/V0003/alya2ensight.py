@@ -893,18 +893,10 @@ queue = CreateWork(variable_info, number_of_blocks)
 
 if True:
 
-    results = []
     for iwork, work in enumerate(queue):
         if work != "":
             print( f"Master processing {iwork}/{len(queue)}" )
-            results.append(  do_work( json.loads(work) ) )
-
-
-
-    for result in results:
-        process_result( result )
-
-
+            process_result(  do_work( json.loads(work) )  )
 
 
 
