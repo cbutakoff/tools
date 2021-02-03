@@ -26,6 +26,7 @@ parser.add_argument("-op", "--output_mesh_prefix", help='Prefix of output files.
 parser.add_argument("-if", "--input_folder",  help='Folder with input bins (default: %(default)s)', default='.')
 parser.add_argument("-of", "--output_folder", help='Folder for the output (default = input_folder)')
 parser.add_argument("-s", "--scale",  metavar='N', type=float, help='Scale factor for the mesh (default: %(default)s)', default=1)
+parser.add_argument('-c', '--infercode', action='store_true', required=False, help='Infer code from the bundary name if its like: 02_blah-blah (default: %(default)s)', default=False)
 args = parser.parse_args()
 
 input_path = args.input_folder
@@ -143,6 +144,10 @@ for boundary_idx, boundary_info in enumerate( info['Boundaries'] ):
         boundary_id = boundary_info['Code']
     else:
         boundary_id = boundary_idx+1
+
+
+    if args.infercode:
+        boundary_id = int(boundary_info['Name'].split("_")[0])
 
     df['boundaryID'] = boundary_id 
     bound_df = bound_df.append(df)
