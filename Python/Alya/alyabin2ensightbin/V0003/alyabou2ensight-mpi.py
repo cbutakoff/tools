@@ -514,7 +514,7 @@ def write_geometry(number_of_blocks):
         #here -1 to transform to python array, and +1 to ensight array indexing
         connectivity[:,i] = inverse_pt_correspondence[connectivity[:,i]-1]+1                 
     
-    connectivity[inverse_el_correspondence, :] = connectivity
+    #connectivity[inverse_el_correspondence, :] = connectivity
     
     
     #geometry ensight
@@ -598,14 +598,14 @@ def write_variable_perboun(varname, iteration, number_of_blocks):
             #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
 
             element_locations = np.where( element_types==elem_alya_id )[0] #returns 2 sets, take first
-        
     
-            values = data2write[element_locations]
-            number_of_values = values.shape[0]
+            if element_locations.shape[0]>0:
+                values = data2write[element_locations]
+                number_of_values = values.shape[0]
 
 
-            f.write(elem_ensi_id['Name'].ljust(80))  #tetra4 or hexa8
-            f.write( values.ravel().astype(ensight_float_type) )
+                f.write(elem_ensi_id['Name'].ljust(80))  #tetra4 or hexa8
+                f.write( values.ravel().astype(ensight_float_type) )
         
     return {'time_real':data['header']['Time'], 'time_int':data['header']['TimeStepNo'], \
             'variable_type':data['header']['VariableType'], 'variable_association':data['header']['Association']}
@@ -998,7 +998,7 @@ if can_continue>0:
                 print(f'Varname {varname}\n')
                 df = var_data['data'].iloc[0] #get one record with this varibale
                 if df.association!='FAILED':
-                    line = f'{df.variabletype} per {df.association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
+                    line = f'{df.variabletype} per element: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
                     f.write(line)
 
 
