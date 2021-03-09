@@ -1,18 +1,17 @@
-
-# coding: utf-8
-
-# In[17]:
-
-
 #writing ensight Gold binary (comaptible with vtk 8)
-#parallelization borowed here https://gist.github.com/fspaolo/51eaf5a20d6d418bd4d0
+#ps: still cannot get the inverse element correspondence
 import numpy as np   #needs install
 import os
 import pandas #needs install
 import sys
 from mpi4py import MPI #needs install
 import json
+from enum import Enum
 
+class ASSOCIATION(str, Enum):
+    NODES = 'NODES'
+    ELEMENTS = 'ELEMENTS'
+    BOUNDARIES = 'BOUNDARIES'
 
 vtk_installed = True
 try:
@@ -27,16 +26,11 @@ except:
 
 
 
-WORKTAG = 1
-DIETAG = 0
-
-    
-
-
 
 comm = MPI.COMM_WORLD
 my_rank = comm.Get_rank()
 my_name = MPI.Get_processor_name()
+num_procs = comm.Get_size()
 
 
 # In[9]:
@@ -91,6 +85,7 @@ try:
             filename_alyabin = os.path.join(inputfolder,f'{project_name}-LNODS.post.alyabin');
             mpio_file_present = os.path.isfile(filename_mpio) 
             alyabin_file_present = os.path.isfile(filename_alyabin) 
+            assert (mpio_file_present==True) | (alyabin_file_present==True), "Nothing to postprocess, make sure problem name is {project_name}"
             assert mpio_file_present!=alyabin_file_present, "Found both alyabin and mpio files. Specify format to use in the --format argument"
             
             if mpio_file_present:
@@ -266,11 +261,11 @@ def read_header_mpio(f):
     header = {'DataType':dt, 'Lines':lines,'Columns':columns, 'TimeStepNo':timestep_no, 'Time':time, 'NSubdomains':nsubdomains}
 
     if 'ELEM' in association:
-        header['Association'] = 'element'
+        header['Association'] = ASSOCIATION.ELEMENTS
     elif 'POIN' in association:
-        header['Association'] = 'node'
+        header['Association'] = ASSOCIATION.NODES
     else:
-        assert False,f'Unsupported association: {association}'
+        raise Exception(f'Unsupported association: {association}. Only variables per node and per element are supported')
 
 
     if 'SCALA' in dimension:
@@ -354,9 +349,12 @@ def read_header_alyabin(file_object):
         field_dtype = 'int'
 
     if( strings[4] == 'NPOIN'):
-        association = 'node'
+        association = ASSOCIATION.NODES
+    elif strings[4] == 'NELEM':
+        association = ASSOCIATION.ELEMENTS
     else:
-        association = 'element'
+        raise Exception(f'Unsupported association: {association}. Only variables per node and per element are supported')
+
 
     if strings[6] == '4BYTE':
         field_dtype = field_dtype + '32'
@@ -412,7 +410,7 @@ def read_alyabin_array(filename, number_of_blocks):
         
         tuples = np.zeros((number_of_tuples_total,number_of_dimensions), dtype=datatype)
 
-        c = 0;
+        c = 0
         tuples_per_block = np.zeros(number_of_blocks, dtype=np.int32)
         
         for i in range(number_of_blocks):
@@ -495,8 +493,8 @@ def write_geometry_vtk_double(point_coordinates, elements, element_types):
 def write_geometry(number_of_blocks):
     point_coordinates = read_alya_array(os.path.join(inputfolder,f'{project_name}-COORD{file_suffix}'), \
                                         number_of_blocks)
-    element_types = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPE{file_suffix}'),  \
-                                    number_of_blocks)
+    #element_types = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPE{file_suffix}'),  \
+    #                                number_of_blocks)
     #Read connectivity (indices inside start with 1)
     connectivity = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNODS{file_suffix}'),    \
                                    number_of_blocks)
@@ -539,10 +537,14 @@ def write_geometry(number_of_blocks):
         #here -1 to transform to python array, and +1 to ensight array indexing
         connectivity[:,i] = inverse_pt_correspondence[connectivity[:,i]-1]+1                 
     
+    #print("connectivity = ",connectivity)
+    #print("inverse_el_correspondence = ",inverse_el_correspondence)
+    #connectivity = connectivity[inverse_el_correspondence,:]
+    #print("connectivity = ",connectivity)
 
     #dump vtk mesh witoh double precision, since ENSIGHT supports only single precision
     if(vtk_installed):
-        write_geometry_vtk_double( point_coordinates, connectivity, element_types['tuples'].ravel() )
+        write_geometry_vtk_double( point_coordinates, connectivity, element_types.ravel() )
 
     
     #geometry ensight
@@ -577,7 +579,7 @@ def write_geometry(number_of_blocks):
         for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
             #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
 
-            element_locations = np.where( element_types['tuples']==elem_alya_id )[0] #returns 2 sets, take first
+            element_locations = np.where( element_types==elem_alya_id )[0] #returns 2 sets, take first
         
         
             elements = connectivity[element_locations,0:elem_ensi_id['Vertices']]
@@ -597,19 +599,32 @@ def write_geometry(number_of_blocks):
 
 
 
-# In[15]:
-
-
-
-def write_variable_percell(varname, iteration, number_of_blocks):
+def write_variable(varname, iteration, number_of_blocks):
+    #print("Writing variable: ",varname)
     try:
         data = read_alya_variable(varname, iteration, number_of_blocks)
-    except:
+        result = {}
+
+        if data['header']['Association'] == ASSOCIATION.ELEMENTS:
+            result = write_variable_percell(data, varname, iteration)
+        elif data['header']['Association'] == ASSOCIATION.NODES:
+            result = write_variable_pernode(data, varname, iteration)
+        else:
+            raise Exception('Only variables per node and per element are supported')
+
+        return result
+
+    except Exception as e:
         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        print('!!! An error occured reading variable ',varname,' iteration ', iteration)
+        print('An error occured reading variable ',varname,' iteration ', iteration)
+        print(e)
         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            
         sys.stdout.flush()
         return {'time_real':-1, 'time_int':-1,             'variable_type':'FAILED', 'variable_association':'FAILED'}
+
+
+def write_variable_percell(data, varname, iteration):
     
     #variable ensight
     fmt = '%s.ensi.%s-'+f'%0{iterationid_number_of_digits}d';
@@ -618,17 +633,15 @@ def write_variable_percell(varname, iteration, number_of_blocks):
         f.write(b'part'.ljust(80))
         f.write(np.array([1], dtype=ensight_id_type))   #int
 
-        if 'MATER' in varname:  #this is very particular          
-            #data2write = np.zeros(inverse_el_correspondence.max()+1, dtype = ensight_float_type)
-            #data2write[inverse_el_correspondence] = data['values']['tuples'].ravel()
-            data2write = data['tuples'].ravel()
+        #data2write = data['tuples'].ravel()[inverse_el_correspondence]
+        data2write = data['tuples'].ravel()
 
-            for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
-                #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
+        for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
+            #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
 
-                element_locations = np.where( element_types==elem_alya_id )[0] #returns 2 sets, take first
-            
+            element_locations = np.where( element_types==elem_alya_id )[0] #returns 2 sets, take first
         
+            if element_locations.shape[0]>0:
                 values = data2write[element_locations]
                 number_of_values = values.shape[0]
 
@@ -636,26 +649,14 @@ def write_variable_percell(varname, iteration, number_of_blocks):
                 f.write(elem_ensi_id['Name'].ljust(80))  #tetra4 or hexa8
                 f.write( values.ravel().astype(ensight_float_type) )
 
-
-        else:
-            assert False, f'For now only saving MATER is implmeneted, not {varname}'       
         
     return {'time_real':data['header']['Time'], 'time_int':data['header']['TimeStepNo'], \
             'variable_type':data['header']['VariableType'], 'variable_association':data['header']['Association']}
 
 
-def write_variable_pernode(varname, iteration, number_of_blocks):
-    #print("Writing variable: ",varname)
-    
-    try:
-        data = read_alya_variable(varname, iteration, number_of_blocks)
-    except:
-        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        print('!!! An error occured reading variable ',varname,' iteration ', iteration)
-        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        sys.stdout.flush()
-        return {'time_real':-1, 'time_int':-1,             'variable_type':'FAILED', 'variable_association':'FAILED'}
-    
+
+
+def write_variable_pernode(data, varname, iteration):
     #variable ensight
     fmt = '%s.ensi.%s-'+f'%0{iterationid_number_of_digits}d';
 
@@ -826,14 +827,14 @@ if my_rank == 0:
     pt_ids = None #free memeory
 
 
-#    LEINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LEINV.post.alyabin'), \
-#                          number_of_blocks, alya_id_type)
+#    LEINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LEINV{file_suffix}'), \
+#                          number_of_blocks, )
 #    inverse_el_correspondence = (LEINV['tuples']-1).ravel(); #convert ids to python
 
     LTYPE = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPE{file_suffix}'),  \
                                     number_of_blocks)
+#    element_types =    LTYPE['tuples'].ravel()[inverse_el_correspondence]
     element_types =    LTYPE['tuples'].ravel()
-
 
 
 inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
@@ -908,11 +909,7 @@ def do_work(work):
     if work['filetype'] == 'geometry':
         write_geometry(work['number_of_blocks'])
     elif work['filetype'] == 'variable':
-        if 'MATER' in work['name']:
-           info = write_variable_percell(work['name'], work['iteration'], work['number_of_blocks'])
-        else:
-           info = write_variable_pernode(work['name'], work['iteration'], work['number_of_blocks'])
-
+        info = write_variable(work['name'], work['iteration'], work['number_of_blocks'])
         info['table_index'] = work['table_index'];       
     else:
         assert False, f'Unsupported file type {work["filetype"]}'
@@ -960,12 +957,9 @@ def chunk(xs,n):
 #=================================================================
 #
 #  Scatter the queue and process
-# In[ ]:
 
-comm.Barrier()
 
 queue2scatter = None
-can_continue = 1
 
 if my_rank == 0:
     # generate work queue
@@ -974,11 +968,6 @@ if my_rank == 0:
     #print('Number of blocks ', number_of_blocks)
     queue = CreateWork(variable_info, number_of_blocks)
 
-    num_procs = comm.Get_size()
-
-    #if len(queue)<num_procs:
-    #    print(f'Number of conversion tasks {len(queue)} smaller than number of CPUs {comm.Get_size()}. Reduce number of CPUs in mpirun.')
-    #    can_continue = 0
 
     #if not enough tasks, fill the queue with empty jobs, just not to die if someone submits on too many cores by mistake
     if len(queue)<num_procs:
@@ -997,120 +986,122 @@ if my_rank == 0:
     
 
 
-can_continue = comm.bcast(can_continue, root=0)
 
-if can_continue>0:
-    if my_rank == 0:
-        print("Scattering work")
+if my_rank == 0:
+    print("Scattering work")
 
-    queue2scatter = comm.scatter(queue2scatter, root=0)
+queue2scatter = comm.scatter(queue2scatter, root=0)
 
 
-    results = []
-    for iwork, work in enumerate(queue2scatter):
-        if work != "":
-            if my_rank == 0:
-                print( f"Master processing {iwork}/{len(queue2scatter)}" )
+results = []
+for iwork, work in enumerate(queue2scatter):
+    if work != "":
+        if my_rank == 0:
+            print( f"Master processing {iwork}/{len(queue2scatter)}" )
 
-            results.append( json.dumps( do_work( json.loads(work) ), cls=NumpyEncoder ) )
-
-
-    if my_rank == 0:
-        print("Gathering results")
-
-    results = comm.gather(results, root=0)
+        results.append( json.dumps( do_work( json.loads(work) ), cls=NumpyEncoder ) )
 
 
-    if my_rank == 0:
-        for resultset in results:
-            for result in resultset:
-                process_result( json.loads(result) )
+if my_rank == 0:
+    print("Gathering results")
+
+results = comm.gather(results, root=0)
+
+
+if my_rank == 0:
+    for resultset in results:
+        for result in resultset:
+            process_result( json.loads(result) )
 
 
 
 
 
-    #=================================================================
-    #
-    # # Write ensight case file
+#=================================================================
+#
+# # Write ensight case file
 
-    # In[ ]:
+# In[ ]:
 
-    comm.Barrier()
-    if my_rank == 0:
-        if not time_interval is None:
-            variable_info = variable_info[ (variable_info["time_real"]>=time_interval[0]) & (variable_info["time_real"]<=time_interval[1]) ]
+comm.Barrier()
+if my_rank == 0:
+    if not time_interval is None:
+        variable_info = variable_info[ (variable_info["time_real"]>=time_interval[0]) & (variable_info["time_real"]<=time_interval[1]) ]
 
-        print(variable_info)
-        print('Saving case')
-        sys.stdout.flush()
-        
-        case_file = f'{project_name}.ensi.case'
-        with open(os.path.join(outputfolder, case_file), 'w') as f:
-            f.write('# Converted from Alya\n')
-            f.write('# Ensight Gold Format\n')
-            f.write('#\n')
-            f.write(f'# Problem name: {project_name}\n')
-            f.write('FORMAT\n')
-            f.write('type: ensight gold\n')
-            f.write('\n')
-            f.write('GEOMETRY\n')
-            f.write(f'model: 1 {project_name}.ensi.geo\n')
-            f.write('\n')
-            f.write('VARIABLE\n')
+    print(variable_info)
+    print('Saving case')
+    sys.stdout.flush()
+    
+    case_file = f'{project_name}.ensi.case'
+    with open(os.path.join(outputfolder, case_file), 'w') as f:
+        f.write('# Converted from Alya\n')
+        f.write('# Ensight Gold Format\n')
+        f.write('#\n')
+        f.write(f'# Problem name: {project_name}\n')
+        f.write('FORMAT\n')
+        f.write('type: ensight gold\n')
+        f.write('\n')
+        f.write('GEOMETRY\n')
+        f.write(f'model: 1 {project_name}.ensi.geo\n')
+        f.write('\n')
+        f.write('VARIABLE\n')
 
-            variables = variable_info.field.unique();
+        variables = variable_info.field.unique();
 
-            #define dataframe for each variable
-            #define timeline for each variable base on the number of timesteps
-            variable_info_per_variable = []
-            timeline_id = 1
-            timelines = {}; #each timeline will be identified only by the number of elements
-            c = 0
-            for varname in variables:
-                df = variable_info[variable_info.field==varname]
-                ntimesteps = df.shape[0]
+        #define dataframe for each variable
+        #define timeline for each variable base on the number of timesteps
+        variable_info_per_variable = []
+        timeline_id = 1
+        timelines = {}; #each timeline will be identified only by the number of elements
+        c = 0
+        for varname in variables:
+            df = variable_info[variable_info.field==varname]
+            ntimesteps = df.shape[0]
 
-                variable_info_per_variable = variable_info_per_variable + \
-                    [{'varname':varname, \
-                      'data':variable_info[variable_info.field==varname].sort_values(by='iteration'),\
-                      'timeline':timeline_id}]
-                c=c+1        
-                timeline_id += 1
-      
-
-
-            for var_data in variable_info_per_variable:
-                varname = var_data['varname']
-                timeline_id = var_data['timeline']
-                print(f'Varname {varname}\n')
-                df = var_data['data'].iloc[0] #get one record with this varibale
-                if df.association!='FAILED':
-                    line = f'{df.variabletype} per {df.association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
-                    f.write(line)
+            variable_info_per_variable = variable_info_per_variable + \
+                [{'varname':varname, \
+                    'data':variable_info[variable_info.field==varname].sort_values(by='iteration'),\
+                    'timeline':timeline_id}]
+            c=c+1        
+            timeline_id += 1
+    
 
 
+        for var_data in variable_info_per_variable:
+            varname = var_data['varname']
+            timeline_id = var_data['timeline']
+            print(f'Varname {varname}\n')
+            df = var_data['data'].iloc[0] #get one record with this varibale
+            if df.association!='FAILED':
+                ensi_association = ''
+                if df.association==ASSOCIATION.NODES:
+                    ensi_association = 'node'
+                elif df.association==ASSOCIATION.ELEMENTS:
+                    ensi_association = 'element'
+                else:
+                    assert False, 'Only per element and per node variables are supported'
 
-            #to make sure the whole array gets printed
-            #otherwise numpy converts to string a summary, e.g. (1,2,3,...,5,6,7)
-            np.set_printoptions(threshold=np.inf)
-
-            f.write('\n')
-            f.write('TIME\n')
-            for var_data in variable_info_per_variable:
-                df = var_data['data'].iloc[0] #get one record with this varibale
-                if df.association!='FAILED':
-                    f.write(f'time set: {var_data["timeline"]}\n')
-                    number_of_timesteps = var_data['data'].shape[0]
-                    f.write(f'number of steps: {number_of_timesteps}\n')
-                    f.write(f'filename numbers: \n')
-                    f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
-                    f.write('time values:\n')
-                    f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
+                line = f'{df.variabletype} per {ensi_association}: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
+                f.write(line)
 
 
-# In[33]:
 
+        #to make sure the whole array gets printed
+        #otherwise numpy converts to string a summary, e.g. (1,2,3,...,5,6,7)
+        np.set_printoptions(threshold=np.inf)
+
+        f.write('\n')
+        f.write('TIME\n')
+        for var_data in variable_info_per_variable:
+            df = var_data['data'].iloc[0] #get one record with this varibale
+            if df.association!='FAILED':
+                f.write(f'time set: {var_data["timeline"]}\n')
+                number_of_timesteps = var_data['data'].shape[0]
+                f.write(f'number of steps: {number_of_timesteps}\n')
+                f.write(f'filename numbers: \n')
+                f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
+                f.write('time values:\n')
+                f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
 
 
 
