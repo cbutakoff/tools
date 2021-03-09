@@ -1,5 +1,4 @@
 #writing ensight Gold binary (comaptible with vtk 8)
-#ps: still cannot get the inverse element correspondence
 import numpy as np   #needs install
 import os
 import pandas #needs install
@@ -537,10 +536,8 @@ def write_geometry(number_of_blocks):
         #here -1 to transform to python array, and +1 to ensight array indexing
         connectivity[:,i] = inverse_pt_correspondence[connectivity[:,i]-1]+1                 
     
-    #print("connectivity = ",connectivity)
-    #print("inverse_el_correspondence = ",inverse_el_correspondence)
-    #connectivity = connectivity[inverse_el_correspondence,:]
-    #print("connectivity = ",connectivity)
+    connectivity = connectivity[inverse_el_correspondence,:]
+    print(" connectivity = ",connectivity)
 
     #dump vtk mesh witoh double precision, since ENSIGHT supports only single precision
     if(vtk_installed):
@@ -633,8 +630,8 @@ def write_variable_percell(data, varname, iteration):
         f.write(b'part'.ljust(80))
         f.write(np.array([1], dtype=ensight_id_type))   #int
 
-        #data2write = data['tuples'].ravel()[inverse_el_correspondence]
-        data2write = data['tuples'].ravel()
+        data2write = data['tuples']
+        data2write = data2write[inverse_el_correspondence,:]
 
         for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
             #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
@@ -810,7 +807,7 @@ if my_rank == 0:
 
 inverse_pt_correspondence = None
 element_types = None
-#inverse_el_correspondence = None
+inverse_el_correspondence = None
 
 if my_rank == 0:    
     #read correct element arrangement
@@ -827,33 +824,22 @@ if my_rank == 0:
     pt_ids = None #free memeory
 
 
-#    LEINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LEINV{file_suffix}'), \
-#                          number_of_blocks, )
-#    inverse_el_correspondence = (LEINV['tuples']-1).ravel(); #convert ids to python
+    LEINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LEINV{file_suffix}'), \
+                          number_of_blocks)
+    inverse_el_correspondence = (LEINV['tuples']-1).ravel(); #convert ids to python
+    inverse_el_correspondence = np.argsort(inverse_el_correspondence) #i'm still a bit puzzled, but it works
 
     LTYPE = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPE{file_suffix}'),  \
                                     number_of_blocks)
-#    element_types =    LTYPE['tuples'].ravel()[inverse_el_correspondence]
     element_types =    LTYPE['tuples'].ravel()
+    element_types = element_types[inverse_el_correspondence]
 
 
 inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
 element_types = comm.bcast(element_types, root=0)
-#inverse_el_correspondence = comm.bcast(inverse_el_correspondence, root=0)
+inverse_el_correspondence = comm.bcast(inverse_el_correspondence, root=0)
 
 
-# # Unknown stuff
-
-# In[67]:
-
-
-#god knows what are these
-#LNINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNINV.post.alyabin'), \
-#                                number_of_blocks, alya_id_type)
-#LELCH = read_alya_array(os.path.join(inputfolder,f'{project_name}-LELCH.post.alyabin'), \
-#                                number_of_blocks, alya_id_type)
-#LEINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LEINV.post.alyabin'), \
-#                                number_of_blocks, alya_id_type)
 
 
 # # Write geometry and variables
