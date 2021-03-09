@@ -1,11 +1,4 @@
-
-# coding: utf-8
-
-# In[17]:
-
-
 #writing ensight Gold binary (comaptible with vtk 8)
-#parallelization borowed here https://gist.github.com/fspaolo/51eaf5a20d6d418bd4d0
 import numpy as np   #needs install
 import os
 import pandas #needs install
@@ -26,6 +19,7 @@ class ASSOCIATION(str, Enum):
 comm = MPI.COMM_WORLD
 my_rank = comm.Get_rank()
 my_name = MPI.Get_processor_name()
+num_procs = comm.Get_size()
 
 #-------------------------------------------------
 #
@@ -250,7 +244,7 @@ def read_header_mpio(f):
     elif 'BOUN' in association:
         header['Association'] = ASSOCIATION.BOUNDARIES
     else:
-        assert False,f'Unsupported association: {association}'
+        raise Exception(f'Unsupported association: {association}. Only variables per node and per element are supported')
 
 
     if 'SCALA' in dimension:
@@ -335,10 +329,12 @@ def read_header_alyabin(file_object):
 
     if( strings[4] == 'NPOIN'):
         association = ASSOCIATION.NODES
-    elif( strings[4] == 'NELEM'):
+    elif strings[4] == 'NELEM':
         association = ASSOCIATION.ELEMENTS
-    else:
+    elif strings[4] == 'NBOUN':
         association = ASSOCIATION.BOUNDARIES
+    else:
+        raise Exception(f'Unsupported association: {association}. Only variables per node and per element are supported')
 
     if strings[6] == '4BYTE':
         field_dtype = field_dtype + '32'
@@ -514,7 +510,9 @@ def write_geometry(number_of_blocks):
         #here -1 to transform to python array, and +1 to ensight array indexing
         connectivity[:,i] = inverse_pt_correspondence[connectivity[:,i]-1]+1                 
     
-    #connectivity[inverse_el_correspondence, :] = connectivity
+    connectivity = connectivity[inverse_el_correspondence,:]
+    #print(" connectivity = ",connectivity)
+
     
     
     #geometry ensight
@@ -590,9 +588,8 @@ def write_variable_perboun(varname, iteration, number_of_blocks):
         f.write(b'part'.ljust(80))
         f.write(np.array([1], dtype=ensight_id_type))   #int
 
-        #data2write = np.zeros(inverse_el_correspondence.max()+1, dtype = ensight_float_type)
-        #data2write[inverse_el_correspondence] = data['values']['tuples'].ravel()
-        data2write = data['tuples'].ravel()
+        data2write = data['tuples']
+        data2write = data2write[inverse_el_correspondence,:]
 
         for elem_alya_id, elem_ensi_id in element_alya2ensi.items():        
             #print("Saving elements ", elem_alya_id, " as ", elem_ensi_id)
@@ -758,7 +755,7 @@ if my_rank == 0:
     variable_info['time_int'] = 0
     variable_info['time_real'] = 0
     variable_info['variabletype']=''
-    variable_info['association']=-1
+    variable_info['association']=''
 
 
 inverse_pt_correspondence = None
@@ -781,10 +778,12 @@ if my_rank == 0:
 
     LEINV = read_alya_array(os.path.join(inputfolder,f'{project_name}-LBINV{file_suffix}'), number_of_blocks)
     inverse_el_correspondence = (LEINV['tuples']-1).ravel(); #convert ids to python
+    inverse_el_correspondence = np.argsort(inverse_el_correspondence) #i'm still a bit puzzled, but it works
 
     LTYPE = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPB{file_suffix}'), number_of_blocks)
     element_types =    LTYPE['tuples'].ravel()
 
+    element_types = element_types[inverse_el_correspondence]
 
 
 inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
@@ -874,10 +873,8 @@ def chunk(xs,n):
 #
 #  Scatter the queue and process
 
-comm.Barrier()
 
 queue2scatter = None
-can_continue = 1
 
 if my_rank == 0:
     # generate work queue
@@ -886,11 +883,6 @@ if my_rank == 0:
     #print('Number of blocks ', number_of_blocks)
     queue = CreateWork(variable_info, number_of_blocks)
 
-    num_procs = comm.Get_size()
-
-    #if len(queue)<num_procs:
-    #    print(f'Number of conversion tasks {len(queue)} smaller than number of CPUs {comm.Get_size()}. Reduce number of CPUs in mpirun.')
-    #    can_continue = 0
 
     #if not enough tasks, fill the queue with empty jobs, just not to die if someone submits on too many cores by mistake
     if len(queue)<num_procs:
@@ -909,120 +901,115 @@ if my_rank == 0:
     
 
 
-can_continue = comm.bcast(can_continue, root=0)
+if my_rank == 0:
+    print("Scattering work")
 
-if can_continue>0:
-    if my_rank == 0:
-        print("Scattering work")
-
-    queue2scatter = comm.scatter(queue2scatter, root=0)
+queue2scatter = comm.scatter(queue2scatter, root=0)
 
 
-    results = []
-    for iwork, work in enumerate(queue2scatter):
-        if work != "":
-            if my_rank == 0:
-                print( f"Master processing {iwork}/{len(queue2scatter)}" )
+results = []
+for iwork, work in enumerate(queue2scatter):
+    if work != "":
+        if my_rank == 0:
+            print( f"Master processing {iwork}/{len(queue2scatter)}" )
 
-            results.append( json.dumps( do_work( json.loads(work) ), cls=NumpyEncoder ) )
-
-
-    if my_rank == 0:
-        print("Gathering results")
-
-    results = comm.gather(results, root=0)
+        results.append( json.dumps( do_work( json.loads(work) ), cls=NumpyEncoder ) )
 
 
-    if my_rank == 0:
-        for resultset in results:
-            for result in resultset:
-                process_result( json.loads(result) )
+if my_rank == 0:
+    print("Gathering results")
+
+results = comm.gather(results, root=0)
+
+
+if my_rank == 0:
+    for resultset in results:
+        for result in resultset:
+            process_result( json.loads(result) )
 
 
 
 
 
-    #=================================================================
-    #
-    # # Write ensight case file
+#=================================================================
+#
+# # Write ensight case file
 
-    # In[ ]:
+# In[ ]:
 
-    comm.Barrier()
-    if my_rank == 0:
-        if not time_interval is None:
-            variable_info = variable_info[ (variable_info["time_real"]>=time_interval[0]) & (variable_info["time_real"]<=time_interval[1]) ]
+comm.Barrier()
+if my_rank == 0:
+    if not time_interval is None:
+        variable_info = variable_info[ (variable_info["time_real"]>=time_interval[0]) & (variable_info["time_real"]<=time_interval[1]) ]
 
-        print(variable_info)
-        print('Saving case')
-        sys.stdout.flush()
-        
-        case_file = f'{project_name}.ensi.case'
-        with open(os.path.join(outputfolder, case_file), 'w') as f:
-            f.write('# Converted from Alya\n')
-            f.write('# Ensight Gold Format\n')
-            f.write('#\n')
-            f.write(f'# Problem name: {project_name}\n')
-            f.write('FORMAT\n')
-            f.write('type: ensight gold\n')
-            f.write('\n')
-            f.write('GEOMETRY\n')
-            f.write(f'model: 1 {project_name}.ensi.geo\n')
-            f.write('\n')
-            f.write('VARIABLE\n')
+    print(variable_info)
+    print('Saving case')
+    sys.stdout.flush()
 
-            variables = variable_info.field.unique();
+    
+    case_file = f'{project_name}.ensi.case'
+    with open(os.path.join(outputfolder, case_file), 'w') as f:
+        f.write('# Converted from Alya\n')
+        f.write('# Ensight Gold Format\n')
+        f.write('#\n')
+        f.write(f'# Problem name: {project_name}\n')
+        f.write('FORMAT\n')
+        f.write('type: ensight gold\n')
+        f.write('\n')
+        f.write('GEOMETRY\n')
+        f.write(f'model: 1 {project_name}.ensi.geo\n')
+        f.write('\n')
+        f.write('VARIABLE\n')
 
-            #define dataframe for each variable
-            #define timeline for each variable base on the number of timesteps
-            variable_info_per_variable = []
-            timeline_id = 1
-            timelines = {}; #each timeline will be identified only by the number of elements
-            c = 0
-            for varname in variables:
-                df = variable_info[variable_info.field==varname]
-                ntimesteps = df.shape[0]
+        variables = variable_info.field.unique();
 
-                variable_info_per_variable = variable_info_per_variable + \
-                    [{'varname':varname, \
-                      'data':variable_info[variable_info.field==varname].sort_values(by='iteration'),\
-                      'timeline':timeline_id}]
-                c=c+1        
-                timeline_id += 1
-      
+        #define dataframe for each variable
+        #define timeline for each variable base on the number of timesteps
+        variable_info_per_variable = []
+        timeline_id = 1
+        timelines = {}; #each timeline will be identified only by the number of elements
+        c = 0
+        for varname in variables:
+            df = variable_info[variable_info.field==varname]
+            ntimesteps = df.shape[0]
 
+            variable_info_per_variable = variable_info_per_variable + \
+                [{'varname':varname, \
+                'data':variable_info[variable_info.field==varname].sort_values(by='iteration'),\
+                'timeline':timeline_id}]
+            c=c+1        
+            timeline_id += 1
 
-            for var_data in variable_info_per_variable:
-                varname = var_data['varname']
-                timeline_id = var_data['timeline']
-                print(f'Varname {varname}\n')
-                df = var_data['data'].iloc[0] #get one record with this varibale
-                if df.association!='FAILED':
-                    line = f'{df.variabletype} per element: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
-                    f.write(line)
+    
 
 
-
-            #to make sure the whole array gets printed
-            #otherwise numpy converts to string a summary, e.g. (1,2,3,...,5,6,7)
-            np.set_printoptions(threshold=np.inf)
-
-            f.write('\n')
-            f.write('TIME\n')
-            for var_data in variable_info_per_variable:
-                df = var_data['data'].iloc[0] #get one record with this varibale
-                if df.association!='FAILED':
-                    f.write(f'time set: {var_data["timeline"]}\n')
-                    number_of_timesteps = var_data['data'].shape[0]
-                    f.write(f'number of steps: {number_of_timesteps}\n')
-                    f.write(f'filename numbers: \n')
-                    f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
-                    f.write('time values:\n')
-                    f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
+        for var_data in variable_info_per_variable:
+            varname = var_data['varname']
+            timeline_id = var_data['timeline']
+            print(f'Varname {varname}\n')
+            df = var_data['data'].iloc[0] #get one record with this varibale
+            if df.association!='FAILED':
+                line = f'{df.variabletype} per element: {timeline_id} {varname} {project_name}.ensi.{varname}-'+                '*'*iterationid_number_of_digits+'\n'       
+                f.write(line)
 
 
-# In[33]:
 
+        #to make sure the whole array gets printed
+        #otherwise numpy converts to string a summary, e.g. (1,2,3,...,5,6,7)
+        np.set_printoptions(threshold=np.inf)
+
+        f.write('\n')
+        f.write('TIME\n')
+        for var_data in variable_info_per_variable:
+            df = var_data['data'].iloc[0] #get one record with this varibale
+            if df.association!='FAILED':
+                f.write(f'time set: {var_data["timeline"]}\n')
+                number_of_timesteps = var_data['data'].shape[0]
+                f.write(f'number of steps: {number_of_timesteps}\n')
+                f.write(f'filename numbers: \n')
+                f.write(str(var_data['data'].time_int.values)[1:-1]+'\n')
+                f.write('time values:\n')
+                f.write(str(var_data['data'].time_real.values)[1:-1]+'\n')
 
 
 
