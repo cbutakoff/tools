@@ -32,7 +32,6 @@ my_name = MPI.Get_processor_name()
 num_procs = comm.Get_size()
 
 
-# In[9]:
 #-------------------------------------------------
 #
 # Parse arguments
@@ -84,7 +83,7 @@ try:
             filename_alyabin = os.path.join(inputfolder,f'{project_name}-LNODS.post.alyabin');
             mpio_file_present = os.path.isfile(filename_mpio) 
             alyabin_file_present = os.path.isfile(filename_alyabin) 
-            assert (mpio_file_present==True) | (alyabin_file_present==True), "Nothing to postprocess, make sure problem name is {project_name}"
+            assert (mpio_file_present==True) | (alyabin_file_present==True), f"Nothing to postprocess, make sure problem name is {project_name}"
             assert mpio_file_present!=alyabin_file_present, "Found both alyabin and mpio files. Specify format to use in the --format argument"
             
             if mpio_file_present:
@@ -188,7 +187,6 @@ def read_one_fp90_record(file_object, number_of_elements, datatype):
     return np.concatenate(record)
 
 
-# In[11]:
 def read_header_mpio(f):
     magic = np.fromfile(f,count=1, dtype=np.int64)[0]
     if magic != 27093:
@@ -380,7 +378,6 @@ def read_header_alyabin(file_object):
 
 
 
-# In[12]:
 def read_alya_array(filename, number_of_blocks):
     if MPIO:
         return read_alyampio_array(filename, number_of_blocks)
@@ -492,15 +489,10 @@ def write_geometry_vtk_double(point_coordinates, elements, element_types):
 def write_geometry(number_of_blocks):
     point_coordinates = read_alya_array(os.path.join(inputfolder,f'{project_name}-COORD{file_suffix}'), \
                                         number_of_blocks)
-    #element_types = read_alya_array(os.path.join(inputfolder,f'{project_name}-LTYPE{file_suffix}'),  \
-    #                                number_of_blocks)
     #Read connectivity (indices inside start with 1)
     connectivity = read_alya_array(os.path.join(inputfolder,f'{project_name}-LNODS{file_suffix}'),    \
                                    number_of_blocks)
 
-
-    #np.savetxt( 'connectivity.txt', connectivity['tuples'].astype(np.int32), fmt='%d' )
-    #np.savetxt( 'inverse.txt', inverse_pt_correspondence.astype(np.int32), fmt='%d' )
 
     #elements have ids local to each block, tranform them to global ids
     #a = connectivity['tuples_per_block'][0]
@@ -537,7 +529,7 @@ def write_geometry(number_of_blocks):
         connectivity[:,i] = inverse_pt_correspondence[connectivity[:,i]-1]+1                 
     
     connectivity = connectivity[inverse_el_correspondence,:]
-    print(" connectivity = ",connectivity)
+    #print(" connectivity = ",connectivity)
 
     #dump vtk mesh witoh double precision, since ENSIGHT supports only single precision
     if(vtk_installed):
@@ -717,10 +709,6 @@ element_alya2ensi = {37:{'Name':b'hexa8','Vertices':8}, 30:{'Name':b'tetra4','Ve
 
 
 # # Read the partitioning info
-
-# In[16]:
-
-#print(f'My rank:{my_rank}')
 alya_id_type = None
 
 if my_rank == 0:
@@ -754,17 +742,8 @@ if my_rank == 0:
 partitions = comm.bcast(partitions, root=0)
 
 
-# In[64]:
-
-
-#if my_rank == 0:
-    #this script does not handle boundaries yet
-    #assert (partitions[:,3]==0).all(),  'this script does not handle boundaries yet'
-
 
 # # Identify variables
-
-# In[65]:
 
 if my_rank == 0:
     #Parse the filelist of the fields
@@ -844,26 +823,8 @@ inverse_el_correspondence = comm.bcast(inverse_el_correspondence, root=0)
 
 # # Write geometry and variables
 
-# In[7]:
-
-
-#blocks are mesh partitions
-#
-#
-#
-#for index, row in variable_info.iterrows():
-#    info = write_variable_pernode(row.field, row.iteration)
-#    variable_info.loc[index, 'time_real'] = info['time_real']
-#    variable_info.loc[index, 'time_int']= info['time_int']
-#    variable_info.loc[index, 'variabletype'] = info['variable_type']
-#    variable_info.loc[index, 'association'] = info['variable_association']
-#
-
 
 # # MPI stuff
-
-# In[ ]:
-
 
 #
 #
@@ -884,8 +845,6 @@ def CreateWork(variable_info, number_of_blocks):
 
     return q
 
-
-# In[ ]:
 
 
 def do_work(work):
@@ -915,7 +874,6 @@ def process_result(result):
     return 
 
 
-# In[ ]:
 
 class NumpyEncoder(json.JSONEncoder):
     """ Special json encoder for numpy types """
