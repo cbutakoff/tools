@@ -78,7 +78,14 @@ with progressbar.ProgressBar(max_value=len(time_intervals)) as bar:
             vtk_var = mesh.GetPointData().GetArray(varname_intra)
             intra[:,ti] = [ vtk_var.GetTuple1(i) for i in range(vtk_var.GetNumberOfTuples()) ]
            
-        [ vtk_var.SetTuple1(i, x) for i, x in enumerate( intra.mean(axis=1) ) ] #get mean INTRA for each node
+
+        ar1 = vtk.vtkFloatArray()        
+        ar1.SetNumberOfComponents(1)
+        ar1.SetNumberOfTuples(vtk_var.GetNumberOfTuples())
+        ar1.SetName("INTRA_MAX")
+        [ ar1.SetTuple1(i, x) for i, x in enumerate( intra.max(axis=1) ) ] #get max INTRA for each node
+
+        mesh.GetPointData().AddArray(ar1)
 
         wr = vtk.vtkXMLUnstructuredGridWriter()
         wr.SetFileName(f'{args.output_prefix}_{time_id:010d}.vtu')
