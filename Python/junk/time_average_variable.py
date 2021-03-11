@@ -10,11 +10,13 @@ import sys
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("input_ensicase", help='Path to the ensi.case file')
 parser.add_argument("output_folder", help='Folder for the output fields case')
+parser.add_argument("output_prefix", help='Prefix for the output files', type=str )
 parser.add_argument("-t", help='Time interval to average (s)', nargs=3, type=float, metavar="timestart timeend dt")
 args = parser.parse_args()
 
 assert (np.array(args.t) > 0).all(), "Time must be  > 0"
 assert args.t[1] > args.t[0], "End time > start time"
+assert args.output_prefix != '', "Output prefix cannot be empty string"
 
 path =         args.input_ensicase #f'/media/gpfs_bsc/gpfs/projects/bsc21/WORK-BEATRIZ/spinal/catheters/C6-C7/straight/ensi/geo200216_c6c7_straight.ensi.case'
 outpath =      args.output_folder  #'./'
@@ -59,7 +61,7 @@ time_intervals = []
 for t in np.arange( dt[0], dt[1], dt[2] ):
     time_intervals.append( timesteps[ (timesteps>=t) & (timesteps<(t+dt[2])) ].tolist() )
 
-print (time_intervals)
+#print (time_intervals)
 assert len(time_intervals)>0, 'No time intervals identified'
 
 file_times = [] #these are the times for the generated files
@@ -79,7 +81,7 @@ with progressbar.ProgressBar(max_value=len(time_intervals)) as bar:
         [ vtk_var.SetTuple1(i, x) for i, x in enumerate( intra.mean(axis=1) ) ] #get mean INTRA for each node
 
         wr = vtk.vtkXMLUnstructuredGridWriter()
-        wr.SetFileName(f'mesh_{time_id:010d}.vtu')
+        wr.SetFileName(f'{args.output_prefix}_{time_id:010d}.vtu')
         wr.SetInputData(mesh)
         wr.Write()
 
@@ -92,7 +94,7 @@ with progressbar.ProgressBar(max_value=len(time_intervals)) as bar:
 
 
 print('Generating main pvd file')
-with open('mesh.pvd','w') as f:
+with open(f'{args.output_prefix}.pvd','w') as f:
     f.write('<?xml version="1.0"?>\n')
     f.write('<VTKFile type="Collection" version="0.1"\n')
     f.write('         byte_order="LittleEndian"\n')
@@ -100,7 +102,7 @@ with open('mesh.pvd','w') as f:
     f.write(' <Collection>\n')
 
     for time_id in range(len(time_intervals)):
-        filename = f"mesh_{time_id:010d}.vtu"
+        filename = f"{args.output_prefix}_{time_id:010d}.vtu"
         if os.path.isfile(filename):
             f.write(f'<DataSet timestep="{np.round(file_times[time_id],10)}" group="" part="0"\n')
             f.write(f'     file="{filename}"/>\n')
