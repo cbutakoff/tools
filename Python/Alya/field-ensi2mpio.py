@@ -66,12 +66,12 @@ t20 = timesteps
 if not args.timesteps is None:
     if args.timesteps[2]<0: #all timesteps in the range   
         t20 = timesteps[ (timesteps>=args.timesteps[0]) & (timesteps<=args.timesteps[1]) ]
-    else
+    else:
         t20 = np.arange(args.timesteps[0], args.timesteps[1]+args.timesteps[2],args.timesteps[2]) 
 
-    assert t20.shape[0]>0 f'No timesteps in the specified range {args.timesteps}'
+    assert t20.shape[0]>0, f'No timesteps in the specified range {args.timesteps}'
 else:
-    assert t20.shape[0]>0 f'There are no timesteps for the specified variable'
+    assert t20.shape[0]>0, f'There are no timesteps for the specified variable'
 
 print(f"Extracting {t20.shape[0]} timesteps: {t20}")
 
