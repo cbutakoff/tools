@@ -32,4 +32,4 @@ plt.axis('equal')
 plt.xlabel('Time[s]')
 plt.ylabel('V[mV]')
 
-
+plt.show()

@@ -16,9 +16,11 @@ int main(int argc, char* argv[])
 {
   if (argc<2) 
   {
-        std::cout<<"Missing arguments: points.xyz ouptut_mesh.off"<<std::endl;
+        std::cout<<"Missing arguments: points.xyz ouptut_mesh.off max_radius"<<std::endl;
         return -1;
   }      
+
+  float max_radius = atof(argv[3]);
 
   std::vector<Pwn> points;
   std::ifstream stream(argv[1]);
@@ -39,7 +41,7 @@ int main(int argc, char* argv[])
       (points.begin(), points.end(),
        CGAL::First_of_pair_property_map<Pwn>(),
        CGAL::Second_of_pair_property_map<Pwn>(),
-       output_mesh, average_spacing))
+       output_mesh, average_spacing, 20.0, max_radius ))
     {
         std::ofstream out(argv[2]);
         out << output_mesh;
