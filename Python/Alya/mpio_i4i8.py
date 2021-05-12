@@ -161,7 +161,8 @@ def write_vector_mpio(filename, vector, header):
 
 data = read_alyampio_array(input_filename)
 print(data['header'])
-data['header']['DataTypeLength']= "b'4BYTE00\\x00'"
-data['header']['DataTypePython']= "int32"
+if 'int' in data['header']['DataTypePython']:
+    data['header']['DataTypeLength']= "b'4BYTE00\\x00'"
+    data['header']['DataTypePython']= "int32"
 print(data['header'])
 write_vector_mpio(output_filename, data['tuples'], data['header'])
