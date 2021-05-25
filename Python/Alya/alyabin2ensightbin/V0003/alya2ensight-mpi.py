@@ -656,10 +656,9 @@ def write_variable_pernode(data, varname, iteration):
         data['header']['Time'] = 0
         data['header']['TimeStepNo'] = 0
 
-    
     try: 
         with open( filename,'wb') as f:
-            f.write(b'description line 1'.ljust(80))
+            f.write( bytes(f"t={data['header']['Time']}".ljust(80),'utf-8') )
             f.write(b'part'.ljust(80))
             f.write(np.array([1], dtype=ensight_id_type))   #int
             f.write(b'coordinates'.ljust(80))
