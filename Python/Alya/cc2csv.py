@@ -12,6 +12,25 @@ ensicase     = sys.argv[3]
 output_csv   = sys.argv[4]
 ndeci        = 5
 
+def find_displ_timeset(casefileaname):
+  variables_section = False
+  timeline = None
+  with open(casefileaname) as ff:
+    for line in ff:
+      if "VARIABLE" in line.upper():
+        variables_section = True
+      if variables_section:
+        print (line)
+        if " DISPL " in line.upper():
+          data = np.array(line.upper().split())
+          print(data)
+          idx = np.where( data=='DISPL' )[0]
+          timeline = int( data[idx-1] )-1
+          break
+
+  return timeline
+             
+
 print('Reading ',pv_filename)
 df = pd.read_csv( pv_filename, delim_whitespace=True, header=None, skiprows=17, names=['I','Time','cav1','cycle1','LVphase','LVV','LVP','LVWK','cav2','cycle2','RVphase','RVV','RVP','RVWK'] )
 df['Time'] = np.round( df['Time'], ndeci )
@@ -45,12 +64,7 @@ rdr.SetCaseFileName(ensicase)
 rdr.ReadAllVariablesOn()
 rdr.Update()
 
-displ_timeline = None
-for i in range(rdr.GetNumberOfVariables()):
-    if rdr.GetDescription(i)=='DISPL':
-        displ_timeline = i
-        break
-
+displ_timeline = find_displ_timeset( ensicase )
 assert not displ_timeline is None, 'DISPL not found in ensi case'
 
 ensi_times = [np.round(rdr.GetTimeSets().GetItem(displ_timeline).GetTuple1(i),ndeci) for i in range(rdr.GetTimeSets().GetItem(displ_timeline).GetNumberOfTuples())]
