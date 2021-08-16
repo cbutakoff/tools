@@ -19,8 +19,7 @@ columns = ['Iter','Time','rubbish','Ca','LL','RA','LA' ]
 
 df = pd.read_csv(args.vin_file, header=None, delim_whitespace=True, comment='#')
 cols = list(df.columns)
-cols[0:2] = ['Iter', 'Time']
-cols[-4:] = ['Ca','LL','RA','LA']
+cols[0:6] = ['Iter', 'Time','Ca','LL','LA','RA']
 
 df.columns = cols
 
