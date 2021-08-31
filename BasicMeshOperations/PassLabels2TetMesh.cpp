@@ -117,7 +117,7 @@ int main(int argc, char** argv)
     const char* outfile_prefix = argv[c++];
     vector<enumFileFormats> save_formats;
     float scale = 1;
-    bool correct_orientation = 0;
+    bool correct_orientation = false;
 
 
     while( c<argc )
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
             scale = atof(argv[++c]);
         }
         else if( strcmp( argv[c], "-o" ) == 0 ){
-            bool correct_orientation = atoi(argv[++c])==1;
+            correct_orientation = atoi(argv[++c])==1;
         }
 
         c++;
