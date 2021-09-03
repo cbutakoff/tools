@@ -252,6 +252,11 @@ int main(int argc, char** argv)
     //for every cell of the surface mesh
     std::cout<<"Looking for boundaries"<<std::endl;
     int max_nodes_per_face = 3;
+    double closestPoint[3];
+    int subId;
+    double dist2;
+    vtkIdType cellid;  
+   
     for(vtkIdType i=0; i<surfmesh->GetNumberOfCells(); i++)
     {
         if( i%10000 == 0 )
@@ -285,9 +290,10 @@ int main(int argc, char** argv)
             cell_center[2] += pt[2]/npoints;
         }
                 
-        const vtkIdType cellid = cellloc->FindCell( cell_center );
-        
-        if(cellid==-1)
+        //const vtkIdType cellid = cellloc->FindCell( cell_center );    
+        cellloc->FindClosestPoint (cell_center, closestPoint, cellid, subId, dist2);
+
+        if(cellid<0)
         {
             std::cout<<"Volume cell matching surface face "<<i<<" not found. Look for an error. Closest point used for search:"<<cell_center[0]<<" "<<cell_center[1]<<" "<<cell_center[2]<<" "<<std::endl;
         }
