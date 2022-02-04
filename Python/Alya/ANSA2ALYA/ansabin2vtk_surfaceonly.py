@@ -59,7 +59,7 @@ assert os.path.exists(input_path), f'{input_path} does not exist'
 os.makedirs(output_path, exist_ok=True)
 
 
-output_filename_vtk_boundary = os.path.join(output_path, f'{output_mesh_prefix}-boundary.vtk')
+output_filename_vtk_boundary = os.path.join(output_path, f'{output_mesh_prefix}-boundary.vtp')
 output_filename_info = os.path.join(output_path, f'{output_mesh_prefix}.info') #to save material and face names
 
 input_jsonfile = os.path.join(input_path, input_mesh_prefix+'.json')
@@ -252,7 +252,9 @@ with open(output_filename_info, 'w') as f:
     pd.GetCellData().AddArray(boundary_id)
 
     print('Writing boundary vtk')
-    wr = vtk.vtkPolyDataWriter()
+    wr = vtk.vtkXMLPolyDataWriter()
     wr.SetFileName(output_filename_vtk_boundary)
     wr.SetInputData(pd)
+    wr.SetDataModeToBinary()
+    wr.EncodeAppendedDataOff()
     wr.Write()
