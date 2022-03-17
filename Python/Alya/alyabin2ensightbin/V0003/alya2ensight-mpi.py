@@ -1,9 +1,18 @@
 #writing ensight Gold binary (comaptible with vtk 8)
-import numpy as np   #needs install
 import os
+
+mpi_on = True
+try:
+    mpi_on = int(os.environ['MPI_SINGLETON'])!=1
+except:
+    mpi_on = True
+
+if mpi_on:
+    from mpi4py import MPI #needs install
+
+import numpy as np   #needs install
 import pandas #needs install
 import sys
-from mpi4py import MPI #needs install
 import json
 from enum import Enum
 
@@ -25,12 +34,16 @@ except:
 
 
 
-
-comm = MPI.COMM_WORLD
-my_rank = comm.Get_rank()
-my_name = MPI.Get_processor_name()
-num_procs = comm.Get_size()
-
+if(mpi_on):
+    comm = MPI.COMM_WORLD
+    my_rank = comm.Get_rank()
+    my_name = MPI.Get_processor_name()
+    num_procs = comm.Get_size()
+else:
+    comm = None
+    my_rank = 0
+    my_name = 'nompi'
+    num_procs = 1
 
 #-------------------------------------------------
 #
@@ -116,11 +129,12 @@ try:
   
         sys.stdout.flush()
 finally:
-    inputfolder = comm.bcast(inputfolder, root=0)
-    project_name = comm.bcast(project_name, root=0)
-    outputfolder = comm.bcast(outputfolder, root=0)
-    MPIO = comm.bcast(MPIO, root=0)
-    vtk_installed = comm.bcast(vtk_installed, root=0)
+    if (num_procs>1):
+        inputfolder = comm.bcast(inputfolder, root=0)
+        project_name = comm.bcast(project_name, root=0)
+        outputfolder = comm.bcast(outputfolder, root=0)
+        MPIO = comm.bcast(MPIO, root=0)
+        vtk_installed = comm.bcast(vtk_installed, root=0)
 
 
 
@@ -717,7 +731,8 @@ if my_rank == 0:
     
 
 #broadcast ALYA id type to all the nodes
-alya_id_type = comm.bcast(alya_id_type, root=0);
+if(num_procs>1):
+    alya_id_type = comm.bcast(alya_id_type, root=0);
 
 
 #if my_rank != 0:
@@ -738,7 +753,8 @@ if my_rank == 0:
 
     partitions = pandas.DataFrame(partitions, columns=['id','Elements','Points','Boundaries'])
 
-partitions = comm.bcast(partitions, root=0)
+if(num_procs>1):
+    partitions = comm.bcast(partitions, root=0)
 
 
 
@@ -813,9 +829,10 @@ if my_rank == 0:
     element_types = element_types[inverse_el_correspondence]
 
 
-inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
-element_types = comm.bcast(element_types, root=0)
-inverse_el_correspondence = comm.bcast(inverse_el_correspondence, root=0)
+if(num_procs>1):
+    inverse_pt_correspondence = comm.bcast(inverse_pt_correspondence, root=0)
+    element_types = comm.bcast(element_types, root=0)
+    inverse_el_correspondence = comm.bcast(inverse_el_correspondence, root=0)
 
 
 
@@ -933,7 +950,10 @@ if my_rank == 0:
 if my_rank == 0:
     print("Scattering work")
 
-queue2scatter = comm.scatter(queue2scatter, root=0)
+if(num_procs>1):
+    queue2scatter = comm.scatter(queue2scatter, root=0)
+else:
+    queue2scatter = queue2scatter[0]
 
 
 results = []
@@ -948,8 +968,10 @@ for iwork, work in enumerate(queue2scatter):
 if my_rank == 0:
     print("Gathering results")
 
-results = comm.gather(results, root=0)
-
+if(num_procs>1):
+    results = comm.gather(results, root=0)
+else:
+    results = [results]
 
 if my_rank == 0:
     for resultset in results:
@@ -966,7 +988,9 @@ if my_rank == 0:
 
 # In[ ]:
 
-comm.Barrier()
+if(num_procs>1):
+    comm.Barrier()
+
 if my_rank == 0:
     if not time_interval is None:
         variable_info = variable_info[ (variable_info["time_real"]>=time_interval[0]) & (variable_info["time_real"]<=time_interval[1]) ]
