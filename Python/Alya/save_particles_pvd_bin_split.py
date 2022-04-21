@@ -1,20 +1,34 @@
 import vtk
+from vtk.util.numpy_support import numpy_to_vtk
 import pandas as pd
 import  progressbar 
 import multiprocessing as mp
 import numpy as np
 from os.path import isfile, join
-from os import listdir
+from os import listdir, SEEK_END
 from sys import exit
 import re
+import argparse
 
-case_name = 'fluidda'
-case_path = '../'
-main_filename = f'{case_name}.pvd'
-dat_file = join(case_path, f'{case_name}.dat')
-pts_filename0 = join(case_path, f'{case_name}.pts.res')
-pts_filename = join(case_path, f'{case_name}'+'.pts.{:08d}.res')
-ncpus = 10
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("case_name", help='Name of the alya task')
+parser.add_argument("input_folder", help='Folder with input pts.res')
+parser.add_argument("-o","--output_folder", default="./", help='Folder for the output vtps')
+parser.add_argument("-n","--ncpus", help='Number of cpus to parallelize (1 -- run sequential)', default = 10, type=int)
+parser.add_argument("-f","--force", action='store_true', required=False, help='Force overwriting vtps')
+args = parser.parse_args()
+
+
+case_name       = args.case_name
+case_path       = args.input_folder
+output_path     = args.output_folder 
+ncpus           = args.ncpus
+force_overwrite = args.force
+main_filename   = f'{case_name}.pvd'
+dat_file        = join(case_path, f'{case_name}.dat')
+pts_filename0   = join(case_path, f'{case_name}.pts.res')
+pts_filename    = join(case_path, f'{case_name}'+'.pts.{:08d}.res')
+
 
 #extract the timestep from the dat
 timestep = -1
@@ -35,7 +49,7 @@ for f in listdir(case_path):
     if m:
         filenumbers.append( int(m.group(1)) )
 
- 
+filenumbers = sorted(filenumbers) 
 
 
 def read_file( filename ):
@@ -54,9 +68,11 @@ def read_file( filename ):
     
 
 def save_one_file_by_number(file_number):
-  infilename = pts_filename.format(file_number) 
-  outfilename = "pts_{:010d}.vtp".format(file_number)
-  save_one_file( infilename, outfilename )
+    infilename = pts_filename.format(file_number) 
+    outfilename = join( output_path, "pts_{:010d}.vtp".format(file_number) )
+
+    if not is_vtp_complete(outfilename):
+        save_one_file( infilename, outfilename )
 
 
 def save_one_file(infilename, outfilename):
@@ -64,46 +80,25 @@ def save_one_file(infilename, outfilename):
     df1 = read_file( infilename )
 
     if df1.shape[0]==0:
-      return
+        return
 
     pts = vtk.vtkPoints()
-    x = df1['COORX']
-    y = df1['COORY']
-    z = df1['COORZ']
-    tp = df1['ITYPE']
-    il = df1['ILAGR']
-    ex = df1['EXIST']
-    tt = df1['T']
-    pts.SetNumberOfPoints(df1.shape[0])
+    pts.SetData( numpy_to_vtk(df1[["COORX","COORY","COORZ"]].to_numpy(), array_type = vtk.VTK_FLOAT) )  
 
-    for j in range(df1.shape[0]):         
-        pts.SetPoint(j, (x.iloc[j],y.iloc[j],z.iloc[j]))
-
-    types = vtk.vtkShortArray()
-    types.SetNumberOfComponents(1)
-    types.SetNumberOfTuples(pts.GetNumberOfPoints())
+    types = numpy_to_vtk(df1["ITYPE"].to_numpy(), array_type = vtk.VTK_SHORT)
     types.SetName('ITYPE')
-  
-    ilagr = vtk.vtkIntArray()
-    ilagr.SetNumberOfComponents(1)
-    ilagr.SetNumberOfTuples(pts.GetNumberOfPoints())
+
+
+    ilagr = numpy_to_vtk(df1["ILAGR"].to_numpy(), array_type = vtk.VTK_INT) 
     ilagr.SetName('ILAGR')
 
-    exist = vtk.vtkShortArray()
-    exist.SetNumberOfComponents(1)
-    exist.SetNumberOfTuples(pts.GetNumberOfPoints())
+
+    exist = numpy_to_vtk(df1["EXIST"].to_numpy(), array_type = vtk.VTK_SHORT)
     exist.SetName('EXIST')
 
-    T = vtk.vtkFloatArray()
-    T.SetNumberOfComponents(1)
-    T.SetNumberOfTuples(pts.GetNumberOfPoints())
-    T.SetName('T')
 
-    for j in range(df1.shape[0]):         
-        types.SetTuple1(j, tp.iloc[j])
-        ilagr.SetTuple1(j, il.iloc[j])
-        exist.SetTuple1(j, ex.iloc[j])
-        T.SetTuple1(j, tt.iloc[j])
+    T = numpy_to_vtk(df1["T"].to_numpy(), array_type = vtk.VTK_FLOAT)
+    T.SetName('T')
 
     pd = vtk.vtkPolyData()
     pd.SetPoints(pts)
@@ -119,34 +114,59 @@ def save_one_file(infilename, outfilename):
     wr.Write()
 
 
+def read_last_block(in_file, block_size=1024):
+    in_file.seek(-block_size, SEEK_END)
+    return in_file.read(block_size).decode("utf-8") 
+
+
+def is_vtp_complete(filename):
+    result = False
+
+    if not force_overwrite:
+        pattern = "</VTKFile>"
+        if isfile(filename):
+            with open(filename,'rb') as ff:
+                try:
+                    result = pattern in read_last_block(ff, block_size=len(pattern)+100)
+                except:
+                    result = False
+                    pass
+
+    return result
+
 #save 0-th timestep
-save_one_file( pts_filename0, "pts_{:010d}.vtp".format(0) )
+vtp_filename = join( output_path, "pts_{:010d}.vtp".format(0) )
+if not is_vtp_complete(vtp_filename):
+    save_one_file( pts_filename0, vtp_filename )
 
 
-bar = progressbar.ProgressBar(max_value=len(filenumbers))
-with mp.Pool(processes = ncpus) as p:
-  for i, _ in enumerate( p.imap_unordered(save_one_file_by_number, filenumbers), 1 ):
-    bar.update(i)
-
+if ncpus>1:
+    bar = progressbar.ProgressBar(max_value=len(filenumbers))
+    with mp.Pool(processes = ncpus) as p:
+        for i, _ in enumerate( p.imap_unordered(save_one_file_by_number, filenumbers), 1 ):
+            bar.update(i)
+else:
+    for filenumber in progressbar.progressbar(filenumbers):
+        save_one_file_by_number(filenumber)
 
 
 print('Generating main pvd file')
-with open(main_filename,'w') as f:
+with open( join( output_path, main_filename), 'w') as f:
     f.write('<?xml version="1.0"?>\n')
     f.write('<VTKFile type="Collection" version="0.1"\n')
     f.write('         byte_order="LittleEndian"\n')
     f.write('         compressor="vtkZLibDataCompressor">\n')
-    f.write(' <Collection>\n')
+    f.write('  <Collection>\n')
 
     filename = "pts_{:010d}.vtp".format(0)
-    if isfile(filename):
+    if isfile( join( output_path, filename) ):
         f.write(f'<DataSet timestep="0" group="" part="0"\n')
         f.write(f'     file="{filename}"/>\n')
 
 
     for filenumber in progressbar.progressbar(filenumbers):
         filename = "pts_{:010d}.vtp".format(filenumber)
-        if isfile(filename):
+        if isfile( join( output_path, filename) ):
             f.write(f'<DataSet timestep="{np.round(filenumber*timestep,10)}" group="" part="0"\n')
             f.write(f'     file="{filename}"/>\n')
     
