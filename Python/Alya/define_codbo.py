@@ -29,7 +29,7 @@ print('Boundaries :')
 pprint.pprint(bcs)
 
 print('Read mesh ',mesh_filename)
-rd = vtk.vtkPolyDataReader()
+rd = vtk.vtkXMLPolyDataReader()
 rd.SetFileName(mesh_filename)
 rd.Update()
 
