@@ -44,7 +44,10 @@ int main(int argc, char** argv) {
     for(vtkIdType i=range[0]; i<=range[1]; i++)
     {
         std::cout<<"Id: "<<i<<std::endl;
-        th->ThresholdBetween(i, i);
+        th->SetLowerThreshold(i);
+        th->SetUpperThreshold(i);
+        th->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
+
         th->Update();
         vtkUnstructuredGrid* submesh = th->GetOutput();
         

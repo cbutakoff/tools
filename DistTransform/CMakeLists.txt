@@ -7,8 +7,6 @@ FIND_PACKAGE(VTK REQUIRED)
 FIND_PACKAGE(Armadillo REQUIRED)
 include_directories(${ARMADILLO_INCLUDES})
 
-INCLUDE(${VTK_USE_FILE})
-
 #needed for the unordered_map
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") 
 

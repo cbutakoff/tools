@@ -6,7 +6,6 @@ find_package(Eigen3 REQUIRED)
 
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${ARMADILLO_INCLUDES})
-INCLUDE(${VTK_USE_FILE})
 INCLUDE(${ITK_USE_FILE})
 
 

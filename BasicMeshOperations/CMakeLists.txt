@@ -10,11 +10,6 @@ find_package(Eigen3)
 #endif(ARMADILLO_FOUND)
 
 
-INCLUDE(${VTK_USE_FILE})
-
-
-
-
 # add a target to generate API documentation with Doxygen
 #find_package(Doxygen)
 #if(DOXYGEN_FOUND)

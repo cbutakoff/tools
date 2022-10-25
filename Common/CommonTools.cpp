@@ -200,7 +200,10 @@ vtkPolyData* CommonTools::GetShapeSubSurface(vtkPolyData * inputShape, double th
 	//extract the subpart
 	vtkSmartPointer<vtkThreshold> thold = vtkSmartPointer<vtkThreshold>::New();
 	thold->SetInputData(inputShape);
-	thold->ThresholdBetween(tholdLower, tholdUpper);
+	thold->SetLowerThreshold(tholdLower);
+	thold->SetUpperThreshold(tholdUpper);
+	thold->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
+
 	thold->Update();
 
 	//extract surface
@@ -995,15 +998,15 @@ int CommonTools::laplace3D_voxelsize( vtkImageData* inputImage, vtkImageData* ou
 	vtkIdType ptId= outputImage->ComputePointId(ijk);
 	ijk[0]=2;
 	vtkIdType ptId1= outputImage->ComputePointId(ijk);
-	const register int incXp = ptId1-ptId;
+	const int incXp = ptId1-ptId;
 	ijk[0]=1;
 	ijk[1]=2;
 	ptId1= outputImage->ComputePointId(ijk);
-	const register int incYp = ptId1-ptId;
+	const int incYp = ptId1-ptId;
 	ijk[1]=1;
 	ijk[2]=2;
 	ptId1= outputImage->ComputePointId(ijk);
-	const register int incZp = ptId1-ptId;
+	const int incZp = ptId1-ptId;
 
 	//precalculate constants
 	const float hx2 = hx*hx;
@@ -1024,7 +1027,7 @@ int CommonTools::laplace3D_voxelsize( vtkImageData* inputImage, vtkImageData* ou
 		}
 
 
-		register vtkIdType ptId=inputImage->GetNumberOfPoints()-1;
+		vtkIdType ptId=inputImage->GetNumberOfPoints()-1;
 
 		while(ptId--) 
 		{

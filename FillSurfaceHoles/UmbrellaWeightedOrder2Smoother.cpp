@@ -39,6 +39,8 @@ double UmbrellaWeightedOrder2Smoother::CalculateEdgeWeight(const Eigen::VectorXd
             std::cout<<"Undefined vertex weighting type";
             throw "Undefined vertex weighting type";
     }
+
+    return value;
 }
 
 double UmbrellaWeightedOrder2Smoother::EdgeWeightCotangent(const Eigen::VectorXd& v_third, const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const
@@ -55,7 +57,7 @@ double UmbrellaWeightedOrder2Smoother::EdgeWeightCotangent(const Eigen::VectorXd
 
 double UmbrellaWeightedOrder2Smoother::EdgeWeightInvEdgeLength(const Eigen::VectorXd& v1_edge, const Eigen::VectorXd& v2_edge) const
 {
-    const double w23 = 1/( (v1_edge-v2_edge).norm() );
+    return 1/( (v1_edge-v2_edge).norm() );
 }
 
 

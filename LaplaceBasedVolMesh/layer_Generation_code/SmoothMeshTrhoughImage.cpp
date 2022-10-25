@@ -274,7 +274,7 @@ int main(int argc, char * argv[]) {
         sprintf(filename, "mymesh_196239462.stl");
         CommonTools::SaveShapeToFile(extrsurf->GetOutput(), filename);
 
-        char fixcmd[100];
+        char fixcmd[500];
         std::cout << "Running admesh.." << std::endl;
         sprintf(fixcmd, "admesh -n -u -f -d %s -b%s -t0.1 -i50", filename, filename);
         int rubbish = system(fixcmd);

@@ -5,8 +5,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6.2)
 
 
 FIND_PACKAGE(VTK REQUIRED)
-INCLUDE(${VTK_USE_FILE})
-
 find_package(CGAL COMPONENTS ImageIO)
 
 if ( CGAL_FOUND )
@@ -24,7 +22,7 @@ if ( CGAL_FOUND )
   #create_single_source_cgal_program( "poly2mesh.cpp" )
   create_single_source_cgal_program( "segment_mesh_sdf.cpp" )
   #create_single_source_cgal_program( "ls_conformal.cpp" )
-  create_single_source_cgal_program( "poisson_recon.cpp" )
+  #create_single_source_cgal_program( "poisson_recon.cpp" )
 
 else()
   

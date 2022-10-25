@@ -201,7 +201,7 @@ void ReadChasteElements(const char* filename, vtkCellArray* cells, vtkIntArray* 
 	{
 		if( i%10000 == 0  )
 		{
-			printf("Elements added: %010d / %d \r", i, N );
+			printf("Elements added: %010d / %ld \r", i, N );
 		}
 		
 		const long int k = i*dim;

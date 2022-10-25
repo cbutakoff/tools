@@ -55,7 +55,10 @@ int main(int argc, char** argv) {
     vtkSmartPointer<vtkThreshold> th =     vtkSmartPointer<vtkThreshold> ::New();
     th->SetInputData(rd->GetOutput());
     th->SetInputArrayToProcess(0,0,0, vtkDataObject::FIELD_ASSOCIATION_CELLS, arrayname);
-    th->ThresholdBetween(tlow, thigh);
+    th->SetLowerThreshold(tlow);
+    th->SetUpperThreshold(thigh);
+    th->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
+
     th->Update();
     
     cout<<"Saving"<<endl;

@@ -29,8 +29,6 @@ foreach(program ${ITK_PROGRAMS})
 endforeach(program)
 
 IF (VTK_FOUND)
-  INCLUDE(${VTK_USE_FILE})
-
   foreach(program ${ITK_VTK_PROGRAMS})
       add_executable(${program} ${MYCOMMON_FILES} ${program}.cpp)
       target_link_libraries(${program} ${ITK_LIBRARIES} ${VTK_LIBRARIES})

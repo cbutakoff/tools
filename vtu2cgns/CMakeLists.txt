@@ -5,9 +5,6 @@ cmake_minimum_required(VERSION 2.8)
 
 
 find_package(VTK REQUIRED)
-
-include(${VTK_USE_FILE})
-
 include_directories( "${CMAKE_SOURCE_DIR}/Mesher/src/" )
 
 set (CGNS_INSTALLATION_DIR ${tools_SOURCE_DIR}/extern/CGNS/build CACHE PATH "Path to installed CGNS" )

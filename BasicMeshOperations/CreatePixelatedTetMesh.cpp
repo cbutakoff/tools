@@ -119,7 +119,9 @@ int main(int argc, char *argv[]) {
         }
 
         // select the cells for a given label
-        selector->ThresholdBetween(i, i);
+        selector->SetLowerThreshold(i);
+        selector->SetUpperThreshold(i);
+        selector->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
         selector->Update();
         
         // Strip the scalars from the output

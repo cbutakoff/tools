@@ -306,7 +306,10 @@ int GenerateMarkerSetByIterativeThresholding(vtkPolyData* mesh, const char* arra
 
             vtkSmartPointer<vtkThreshold> th1 = vtkSmartPointer<vtkThreshold>::New();
             th1->SetInputData(conn->GetOutput());
-            th1->ThresholdBetween(region, region);
+            th1->SetLowerThreshold(region);
+            th1->SetUpperThreshold(region);
+            th1->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
+
             th1->Update();
             vtkUnstructuredGrid* submesh = th1->GetOutput();
 
@@ -533,7 +536,10 @@ int GenerateMarkerSetByIterativeThresholdingSteps(vtkPolyData* mesh, const char*
 
             vtkSmartPointer<vtkThreshold> th1 = vtkSmartPointer<vtkThreshold>::New();
             th1->SetInputData(conn->GetOutput());
-            th1->ThresholdBetween(region, region);
+            th1->SetLowerThreshold(region);
+            th1->SetUpperThreshold(region);
+            th1->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
+
             th1->Update();
             vtkUnstructuredGrid* submesh = th1->GetOutput();
 

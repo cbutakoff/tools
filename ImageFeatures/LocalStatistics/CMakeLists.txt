@@ -8,7 +8,6 @@ FIND_PACKAGE(Armadillo REQUIRED)
 
 include_directories(${ARMADILLO_INCLUDES})
 INCLUDE(${ITK_USE_FILE})
-INCLUDE(${VTK_USE_FILE})
 
 
 

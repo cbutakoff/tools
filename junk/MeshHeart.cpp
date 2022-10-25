@@ -148,7 +148,10 @@ int main(int argc, char **argv)
 	inshape->GetPointData()->SetActiveScalars("regionID");
 	vtkSmartPointer<vtkThreshold> thold = vtkSmartPointer<vtkThreshold>::New();
 	thold->SetInputData(inshape);
-	thold->ThresholdBetween( EPI_ID, EPI_ID );
+  thold->SetLowerThreshold(EPI_ID);
+  thold->SetUpperThreshold(EPI_ID);
+  thold->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
+
 	thold->AllScalarsOn();
 	thold->Update();	
 	
@@ -227,7 +230,10 @@ vtkPolyData* ExtractSurface( vtkUnstructuredGrid *volmesh, int id )
 	
 	vtkSmartPointer<vtkThreshold> thold = vtkSmartPointer<vtkThreshold>::New();
 	thold->SetInputData( volmesh );
-	thold->ThresholdBetween( id, id );
+  thold->SetLowerThreshold(id);
+  thold->SetUpperThreshold(id);
+  thold->SetThresholdFunction(vtkThreshold::THRESHOLD_BETWEEN);
+
 	thold->AllScalarsOn();
 	thold->Update();
 	

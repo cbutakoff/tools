@@ -924,7 +924,7 @@ void UniformRemesh(vtkPolyData* mesh, float targetarea)
     sprintf( filename, "tempshape3274899816.stl" );
     CommonTools::SaveShapeToFile(mesh, filename);
 
-    char fixcmd[100];
+    char fixcmd[500];
     std::cout<<"Running admesh.."<<std::endl;
     sprintf(fixcmd,"admesh -n -u -f -d %s -b%s -t0.1 -i50",filename,filename);
     int rubbish = system(fixcmd);
