@@ -66,6 +66,31 @@ bool Contains(const std::vector<T> &list, T x)
 }
     
 
+inline std::vector<vtkIdType> intersection(std::vector<vtkIdType> &v1,
+                                    std::vector<vtkIdType> &v2){
+    std::vector<vtkIdType> v3;
+
+    std::sort(v1.begin(), v1.end());
+    std::sort(v2.begin(), v2.end());
+
+    std::set_intersection(v1.begin(),v1.end(),
+                          v2.begin(),v2.end(),
+                          back_inserter(v3));
+    return v3;
+}
+
+
+template <typename T>
+std::ostream& operator<<(std::ostream& output, std::vector<T> const& values)
+{
+    for (auto const& value : values)
+    {
+        output << value << std::endl;
+    }
+    return output;
+}
+
+
 bool FileExists( const char* filename, bool no_exception=false )
 {
 	bool result = true;
@@ -238,10 +263,6 @@ int main(int argc, char** argv)
     }
     
     
-    vtkSmartPointer<vtkCellLocator> cellloc = vtkSmartPointer<vtkCellLocator>::New();
-    cellloc->SetDataSet(volmesh);
-    cellloc->BuildLocator();
-    
     vtkSmartPointer<vtkPointLocator> ptloc = vtkSmartPointer<vtkPointLocator>::New();
     ptloc->SetDataSet(volmesh);
     ptloc->BuildLocator();
@@ -256,7 +277,9 @@ int main(int argc, char** argv)
     int subId;
     double dist2;
     vtkIdType cellid;  
-   
+    vtkSmartPointer<vtkIdList> cellIds = vtkSmartPointer<vtkIdList>::New();
+
+
     for(vtkIdType i=0; i<surfmesh->GetNumberOfCells(); i++)
     {
         if( i%10000 == 0 )
@@ -269,10 +292,11 @@ int main(int argc, char** argv)
         entry.boundary_id = scalars_boundary_id->GetTuple1(i);
         const int npoints = cell->GetNumberOfPoints();
         entry.pt_id.resize( npoints );
-        double cell_center[3] = {0,0,0};
-
 
         if( npoints > max_nodes_per_face ) max_nodes_per_face = npoints;
+
+        vector<vtkIdType> cell_toucing_face; //this will keep an intersection af all the cells, in the end it will be 1 element
+        vector<vtkIdType> cells_toucing_face; 
 
         for( int jj=0; jj<npoints; jj++){
             const vtkIdType ptid = ptloc->FindClosestPoint(cell->GetPoints()->GetPoint(jj));
@@ -283,21 +307,26 @@ int main(int argc, char** argv)
 
             entry.pt_id[jj] = ptid;
 
-            double pt[3];
-            volmesh->GetPoint(ptid, pt);
-            cell_center[0] += pt[0]/npoints;
-            cell_center[1] += pt[1]/npoints;
-            cell_center[2] += pt[2]/npoints;
+            //start idenitying the only veolumetric cell touching the face
+            volmesh->GetPointCells(ptid, cellIds);
+            cells_toucing_face.clear();
+            for(int cellId=0; cellId<cellIds->GetNumberOfIds(); cellId++)
+                cells_toucing_face.push_back(cellIds->GetId(cellId));
+
+
+            if( cell_toucing_face.size()==0 ) 
+                cell_toucing_face = cells_toucing_face;
+            else
+                cell_toucing_face = intersection(cell_toucing_face, cells_toucing_face);
+
         }
                 
-        //const vtkIdType cellid = cellloc->FindCell( cell_center );    
-        cellloc->FindClosestPoint (cell_center, closestPoint, cellid, subId, dist2);
-
-        if(cellid<0)
+        if(cell_toucing_face.size()!=1)
         {
-            std::cout<<"Volume cell matching surface face "<<i<<" not found. Look for an error. Closest point used for search:"<<cell_center[0]<<" "<<cell_center[1]<<" "<<cell_center[2]<<" "<<std::endl;
+            std::cout<<"The number of cells ("<<cell_toucing_face.size()<<"): "<< cell_toucing_face <<", touching face "<<i<<" is not 1. LELBO will be incorrect. Revise the mesh."<<std::endl;
+            exit(1);
         }
-        entry.vol_cell_id = cellid;
+        entry.vol_cell_id = cell_toucing_face[0];
         
         faceData[i] = entry;
     }
