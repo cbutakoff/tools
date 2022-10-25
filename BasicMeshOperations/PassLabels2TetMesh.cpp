@@ -13,11 +13,10 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyData.h>
 #include <vtkShortArray.h>
 #include <vtkCell.h>
-#include <vtkPointLocator.h>
+#include <vtkStaticPointLocator.h>
 #include <vtkType.h>
 #include <vtkPointData.h>
 #include <vtkCellDataToPointData.h>
-#include <vtkCellLocator.h>
 #include <vtkPolyDataReader.h>
 #include <vtkCellData.h>
 #include <vtkCell.h>
@@ -263,7 +262,7 @@ int main(int argc, char** argv)
     }
     
     
-    vtkSmartPointer<vtkPointLocator> ptloc = vtkSmartPointer<vtkPointLocator>::New();
+    vtkSmartPointer<vtkStaticPointLocator> ptloc = vtkSmartPointer<vtkStaticPointLocator>::New();
     ptloc->SetDataSet(volmesh);
     ptloc->BuildLocator();
     
