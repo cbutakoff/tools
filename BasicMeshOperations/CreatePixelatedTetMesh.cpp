@@ -19,48 +19,39 @@
 #include <vtkPointData.h>
 #include <vtkCellData.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkMetaImageReader.h>
 #include <sstream>
 
 #include <vtkDataSetReader.h>
-#include <vtkDataSetWriter.h>
+#include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkDataSetTriangleFilter.h>
 #include <vtkImageData.h>
 
 #include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
 
+#include <filesystem>
 
 int main(int argc, char *argv[]) {
-    if (argc < 4) {
-        cout << "Usage: " << argv[0] << " InputVolume StartLabel EndLabel outprefix tetra/hexa" << endl;
+    if (argc < 6) {
+        cout << "Some command line parameters are missing"<<endl;
+        cout << "Usage: " << argv[0] << " InputVolume(.vtk|.mhd} StartLabel EndLabel outprefix tetra/hexa" << endl;
         return EXIT_FAILURE;
     }
 
 
 
     // Create all of the classes we will need
-    vtkSmartPointer<vtkDataSetReader> reader =
-            vtkSmartPointer<vtkDataSetReader>::New();
     vtkSmartPointer<vtkImageAccumulate> histogram =
             vtkSmartPointer<vtkImageAccumulate>::New();
     vtkSmartPointer<vtkMaskFields> scalarsOff =
             vtkSmartPointer<vtkMaskFields>::New();
     vtkSmartPointer<vtkThreshold> selector =
             vtkSmartPointer<vtkThreshold>::New();
-    vtkSmartPointer<vtkDataSetWriter> writer =
-            vtkSmartPointer<vtkDataSetWriter>::New();
+    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer =
+            vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
     vtkSmartPointer<vtkDataSetTriangleFilter> triangulator =
             vtkSmartPointer<vtkDataSetTriangleFilter>::New();
-
-    
-
-    vtkSmartPointer<vtkCallbackCommand> progressCallback =
-            CommonTools::AssociateProgressFunction(reader);
-    CommonTools::AssociateProgressFunction(selector, progressCallback);
-    CommonTools::AssociateProgressFunction(triangulator, progressCallback);
-    CommonTools::AssociateProgressFunction(histogram, progressCallback);
-    CommonTools::AssociateProgressFunction(writer, progressCallback);
-    
 
 
     // Define all of the variables
@@ -88,10 +79,36 @@ int main(int argc, char *argv[]) {
     // 3) Convert point data to cell data
     // 4) Output each cube model into a separate file
 
-    reader->SetFileName(argv[1]);
-    reader->Update();
+    auto file_extension = std::filesystem::path(argv[1]).extension();
+
+    vtkSmartPointer<vtkImageData> image;
+    vtkSmartPointer<vtkCallbackCommand> progressCallback;
+
+    if( strcmp( file_extension.c_str(), ".vtk" )==0 ){
+        vtkSmartPointer<vtkDataSetReader> reader = vtkSmartPointer<vtkDataSetReader>::New();
+        progressCallback = CommonTools::AssociateProgressFunction(reader);
+        reader->SetFileName(argv[1]);
+        reader->Update();
+        image = vtkImageData::SafeDownCast( reader->GetOutput() );
+    }
+    else if( strcmp( file_extension.c_str(), ".mhd" )==0 ) {
+        vtkSmartPointer<vtkMetaImageReader> reader = vtkSmartPointer<vtkMetaImageReader>::New();
+        progressCallback = CommonTools::AssociateProgressFunction(reader);
+        reader->SetFileName(argv[1]);
+        reader->Update();
+        image = vtkImageData::SafeDownCast( reader->GetOutput() );
+    }
+    else{
+        throw "Unknown image file format";
+    }
+
+    //CommonTools::AssociateProgressFunction(selector, progressCallback);
+    CommonTools::AssociateProgressFunction(triangulator, progressCallback);
+    CommonTools::AssociateProgressFunction(histogram, progressCallback);
+    CommonTools::AssociateProgressFunction(writer, progressCallback);
+
     
-    histogram->SetInputConnection(reader->GetOutputPort());
+    histogram->SetInputData(image);
     histogram->SetComponentExtent(0, endLabel, 0, 0, 0, 0);
     histogram->SetComponentOrigin(0, 0, 0);
     histogram->SetComponentSpacing(1, 1, 1);
@@ -100,7 +117,7 @@ int main(int argc, char *argv[]) {
 
     // Copy the scalar point data of the volume into the scalar cell data
 
-    selector->SetInputData(reader->GetOutput());
+    selector->SetInputData(image);
     selector->SetInputArrayToProcess(0, 0, 0,
             vtkDataObject::FIELD_ASSOCIATION_POINTS,
             vtkDataSetAttributes::SCALARS);
@@ -118,6 +135,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
+        cout<<"Thresholding label "<<i<<" with frequency "<<frequency<<endl;
         // select the cells for a given label
         selector->SetLowerThreshold(i);
         selector->SetUpperThreshold(i);
@@ -132,27 +150,28 @@ int main(int argc, char *argv[]) {
                 vtkDataSetAttributes::SCALARS);
         scalarsOff->Update();
         
-	if(make_tetras)
-	{       
-            triangulator->SetInputConnection(scalarsOff->GetOutputPort());
-            triangulator->Update();
-            
-            writer->SetInputData(triangulator->GetOutput());
-	}
-	else
-	{       
-            writer->SetInputData(scalarsOff->GetOutput());
-	}
+	    if(make_tetras)
+	    {       
+                triangulator->SetInputConnection(scalarsOff->GetOutputPort());
+                triangulator->Update();
+                
+                writer->SetInputData(triangulator->GetOutput());
+	    }
+	    else
+	    {       
+                writer->SetInputData(scalarsOff->GetOutput());
+	    }
 
         std::cout<<"Writing "<<writer->GetInput()->GetNumberOfPoints()<<" points"<<std::endl;
         std::cout<<"Writing "<<writer->GetInput()->GetNumberOfCells()<<" cells"<<std::endl;
 
-        writer->SetFileTypeToBinary();
+        writer->SetDataModeToBinary();
+        writer->EncodeAppendedDataOff();
         
         
         // output the polydata
         std::stringstream ss;
-        ss << filePrefix << i << ".vtk";
+        ss << filePrefix << i << ".vtu";
         cout << argv[0] << " writing " << ss.str() << endl;
 
         writer->SetFileName(ss.str().c_str());
