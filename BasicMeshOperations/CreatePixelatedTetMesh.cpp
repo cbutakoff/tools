@@ -30,8 +30,6 @@
 #include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
 
-#include <filesystem>
-
 int main(int argc, char *argv[]) {
     if (argc < 6) {
         cout << "Some command line parameters are missing"<<endl;
@@ -79,19 +77,19 @@ int main(int argc, char *argv[]) {
     // 3) Convert point data to cell data
     // 4) Output each cube model into a separate file
 
-    auto file_extension = std::filesystem::path(argv[1]).extension();
+    const char *file_extension = &(argv[1][strlen(argv[1])-4]);
 
     vtkSmartPointer<vtkImageData> image;
     vtkSmartPointer<vtkCallbackCommand> progressCallback;
 
-    if( strcmp( file_extension.c_str(), ".vtk" )==0 ){
+    if( strcmp( file_extension, ".vtk" )==0 ){
         vtkSmartPointer<vtkDataSetReader> reader = vtkSmartPointer<vtkDataSetReader>::New();
         progressCallback = CommonTools::AssociateProgressFunction(reader);
         reader->SetFileName(argv[1]);
         reader->Update();
         image = vtkImageData::SafeDownCast( reader->GetOutput() );
     }
-    else if( strcmp( file_extension.c_str(), ".mhd" )==0 ) {
+    else if( strcmp( file_extension, ".mhd" )==0 ) {
         vtkSmartPointer<vtkMetaImageReader> reader = vtkSmartPointer<vtkMetaImageReader>::New();
         progressCallback = CommonTools::AssociateProgressFunction(reader);
         reader->SetFileName(argv[1]);
