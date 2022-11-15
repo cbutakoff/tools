@@ -10,8 +10,6 @@ from sys import exit
 import re
 import argparse
 
-
-
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("case_name", help='Name of the alya task')
 parser.add_argument("input_folder", help='Folder with input pts.res')
@@ -30,10 +28,6 @@ main_filename   = f'{case_name}.pvd'
 dat_file        = join(case_path, f'{case_name}.dat')
 pts_filename0   = join(case_path, f'{case_name}.pts.res')
 pts_filename    = join(case_path, f'{case_name}'+'.pts.{:08d}.res')
-
-known_vars = None
-known_vars_dict = None
-
 
 
 #extract the timestep from the dat
@@ -58,34 +52,17 @@ for f in listdir(case_path):
 filenumbers = sorted(filenumbers) 
 
 
-def init_known_vars(alyaint):
-    global known_vars
-    global known_vars_dict
-    known_vars = [('T', 'f8'), ('ILAGR', alyaint), ('ITYPE', alyaint), ('EXIST', alyaint),\
-         ('COORX', 'f8'), ('COORY', 'f8'), ('COORZ', 'f8'),\
-         ('VELOX', 'f8'), ('VELOY', 'f8'), ('VELOZ', 'f8'),\
-         ('ACCEX', 'f8'), ('ACCEY', 'f8'), ('ACCEZ', 'f8'),\
-         ('DTK', 'f8'), ('CD', 'f8') ]
-    known_vars_dict = { x[0]:x[1] for x in known_vars}
-
-
-
 def read_file( filename ):
-    predt = []
+    dt = np.dtype([('T', 'f8'), ('ILAGR', 'i8'), ('ITYPE', 'i8'), ('EXIST', 'i8'),\
+     ('COORX', 'f8'), ('COORY', 'f8'), ('COORZ', 'f8'),\
+     ('VELOX', 'f8'), ('VELOY', 'f8'), ('VELOZ', 'f8'),\
+     ('DTK', 'f8'), ('CD', 'f8') ])
+
     with open(filename, mode='rb') as file:
-        hdr = file.read(1000).decode()
-        parts = hdr.split()
-        assert "PTSRES" in parts[0]
-        alyaint = parts[0][-2:].lower()
-
-        init_known_vars(alyaint)
-
-        for var in parts[1:]:    
-            predt.append( tuple([var,known_vars_dict[var]]) )
-        dt = np.dtype(predt)
+        hdr = file.read(255)
         data = np.fromfile(file, dtype=dt)
     
-    df = pd.DataFrame.from_records(data)
+    df = pd.DataFrame.from_records(data, exclude=['VELOX','VELOY','VELOZ','DTK', 'CD'])
 
     return df
     
@@ -108,28 +85,27 @@ def save_one_file(infilename, outfilename):
     pts = vtk.vtkPoints()
     pts.SetData( numpy_to_vtk(df1[["COORX","COORY","COORZ"]].to_numpy(), array_type = vtk.VTK_FLOAT) )  
 
+    types = numpy_to_vtk(df1["ITYPE"].to_numpy(), array_type = vtk.VTK_SHORT)
+    types.SetName('ITYPE')
+
+
+    ilagr = numpy_to_vtk(df1["ILAGR"].to_numpy(), array_type = vtk.VTK_INT) 
+    ilagr.SetName('ILAGR')
+
+
+    exist = numpy_to_vtk(df1["EXIST"].to_numpy(), array_type = vtk.VTK_SHORT)
+    exist.SetName('EXIST')
+
+
+    T = numpy_to_vtk(df1["T"].to_numpy(), array_type = vtk.VTK_FLOAT)
+    T.SetName('T')
+
     pd = vtk.vtkPolyData()
     pd.SetPoints(pts)
-
-    cols_to_save = set([col for col in df1.columns]) - set(["COORX","COORY","COORZ"])
-
-    if ('VELOX' in cols_to_save) & ('VELOY' in cols_to_save) & ('VELOZ' in cols_to_save):
-        v = numpy_to_vtk(df1[["VELOX","VELOY","VELOZ"]].to_numpy(), array_type = vtk.VTK_FLOAT)
-        v.SetName('Velocity')
-        pd.GetPointData().AddArray(v)
-        cols_to_save = cols_to_save - set(["VELOX","VELOY","VELOZ"])
-
-    if ('ACCEX' in cols_to_save) & ('ACCEY' in cols_to_save) & ('ACCEZ' in cols_to_save):
-        v = numpy_to_vtk(df1[["ACCEX","ACCEY","ACCEZ"]].to_numpy(), array_type = vtk.VTK_FLOAT)
-        v.SetName('Acceleration')
-        pd.GetPointData().AddArray(v)
-        cols_to_save = cols_to_save - set(["ACCEX","ACCEY","ACCEZ"])
-
-
-    for col in cols_to_save:
-        v = numpy_to_vtk(df1[col].to_numpy().astype(known_vars_dict[col]) )
-        v.SetName(col)
-        pd.GetPointData().AddArray(v)
+    pd.GetPointData().AddArray(types)
+    pd.GetPointData().AddArray(ilagr)
+    pd.GetPointData().AddArray(exist)
+    pd.GetPointData().AddArray(T)
 
     wr= vtk.vtkXMLPolyDataWriter()
     wr.SetInputData(pd)
