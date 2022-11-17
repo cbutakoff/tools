@@ -1,6 +1,7 @@
 import vtk
 import sys
 import numpy as np
+import os
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from progressbar import progressbar
 
@@ -13,11 +14,33 @@ rd = vtk.vtkMetaImageReader()
 rd.SetFileName(sys.argv[1])
 rd.Update()
 
-half_voxel_size = -np.array(rd.GetDataSpacing())/2.0
+bounds = np.array( rd.GetOutput().GetBounds() )
+
+#pad image by 1 voxel on all sides
+extent = np.array( rd.GetOutput().GetExtent() )
+extent[0::2] = extent[0::2]-1
+extent[1::2] = extent[1::2]+1
+
+pad = vtk.vtkImageConstantPad()
+pad.SetInputConnection( rd.GetOutputPort() )
+pad.SetConstant(0)
+pad.SetOutputWholeExtent(extent)
+pad.Update()
+
+#Running vtkImageToStructuredGrid on vtkImageConstantPad output directaly fails to reconstrcut the grid correctly. vtkImageToStructuredGrid does not like negative extent
+image = pad.GetOutput()
+spacing = image.GetSpacing()
+origin = np.array(image.GetOrigin())
+image.SetOrigin( origin - spacing ) #shift by 1 voxel
+extent[1::2] = extent[1::2]-extent[0::2]
+extent[0::2] = 0
+image.SetExtent( extent )
+
+half_voxel_size = -np.array(image.GetSpacing())/2.0
 
 #transform the image to explicit structured grid, voxes are nodes
 grid = vtk.vtkImageToStructuredGrid()
-grid.SetInputConnection( rd.GetOutputPort() )
+grid.SetInputData( image )
 grid.Update()
 
 t = vtk.vtkTransform()
@@ -39,7 +62,7 @@ cc.Update()
 interpolator = vtk.vtkImageInterpolator()
 interpolator.SetInterpolationModeToNearest()
 probe = vtk.vtkImageProbeFilter()
-probe.SetSourceConnection(rd.GetOutputPort())
+probe.SetSourceData(image)
 probe.SetInputConnection(cc.GetOutputPort())
 probe.SetInterpolator(interpolator)
 probe.Update()
@@ -73,8 +96,19 @@ for label in progressbar(labels_to_extract):
 
 append.Update()
 
+#clip the result to image bounds
+box = vtk.vtkBox()
+box.SetBounds(bounds)
+
+clip = vtk.vtkClipDataSet()
+clip.SetInputConnection(append.GetOutputPort())
+clip.SetClipFunction (box)
+clip.InsideOutOn()
+clip.Update()
+
+
 wr = vtk.vtkXMLUnstructuredGridWriter()
-wr.SetInputConnection(append.GetOutputPort())
+wr.SetInputConnection(clip.GetOutputPort())
 wr.SetFileName(sys.argv[2])
 wr.EncodeAppendedDataOff()
 wr.Write()
