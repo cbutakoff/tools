@@ -55,6 +55,7 @@ RelabelSurfaceMesh
 ThresholdDS
 CalculateEdgeLengths
 UniformityIndex
+SampleUG2UG_cells
 )
 
 set(VTKEIGEN_PROGRAMS 
