@@ -103,7 +103,7 @@ for i, (a, b) in enumerate(hole_ids.items()):
     print(f"CAVITY: {i+1}")
     print(f"   BOUNDARY: {a}")
     print( "   VALSET: "," ".join([str(x) for x in b]))
-    print(f"   FIELD: {field_id}")
+    print(f"   VALFIELD: {field_id}")
     print( "END_CAVITY")
 
 #=====================================================================
