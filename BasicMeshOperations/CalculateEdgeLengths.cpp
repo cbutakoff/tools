@@ -84,9 +84,9 @@ int main(int argc, char *argv[])
 	els_max->SetNumberOfTuples(mesh->GetNumberOfCells());
 	els_max->SetName("EdgeLengthMax");
 	vtkNew<vtkFloatArray> els_min;
-	els_max->SetNumberOfComponents(1);
-	els_max->SetNumberOfTuples(mesh->GetNumberOfCells());
-	els_max->SetName("EdgeLengthMin");
+	els_min->SetNumberOfComponents(1);
+	els_min->SetNumberOfTuples(mesh->GetNumberOfCells());
+	els_min->SetName("EdgeLengthMin");
 
 
 
