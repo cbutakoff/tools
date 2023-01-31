@@ -163,6 +163,7 @@ int main(int argc, char *argv[])
 	wr->SetFileName(filenameout);
 	wr->SetInputData(mesh);
 	wr->EncodeAppendedDataOff();
+	wr->SetCompressorTypeToNone();
 	wr->Write();
 
 
