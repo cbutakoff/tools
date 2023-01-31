@@ -79,10 +79,16 @@ int main(int argc, char *argv[])
 		mesh = vtkUnstructuredGrid::SafeDownCast(rd->GetOutput());
 	}
 
-	vtkNew<vtkFloatArray> els;
-	els->SetNumberOfComponents(2);
-	els->SetNumberOfTuples(mesh->GetNumberOfCells());
-	els->SetName("EdgeLengthMinMax");
+	vtkNew<vtkFloatArray> els_max;
+	els_max->SetNumberOfComponents(1);
+	els_max->SetNumberOfTuples(mesh->GetNumberOfCells());
+	els_max->SetName("EdgeLengthMax");
+	vtkNew<vtkFloatArray> els_min;
+	els_max->SetNumberOfComponents(1);
+	els_max->SetNumberOfTuples(mesh->GetNumberOfCells());
+	els_max->SetName("EdgeLengthMin");
+
+
 
 	vtkIdType steps_completed = 0;
 	const vtkIdType step_size = 100;
@@ -149,7 +155,8 @@ int main(int argc, char *argv[])
 		{
 			for( size_t i=0; i<cellIds_local.size(); i++ )
 			{
-    		els->SetTuple2( cellIds_local[i], edgelength_min_local[i], edgelength_max_local[i] );
+    		els_max->SetTuple1( cellIds_local[i], edgelength_max_local[i] );
+    		els_min->SetTuple1( cellIds_local[i], edgelength_min_local[i] );
 			}
 		} // end of critical
 
@@ -157,7 +164,8 @@ int main(int argc, char *argv[])
 
 	cout << "Saving the edge lengths mesh" << endl;
 
-	mesh->GetCellData()->AddArray(els);
+	mesh->GetCellData()->AddArray(els_max);
+	mesh->GetCellData()->AddArray(els_min);
 
 	vtkNew<vtkXMLUnstructuredGridWriter> wr;
 	wr->SetFileName(filenameout);
