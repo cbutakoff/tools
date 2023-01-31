@@ -172,6 +172,7 @@ int main(int argc, char *argv[])
 	wr->SetInputData(mesh);
 	wr->EncodeAppendedDataOff();
 	wr->SetCompressorTypeToNone();
+	wr->SetHeaderTypeToUInt64();
 	wr->Write();
 
 
