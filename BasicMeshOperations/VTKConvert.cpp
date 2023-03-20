@@ -109,6 +109,7 @@ int main(int argc, char *argv[]) {
         tf->Scale(scale,scale,scale);
         tff->SetInputData(pd);
         tff->SetTransform(tf);
+        tff->Update();
 
         CommonTools::SaveShapeToFile(tff->GetOutput(), outshape);
     }
