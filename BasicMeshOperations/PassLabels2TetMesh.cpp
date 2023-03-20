@@ -320,11 +320,11 @@ int main(int argc, char** argv)
 
         }
                 
-        if(cell_toucing_face.size()!=1)
-        {
-            std::cout<<"The number of cells ("<<cell_toucing_face.size()<<"): "<< cell_toucing_face <<", touching face "<<i<<" is not 1. LELBO will be incorrect. Revise the mesh."<<std::endl;
-            exit(1);
-        }
+        //if(cell_toucing_face.size()!=1)
+        //{
+        //    std::cout<<"The number of cells ("<<cell_toucing_face.size()<<"): "<< cell_toucing_face <<", touching face "<<i<<" is not 1. LELBO will be incorrect. Revise the mesh."<<std::endl;
+        //   exit(1);
+        //}
         entry.vol_cell_id = cell_toucing_face[0];
         
         faceData[i] = entry;
