@@ -30,6 +30,9 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkFloatArray.h>
 #include <vtkShortArray.h>
 #include <vtkUnstructuredGridWriter.h>
+#include <vtkNew.h>
+#include <vtkTransform.h>
+#include <vtkTransformPolyDataFilter.h>
 
 //#define LINEBREAK "\x0D\x0A"
 #define LINEBREAK "\x0A"
@@ -100,7 +103,14 @@ int main(int argc, char *argv[]) {
         vtkSmartPointer<vtkPolyData> pd = vtkSmartPointer<vtkPolyData>::Take(
             CommonTools::LoadShapeFromFile(inshape));
 
-        CommonTools::SaveShapeToFile(pd, outshape);
+        vtkNew<vtkTransform> tf;
+        vtkNew<vtkTransformPolyDataFilter> tff;
+        tf->Identity();
+        tf->Scale(scale,scale,scale);
+        tff->SetInputData(pd);
+        tff->SetTransform(tf);
+
+        CommonTools::SaveShapeToFile(tff->GetOutput(), outshape);
     }
 
     return 0;
