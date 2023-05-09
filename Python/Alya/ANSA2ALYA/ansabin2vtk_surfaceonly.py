@@ -150,7 +150,7 @@ for boundary_idx, boundary_info in enumerate( info['Boundaries'] ):
         boundary_id = int(boundary_info['Name'].split("_")[0])
 
     df['boundaryID'] = boundary_id 
-    bound_df = bound_df.append(df)
+    bound_df = pd.concat( (bound_df,df), axis=0, ignore_index=True )
 
     boundary_names.append( {'Name':boundary_info['Name'], 'Id':boundary_id } )
 
