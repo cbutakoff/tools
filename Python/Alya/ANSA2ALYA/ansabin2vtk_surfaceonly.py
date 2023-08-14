@@ -143,11 +143,12 @@ for boundary_idx, boundary_info in enumerate( info['Boundaries'] ):
     if 'Code' in boundary_info:
         boundary_id = boundary_info['Code']
     else:
-        boundary_id = boundary_idx+1
+        if args.infercode:
+           boundary_id = int(boundary_info['Name'].split("_")[0])
+        else:
+           boundary_id = boundary_idx+1
 
 
-    if args.infercode:
-        boundary_id = int(boundary_info['Name'].split("_")[0])
 
     df['boundaryID'] = boundary_id 
     bound_df = pd.concat( (bound_df,df), axis=0, ignore_index=True )

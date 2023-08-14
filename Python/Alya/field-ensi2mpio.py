@@ -16,6 +16,7 @@ parser.add_argument("output_folder", help='Folder for the output fields case')
 parser.add_argument("varname", help='Variable associated to the NODES to save')
 parser.add_argument("-f", "--field",type=int, default=1, help = "Field id for the generated field (>0)")
 parser.add_argument("-t", "--timesteps", help='Comvert only timesteps in the specified range, use time_step=-1 to save all timesteps', nargs=3, type=float, metavar=('time_start', 'time_end','time_step'))
+parser.add_argument("-m","--mesh",help="The field is generated for this VTU mesh, for matching points, only NPOIN supported")
 args = parser.parse_args()
 
 assert args.field > 0, "Field ID must be > 0"
@@ -27,18 +28,41 @@ varname =      args.varname        #'VELOC'
 field_id =     args.field
 
 
-
 assert( os.path.isfile(path) )
 
 os.makedirs(outpath,exist_ok=True)
 
 
+
+print("Reading ensi case ",path)
 rdr = vtk.vtkEnSightGoldBinaryReader()
 rdr.SetCaseFileName(path)
 rdr.ReadAllVariablesOn()
 rdr.Update()
 
 
+#for every node of args.mesh store the id of the rdr.getoutput() or -1
+ensi2vtu_ids = np.array([],dtype=np.int64)
+vtu = None
+if args.mesh:
+    print("Reading reference mesh ",args.mesh)
+    rd_vtu = vtk.vtkXMLUnstructuredGridReader()
+    rd_vtu.SetFileName(args.mesh)
+    rd_vtu.Update()
+    vtu = rd_vtu.GetOutput()
+    mesh = rdr.GetOutput().GetBlock(0)
+    print("Create array of point ids to transfer the field")
+    ensi2vtu_ids = -np.ones(vtu.GetNumberOfPoints(),dtype=np.int64)
+
+    loc = vtk.vtkStaticPointLocator()
+    loc.SetDataSet(mesh)
+    loc.BuildLocator()
+    dist2 = vtk.mutable(0)
+    for ptid in range(vtu.GetNumberOfPoints()):
+        ensi2vtu_ids[ptid] = loc.FindClosestPointWithinRadius(1e-6, vtu.GetPoint(ptid), dist2)
+
+    print(ensi2vtu_ids[ensi2vtu_ids>=0])
+    assert len(ensi2vtu_ids[ensi2vtu_ids>=0])!=0, "No mesh intresection was found"
 
 #figure out the timeline for the variable
 timeset_id = -1
@@ -132,9 +156,15 @@ for i in progressbar.progressbar(range(t20.shape[0])):
     veloc = mesh.GetPointData().GetArray(varname)
     assert not veloc is None, f'{varname} array not found in the mesh'
 
-    v = np.zeros((mesh.GetNumberOfPoints(), veloc.GetNumberOfComponents()), dtype = np.float64)
-    for j in range(veloc.GetNumberOfTuples()):
-        v[j,:] = veloc.GetTuple(j)
+    if ensi2vtu_ids.shape[0]==0:
+        v = np.zeros((mesh.GetNumberOfPoints(), veloc.GetNumberOfComponents()), dtype = np.float64)
+        for j in range(veloc.GetNumberOfTuples()):
+            v[j,:] = veloc.GetTuple(j)
+    else:
+        v = np.zeros((vtu.GetNumberOfPoints(), veloc.GetNumberOfComponents()), dtype = np.float64)
+        for j in range(veloc.GetNumberOfTuples()):
+            if ensi2vtu_ids[j]>=0:
+                v[j,:] = veloc.GetTuple(ensi2vtu_ids[j])
 
     filename = '{:s}-XFIEL.{:08d}.{:08d}.mpio.bin'.format(problem_name, field_id, i+1)
 
