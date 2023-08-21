@@ -12,105 +12,98 @@ input_filename = sys.argv[1]
 output_filename = sys.argv[2]
 
 
+def read_alyampio_header(filename):
+    with open(filename, 'rb') as f:
+        return read_header_mpio(f)
+
 
 def read_alyampio_array(filename):
     with open(filename, 'rb') as f:
         header = read_header_mpio(f)
-    
-        tuples = np.reshape( np.fromfile(f, dtype=np.dtype(header['DataTypePython']) ), (header['Lines'], header['Columns']) )
-        
-        return {'tuples':tuples, 'header':header};
+
+        tuples = np.reshape(np.fromfile(f, dtype=np.dtype(header['DataTypePython'])),
+                            (header['Lines'], header['Columns']))
+
+        return {'tuples': tuples, 'header': header};
 
 
 def read_header_mpio(f):
-    magic = np.fromfile(f,count=1, dtype=np.int64)[0]
+    magic = np.fromfile(f, count=1, dtype=np.int64)[0]
     if magic != 27093:
-        print(f'File {filename} does not appear to be alya mpio file')
-        
+        print(f'File {f} does not appear to be alya mpio file')
+
     format = str(f.read(8))
     if not ('MPIAL' in format):
-        assert False,f'File {filename} does not appear to be alya mpio file'
+        assert False, f'File {f} does not appear to be alya mpio file'
 
     version = str(f.read(8))
     obj = str(f.read(8))
     dimension = str(f.read(8))
     association = str(f.read(8))
     datatype = str(f.read(8))
-    datatypelen = str(f.read(8))    
+    datatypelen = str(f.read(8))
     seq_par = str(f.read(8))
-    filt = str(f.read(8))    
-    sorting = str(f.read(8))    
-    idd = str(f.read(8))    
+    filt = str(f.read(8))
+    sorting = str(f.read(8))
+    idd = str(f.read(8))
 
     if not ('NOID' in idd):
-        assert False, f'ID column in {filename} is not supported'
+        assert False, f'ID column in {f} is not supported'
 
-    
-    junk = str(f.read(8))    
+    junk = str(f.read(8))
     if not ('0000000' in junk):
-        assert False,   f'Lost alignment reding {filename}'
-    
+        assert False, f'Lost alignment reding {f}'
 
-    columns = np.fromfile(f,count=1,dtype=np.int64)[0]
-    lines = np.fromfile(f,count=1,dtype=np.int64)[0]
-    timestep_no = np.fromfile(f,count=1,dtype=np.int64)[0]
-    nsubdomains = np.fromfile(f,count=1,dtype=np.int64)[0]
-    mesh_div = np.fromfile(f,count=1,dtype=np.int64)[0]
-    tag1 = np.fromfile(f,count=1,dtype=np.int64)[0]
-    tag2 = np.fromfile(f,count=1,dtype=np.int64)[0]
-    time = np.fromfile(f,count=1,dtype=np.float64)[0]
-    
-    junk = str(f.read(8))    
+    columns = np.fromfile(f, count=1, dtype=np.int64)[0]
+    lines = np.fromfile(f, count=1, dtype=np.int64)[0]
+    timestep_no = np.fromfile(f, count=1, dtype=np.int64)[0]
+    nsubdomains = np.fromfile(f, count=1, dtype=np.int64)[0]
+    mesh_div = np.fromfile(f, count=1, dtype=np.int64)[0]
+    tag1 = np.fromfile(f, count=1, dtype=np.int64)[0]
+    tag2 = np.fromfile(f, count=1, dtype=np.int64)[0]
+    time = np.fromfile(f, count=1, dtype=np.float64)[0]
+
+    junk = str(f.read(8))
     if not ('0000000' in junk):
-        assert False,f'Lost alignment reding {filename}'
+        assert False, f'Lost alignment reding {filename}'
 
-    junk = str(f.read(8))    #1
-    junk = str(f.read(8))    #2
-    junk = str(f.read(8))    #3
-    junk = str(f.read(8))    #4
-    junk = str(f.read(8))    #5
-    junk = str(f.read(8))    #6
-    junk = str(f.read(8))    #7
-    junk = str(f.read(8))    #8
-    junk = str(f.read(8))    #9
-    junk = str(f.read(8))    #10
-    
+    options = []
+    for i in range(10):
+        options.append(f.read(8))
+
     if 'INT' in datatype:
         dt = 'int'
     elif 'REAL' in datatype:
         dt = 'float'
     else:
-        assert False,f'Unsupported data type {datatype}'
+        assert False, f'Unsupported data type {datatype}'
 
     if '8' in datatypelen:
-        dt = dt+'64'
+        dt = dt + '64'
     elif '4' in datatypelen:
-        dt = dt+'32'
+        dt = dt + '32'
     else:
-        assert False,f'Unsupported data type length {datatypelen}'
-
+        assert False, f'Unsupported data type length {datatypelen}'
 
     header = {
-        'Version':version, 
-        'Object':obj,
-        'Dimension':dimension,
-        'Columns':columns,
-        'Lines':lines,
-        'Association':association,
-        'DataType':datatype,
-        'DataTypeLength':datatypelen,
-        'TimeStepNo':timestep_no, 
-        'Time':time, 
-        'NSubdomains':nsubdomains,              
-        'Div':mesh_div,
-        'DataTypePython':dt}
-
+        'Version': version,
+        'Object': obj,
+        'Dimension': dimension,
+        'Columns': columns,
+        'Lines': lines,
+        'Association': association,
+        'DataType': datatype,
+        'DataTypeLength': datatypelen,
+        'TimeStepNo': timestep_no,
+        'Time': time,
+        'NSubdomains': nsubdomains,
+        'Div': mesh_div,
+        'DataTypePython': dt,
+        'Options': options}
 
     assert ('NOFIL' in filt), "Filtered fields are not supported"
 
-
     return header
-
 
 
 def write_vector_mpio(filename, vector, header):
@@ -125,7 +118,7 @@ def write_vector_mpio(filename, vector, header):
 
         if ndim==1:
             f.write(b'SCALA00\0')
-        else:    
+        else:
             f.write(b'VECTO00\0')
 
         f.write(eval(header['Association']))
@@ -145,24 +138,26 @@ def write_vector_mpio(filename, vector, header):
         np.array([0], dtype=np.int64).tofile(f)  #Tag 2 (signed int 64 bits):               tag2
         np.array(header['Time'], dtype=np.float64).tofile(f)  #Time (real 64 bits):                      time
         f.write(b'0000000\0')
-        f.write(b'NONE000\0') #1
-        f.write(b'NONE000\0') #2
-        f.write(b'NONE000\0') #3
-        f.write(b'NONE000\0') #4
-        f.write(b'NONE000\0') #5
-        f.write(b'NONE000\0') #6
-        f.write(b'NONE000\0') #7
-        f.write(b'NONE000\0') #8
-        f.write(b'NONE000\0') #9
-        f.write(b'NONE000\0') #10
+
+        for i in range(10):
+            option = header["Options"][i] if header["Options"][i] else b'NONE000\0'
+            if isinstance( option, str ):
+                option = option.encode()
+            assert len(option)==8, f"{i}-th option \'{header['Options'][i]}\' has to be 8 symbols long"
+            f.write(option)
 
         vector.astype(header['DataTypePython']).tofile(f)
 
 
+
+
 data = read_alyampio_array(input_filename)
-print(data['header'])
+#print(data['header'])
 if 'int' in data['header']['DataTypePython']:
-    data['header']['DataTypeLength']= "b'4BYTE00\\x00'"
-    data['header']['DataTypePython']= "int32"
-print(data['header'])
-write_vector_mpio(output_filename, data['tuples'], data['header'])
+   print(f"Converting {input_filename}")
+   data['header']['DataTypeLength']= "b'4BYTE00\\x00'"
+   data['header']['DataTypePython']= "int32"
+   #print(data['header'])
+   write_vector_mpio(output_filename, data['tuples'], data['header'])
+   
+   
