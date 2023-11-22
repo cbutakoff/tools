@@ -56,6 +56,7 @@ ThresholdDS
 CalculateEdgeLengths
 UniformityIndex
 SampleUG2UG_cells
+SampleUG2UG_nn
 )
 
 set(VTKEIGEN_PROGRAMS 
