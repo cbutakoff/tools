@@ -18,7 +18,7 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkCellCenters.h>
 #include <vtkResampleWithDataSet.h>
 #include "vtkOutputWindow.h"
-#include <vtkCellLocator.h>
+#include <vtkStaticCellLocator.h>
 #include <vtkShortArray.h>
 
 #include <iostream>
@@ -32,6 +32,7 @@ int main(int argc, char** argv)
     if(argc<4)
     {
         std::cout<<"Usage: SampleUG2UG meshsrc.vtu meshtgt.vtu arrayname out.vtu"<<std::endl;        
+        std::cout<<"Try to use as recent VTK as possible, this uses vtkStaticCellLocator and it used to have bugs. Since VTK 9.3 seems to be ok, and vtkCellLocator is excruciatingly slow since vtk 9.0."<<std::endl;        
         exit(-1);
     }
 
@@ -72,7 +73,7 @@ int main(int argc, char** argv)
 
     
     printf("Bulding locator\n");
-    vtkSmartPointer<vtkCellLocator> loc = vtkSmartPointer<vtkCellLocator>::New();
+    vtkSmartPointer<vtkStaticCellLocator> loc = vtkSmartPointer<vtkStaticCellLocator>::New();
     loc->SetDataSet(src_reader->GetOutput());
     loc->BuildLocator();
 
