@@ -71,6 +71,7 @@ int main(int argc, char** argv)
     cc->Update();
 
     
+    printf("Bulding locator\n");
     vtkSmartPointer<vtkCellLocator> loc = vtkSmartPointer<vtkCellLocator>::New();
     loc->SetDataSet(src_reader->GetOutput());
     loc->BuildLocator();
@@ -82,8 +83,9 @@ int main(int argc, char** argv)
     aha->SetNumberOfComponents(1);
     aha->SetNumberOfTuples(dst_reader->GetOutput()->GetNumberOfCells());
 
+    printf("Main loop\n");
     for( vtkIdType i=0; i<cc->GetOutput()->GetNumberOfPoints(); i++ ){
-        if( i%100000 == 0 ) printf("Processed %lld/%lld cells",i, cc->GetOutput()->GetNumberOfPoints());
+        if( i%1000 == 0 ) printf("Processed %lld/%lld cells\r",i, cc->GetOutput()->GetNumberOfPoints());
         double cp[3];
         vtkIdType cellId;
         int subId;
@@ -96,6 +98,7 @@ int main(int argc, char** argv)
 
         aha->SetTuple1(i, aha_ahamesh->GetTuple1(cellId));
     }
+    printf("\n");
 
 
     dst_reader->GetOutput()->GetCellData()->AddArray(aha);
