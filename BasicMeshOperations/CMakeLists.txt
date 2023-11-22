@@ -57,6 +57,7 @@ CalculateEdgeLengths
 UniformityIndex
 SampleUG2UG_cells
 SampleUG2UG_nn
+PassCellData_ug2ug_matching_points
 )
 
 set(VTKEIGEN_PROGRAMS 
