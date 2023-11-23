@@ -359,7 +359,22 @@ CommonTools::VTKSurfaceMeshFormats CommonTools::GetTypeOfVTKData(const char *sha
 
 void CommonTools::CommandLineProgressIndicator(vtkObject* caller, long unsigned int eventId, void* clientData, void* callData) {
     vtkTestProgressReportFilter* testFilter = static_cast<vtkTestProgressReportFilter*> (caller);
-    std::cout << caller->GetClassName() << "> Progress: " << testFilter->GetProgress() << std::endl;
+
+    const int barWidth = 50;
+    std::cout << caller->GetClassName()<<" [";
+    const float progress = testFilter->GetProgress();
+    const int pos = barWidth * progress;
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) std::cout << "=";
+        else if (i == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] " << int(progress * 100.0) << " %\r";
+    if (abs(progress-1)<1e-10) std::cout << std::endl;
+    std::cout.flush();
+
+
+    //std::cout << caller->GetClassName() << "> Progress: " << testFilter->GetProgress() << std::endl;
 }
 
 vtkSmartPointer<vtkCallbackCommand>

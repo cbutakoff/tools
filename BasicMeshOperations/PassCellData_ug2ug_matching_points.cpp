@@ -29,11 +29,12 @@ PURPOSE.  See the above copyright notice for more information.
 #include <VTKCommonTools.h>
 #include <vtkCallbackCommand.h>
 
+//#define DEBUG
 
-std::vector<vtkIdType> argsort_cells(vtkDataSet* mesh);
+std::vector<vtkIdType> argsort_cells(vtkUnstructuredGrid* mesh);
 std::vector<vtkIdType> argsort(std::vector<vtkIdType> v);
 void pass_array(std::vector<vtkIdType> order_src, std::vector<vtkIdType> order_dst, 
-              std::string array_name, vtkDataSet* mesh_src, vtkDataSet* mesh_dst );
+              std::string array_name, vtkUnstructuredGrid* mesh_src, vtkUnstructuredGrid* mesh_dst );
 
 template<class T>
 void print_vector(std::vector<T> v)
@@ -130,15 +131,21 @@ int main(int argc, char** argv)
 void pass_array(std::vector<vtkIdType> order_src, 
               std::vector<vtkIdType> order_dst, 
               std::string array_name,
-              vtkDataSet* mesh_src,
-              vtkDataSet* mesh_dst
+              vtkUnstructuredGrid* mesh_src,
+              vtkUnstructuredGrid* mesh_dst
               ) {
    auto array_src = mesh_src->GetCellData()->GetArray(array_name.c_str());
    mesh_dst->GetCellData()->AddArray(array_src);
 
-   auto array_dst = mesh_dst->GetCellData()->GetArray(array_name.c_str());
+   //I want to duplicate arrays of the mesh_src, but cannot find a way
+   //so I'll dupicate the mesh and use its arrays
+   vtkSmartPointer<vtkUnstructuredGrid> temp_mesh = vtkSmartPointer<vtkUnstructuredGrid>::New();
+   temp_mesh->DeepCopy(mesh_src);
+
+   auto array_dst = temp_mesh->GetCellData()->GetArray(array_name.c_str());
    auto order_dst_indices = argsort(order_dst);
    
+#ifdef DEBUG 
    std::cout<<"Source indices"<<std::endl;
    print_vector(order_src);
    std::cout<<std::endl;
@@ -148,13 +155,17 @@ void pass_array(std::vector<vtkIdType> order_src,
    std::cout<<"order_dst_indices"<<std::endl;
    print_vector(order_dst_indices);
    std::cout<<std::endl;
-
+#endif
 
    for (const auto& idx_src: order_src){
       auto idx_dst = order_dst[order_dst_indices[idx_src]];
       array_dst->SetTuple1(idx_dst, array_src->GetTuple1(idx_src));
+#ifdef DEBUG
       std::cout<<idx_src<<" -> "<<idx_dst<<std::endl;
+#endif
    }  
+
+   mesh_dst->GetCellData()->AddArray(array_dst);
 }
 
 std::vector<vtkIdType> 
@@ -170,7 +181,7 @@ argsort(std::vector<vtkIdType> v) {
 
 
 std::vector<vtkIdType> 
-argsort_cells(vtkDataSet* mesh) {
+argsort_cells(vtkUnstructuredGrid* mesh) {
    using row=std::vector<vtkIdType>;
    std::vector<row> connectivity;
 
@@ -183,9 +194,11 @@ argsort_cells(vtkDataSet* mesh) {
       }
       connectivity.push_back(r);
 
+#ifdef DEBUG
       std::cout<<cellId<<" : ";
       print_vector(r);
       std::cout<<std::endl;
+#endif
 
    }
 
@@ -193,12 +206,13 @@ argsort_cells(vtkDataSet* mesh) {
    std::iota(indices.begin(),indices.end(),0); //Fill with values from 0 to N-1
    std::sort(indices.begin(),indices.end(), [&](vtkIdType i, vtkIdType j){return connectivity[i]<connectivity[j];} );
 
+#ifdef DEBUG
    for( const auto& v:indices ){
       std::cout<<v<<" : ";
       for( const auto& x: connectivity[v]) std::cout<<x<<",";
       std::cout<<std::endl;
    }
-
+#endif
 
    return indices;
 }
