@@ -65,7 +65,7 @@ def init_known_vars(alyaint):
          ('COORX', 'f8'), ('COORY', 'f8'), ('COORZ', 'f8'),\
          ('VELOX', 'f8'), ('VELOY', 'f8'), ('VELOZ', 'f8'),\
          ('ACCEX', 'f8'), ('ACCEY', 'f8'), ('ACCEZ', 'f8'),\
-         ('DTK', 'f8'), ('CD', 'f8') ]
+         ('DTK', 'f8'), ('DIAMK','f8'), ('CD', 'f8') ]
     known_vars_dict = { x[0]:x[1] for x in known_vars}
 
 
