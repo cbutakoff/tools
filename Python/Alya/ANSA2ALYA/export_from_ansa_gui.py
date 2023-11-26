@@ -189,7 +189,7 @@ def generatePressed(b, controls):
 			
 		for i, node	in enumerate(ansa_nodes):
 			if (progress_i > progress_t):
-				utils.MainProgressBarSetValue( 100*i/len(ansa_nodes) )
+				utils.MainProgressBarSetValue( int(np.round(100*i/len(ansa_nodes))) )
 				progress_i = 0
 			progress_i = progress_i+1
 
@@ -228,7 +228,7 @@ def generatePressed(b, controls):
 			#extract cells
 			for cell_idx, cell in enumerate( cells ):
 				if (progress_i > progress_t):
-					utils.MainProgressBarSetValue( 100*cell_idx/len(cells) )
+					utils.MainProgressBarSetValue( int(np.round(100*cell_idx/len(cells))) )
 					progress_i = 0
 				progress_i = progress_i+1
 				
@@ -276,7 +276,7 @@ def generatePressed(b, controls):
 			for face_idx, face in enumerate(faces):
 				
 				if (progress_i > progress_t):
-					utils.MainProgressBarSetValue( 100*face_idx/len(faces) )
+					utils.MainProgressBarSetValue( int(np.round(100*face_idx/len(faces))) )
 					progress_i = 0
 				progress_i = progress_i+1
 
