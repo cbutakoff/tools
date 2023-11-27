@@ -81,6 +81,7 @@ def main():
             	
 	guitk.BCLineEditPathSetFileDialogTitle(lineedit, "Select the path to store the meshes")
 	guitk.BCWindowSetAcceptFunction(window, acceptFunction, None)
+	guitk.BCWindowSetOnCloseFunction(window, closeFunction, None)
 	guitk.BCShow( window )
 
 def generatePressed(b, controls):
@@ -315,6 +316,7 @@ def generatePressed(b, controls):
 		json.dump(info, file, indent=3)
 
 	utils.MainProgressBarSetText( "Finished")
+	utils.MainProgressBarSetValue(100)
 
 
 
@@ -326,6 +328,10 @@ def _extractSelection(item_2, selected_props):
 
 def acceptFunction(window, data):	
 	return 0
+
+def closeFunction(window, data):
+	utils.MainProgressBarSetText( "")
+	utils.MainProgressBarSetValue(0)
 
 
 if __name__ == '__main__':
