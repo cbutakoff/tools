@@ -176,4 +176,6 @@ varname_new = list(varname)
 varname_new[-1] = "M"
 varname_new = "".join(varname_new)
 output_filename = path/f"{alya_problem}-{varname_new}-00000000.post.mpio.bin"
+data['header']['Time']=0.0
+data['header']['TimeStepNo']=0
 write_vector_mpio(output_filename, maxvalue, data['header'])
