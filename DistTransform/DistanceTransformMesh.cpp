@@ -9,8 +9,8 @@ PURPOSE.  See the above copyright notice for more information.
 #include <vtkPolyData.h>
 #include <vtkShortArray.h>
 #include <vtkDataArray.h>
-#include <vtkPolyDataReader.h>
-#include <vtkPolyDataWriter.h>
+#include <vtkXMLPolyDataReader.h>
+#include <vtkXMLPolyDataWriter.h>
 #include <vtkPointData.h>
 #include <vtkFloatArray.h>
 #include <vtkIdList.h>
@@ -44,7 +44,7 @@ int main(int argc, char** argv)
     
     if(argc<4)
     {
-        std::cout<<std::endl<<"Usage: DistanceTransformMesh <input_mesh.vtk> <blob_point_shortarray> <output_mesh.vtk>"<<std::endl<<std::endl;
+        std::cout<<std::endl<<"Usage: DistanceTransformMesh <input_mesh.vtp> <blob_point_shortarray> <output_mesh.vtp>"<<std::endl<<std::endl;
         std::cout<<"blob_point_shortarray - must be vtkShortArray stored with points."
                 <<"Values are continuous indices from 0 to N"<<std::endl;
         std::cout<<"Blobs = regions of the mesh with the same id. "
@@ -66,7 +66,7 @@ int main(int argc, char** argv)
     std::cout<<"Array with blob ids: "<<blob_array<<std::endl;
     std::cout<<"Output will be stored in: "<<output_filename<<std::endl;
     
-    vtkSmartPointer<vtkPolyDataReader> rd = vtkSmartPointer<vtkPolyDataReader>::New();
+    vtkSmartPointer<vtkXMLPolyDataReader> rd = vtkSmartPointer<vtkXMLPolyDataReader>::New();
     rd->SetFileName(input_filename);
     rd->Update();
     vtkPolyData* mesh = rd->GetOutput();
@@ -109,9 +109,10 @@ int main(int argc, char** argv)
     
     mesh->GetPointData()->AddArray(dts_vtk);
     
-    vtkSmartPointer<vtkPolyDataWriter> wr = vtkSmartPointer<vtkPolyDataWriter>::New();
+    vtkSmartPointer<vtkXMLPolyDataWriter> wr = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
     wr->SetFileName(output_filename);
-    wr->SetFileTypeToBinary();
+    wr->SetDataModeToBinary();
+    wr->EncodeAppendedDataOff();
     wr->SetInputData(mesh);
     wr->Write();
     
