@@ -2,3 +2,4 @@ nbproject
 .ipynb_checkpoints
 .vscode
 __pycache__
+.idea
