@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 project (boost_zernike)
 
 FIND_PACKAGE(Boost COMPONENTS serialization  REQUIRED)
