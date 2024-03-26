@@ -138,6 +138,16 @@ for filename, arrayname in zip([lmate, leset, cellt],['lmate', 'leset', 'cellt']
         mvtk.SetName(arrayname)
         ug.GetCellData().AddArray( mvtk )
 
+for i in range(10):
+    filename = f"{name}-XFIEL.{i:08d}.00000001.mpio.bin"
+    if os.path.isfile(filename):
+        print(f"reading {filename}")
+        m = read_alyampio_array(filename)['tuples']
+        mvtk = numpy_to_vtk(m)
+        mvtk.SetName(f"XFIEL{i:02d}")
+        ug.GetPointData().AddArray( mvtk )
+
+
 wr = vtk.vtkXMLUnstructuredGridWriter()
 wr.SetFileName(out)
 wr.SetInputData(ug)
