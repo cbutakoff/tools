@@ -21,7 +21,10 @@ def write_xfiel_mpio(filename, vector, time):
         f.write(b'MPIAL00\0')
         f.write(b'V000400\0')
         f.write(b'XFIEL00\0')
-        f.write(b'SCALA00\0')
+        if ndim==1:
+            f.write(b'SCALA00\0')
+        else:
+            f.write(b'VECTO00\0')
         f.write(b'NPOIN00\0')
         f.write(b'REAL000\0')
         f.write(b'8BYTE00\0')
