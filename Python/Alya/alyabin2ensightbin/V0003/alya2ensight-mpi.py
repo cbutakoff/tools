@@ -52,6 +52,7 @@ def alya2ensight(args_raw: list[str]):
         ELEMENTS = "ELEMENTS"
         BOUNDARIES = "BOUNDARIES"
 
+    global mpi_on
     if mpi_on:
         comm = MPI.COMM_WORLD
         my_rank = comm.Get_rank()
@@ -112,20 +113,23 @@ def alya2ensight(args_raw: list[str]):
                 nargs=2,
                 metavar=("time_start", "time_end"),
             )
-            args = parser.parse_args()
+            args = parser.parse_args(args_raw)
 
             global vtk_installed
             vtk_installed = vtk_installed & args.vtu
             if vtk_installed:
-                print("VTU will be generated")
+                logger.debug("VTU will be generated")
             else:
-                print("VTU will NOT be generated")
+                logger.debug("VTU will NOT be generated")
 
             inputfolder = args.input_folder
             project_name = args.task_name
             outputfolder = args.output_folder
             time_interval = args.interval
-            print("Requested time interval: ", time_interval)
+            if time_interval is not None:
+                logger.debug(f"Requested time interval: {time_interval}")
+            else:
+                logger.debug(f"No time interval requested")
 
             if args.format == "alyabin":
                 MPIO = False
@@ -166,17 +170,16 @@ def alya2ensight(args_raw: list[str]):
             path = pathlib.Path(outputfolder)
             path.mkdir(parents=True, exist_ok=True)
 
-            print(f"-------------------------------------------------------")
-            print(f"Alya task: {project_name}")
-            print(f"Input path: {inputfolder}")
-            print(f"Output path: {outputfolder}")
+            logger.debug(f"-------------------------------------------------------")
+            logger.debug(f"Alya task: {project_name}")
+            logger.debug(f"Input path: {inputfolder}")
+            logger.debug(f"Output path: {outputfolder}")
             if MPIO:
-                print(f"Format: MPIO")
+                logger.debug(f"Format: MPIO")
             else:
-                print(f"Format: ALYABIN")
-            print(f"-------------------------------------------------------")
+                logger.debug(f"Format: ALYABIN")
+            logger.debug(f"-------------------------------------------------------")
 
-            sys.stdout.flush()
     finally:
         if num_procs > 1:
             inputfolder = comm.bcast(inputfolder, root=0)
@@ -248,7 +251,7 @@ def alya2ensight(args_raw: list[str]):
     def read_header_mpio(f):
         magic = np.fromfile(f, count=1, dtype=np.int64)[0]
         if magic != 27093:
-            print(f"File {filename} does not appear to be alya mpio file")
+            logger.debug(f"File {filename} does not appear to be alya mpio file")
 
         format = str(f.read(8))
         if not ("MPIAL" in format):
@@ -521,7 +524,7 @@ def alya2ensight(args_raw: list[str]):
     # In[14]:
 
     def write_geometry_vtk_double(point_coordinates, elements, element_types):
-        print("Saving VTK mesh with double precision")
+        logger.debug("Saving VTK mesh with double precision")
 
         element_alya2vtk = {
             37: {"vtkid": vtk.VTK_HEXAHEDRON, "Vertices": 8},
@@ -688,18 +691,17 @@ def alya2ensight(args_raw: list[str]):
             return result
 
         except Exception as e:
-            print(
+            logger.error(
                 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
             )
-            print(
+            logger.error(
                 "An error occured reading variable ", varname, " iteration ", iteration
             )
-            print(e)
-            print(
+            logger.error(e)
+            logger.error(
                 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
             )
 
-            sys.stdout.flush()
             return {
                 "time_real": -1,
                 "time_int": -1,
@@ -799,10 +801,10 @@ def alya2ensight(args_raw: list[str]):
                 else:
                     assert False, f"Unknown varibale type: {data['variabletype']}"
         except:
-            print(
+            logger.error(
                 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
             )
-            print(
+            logger.error(
                 "!!! An error occured writing variable ",
                 varname,
                 " iteration ",
@@ -810,10 +812,9 @@ def alya2ensight(args_raw: list[str]):
                 " filename ",
                 filename,
             )
-            print(
+            logger.error(
                 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
             )
-            sys.stdout.flush()
             return {
                 "time_real": -1,
                 "time_int": -1,
@@ -1077,13 +1078,13 @@ def alya2ensight(args_raw: list[str]):
 
         # if not enough tasks, fill the queue with empty jobs, just not to die if someone submits on too many cores by mistake
         if len(queue) < num_procs:
-            print(
+            logger.debug(
                 f"===================================================================================================================================="
             )
-            print(
+            logger.debug(
                 f"== Number of conversion tasks {len(queue)} smaller than number of CPUs {comm.Get_size()}. Reduce number of CPUs in mpirun next time."
             )
-            print(
+            logger.debug(
                 f"===================================================================================================================================="
             )
 
@@ -1092,10 +1093,8 @@ def alya2ensight(args_raw: list[str]):
 
         queue2scatter = chunk(queue, num_procs)
 
-        sys.stdout.flush()
-
     if my_rank == 0:
-        print("Scattering work")
+        logger.debug("Scattering work")
 
     if num_procs > 1:
         queue2scatter = comm.scatter(queue2scatter, root=0)
@@ -1106,12 +1105,12 @@ def alya2ensight(args_raw: list[str]):
     for iwork, work in enumerate(queue2scatter):
         if work != "":
             if my_rank == 0:
-                print(f"Master processing {iwork}/{len(queue2scatter)}")
+                logger.debug(f"Master processing {iwork}/{len(queue2scatter)}")
 
             results.append(json.dumps(do_work(json.loads(work)), cls=NumpyEncoder))
 
     if my_rank == 0:
-        print("Gathering results")
+        logger.debug("Gathering results")
 
     if num_procs > 1:
         results = comm.gather(results, root=0)
@@ -1139,9 +1138,8 @@ def alya2ensight(args_raw: list[str]):
                 & (variable_info["time_real"] <= time_interval[1])
             ]
 
-        print(variable_info)
-        print("Saving case")
-        sys.stdout.flush()
+        logger.debug(variable_info)
+        logger.debug("Saving case")
 
         case_file = f"{project_name}.ensi.case"
         with open(os.path.join(outputfolder, case_file), "w") as f:
@@ -1203,7 +1201,7 @@ def alya2ensight(args_raw: list[str]):
             for var_data in variable_info_per_variable:
                 varname = var_data["varname"]
                 timeline_id = var_data["timeline"]
-                print(f"Varname {varname}\n")
+                logger.debug(f"Varname {varname}\n")
                 df = var_data["data"].iloc[0]  # get one record with this varibale
                 if df.association != "FAILED":
                     ensi_association = ""
