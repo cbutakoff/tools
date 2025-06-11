@@ -868,11 +868,14 @@ def alya2ensight(args_raw: list[str]):
 
         # new alya has 6 cols, last ones are ipoin1 and ipoin3 (upd: 10/06/2025)
         npartitions = int(partitions[0])
-        if len(partitions[1:]) % 4 == 0:
-            partitions = np.reshape(partitions[1:], (partitions[0], 4))
-        elif len(partitions[1:]) % 6 == 0:
-            partitions = np.reshape(partitions[1:], (partitions[0], 6))
-        else:
+        possible_number_of_columns = [4, 6]
+        found = False
+        for n in possible_number_of_columns:
+            if len(partitions[1:]) == npartitions * n:
+                partitions = np.reshape(partitions[1:], (npartitions, n))
+                found = True
+                break
+        if not found:
             raise ValueError(".alyapar format changed, has neither 4 nor 6 cols")
 
         assert (
